@@ -633,23 +633,6 @@ function drawUnit(unit, time) {
 
   drawFlag(point.x + scale * 0.72, y - scale * 0.2, palette.flag, scale * 0.75);
 
-  if (unit.isGarrison) {
-    ctx.save();
-    ctx.fillStyle = "#586b86";
-    ctx.strokeStyle = "#fff";
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(point.x - scale * 0.78, y - scale * 0.82, scale * 0.31, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = "#fff";
-    ctx.font = `900 ${clamp(scale * 0.42, 8, 11)}px Inter, sans-serif`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("守", point.x - scale * 0.78, y - scale * 0.82 + 0.5);
-    ctx.restore();
-  }
-
   ctx.save();
   ctx.beginPath();
   ctx.arc(point.x, y, scale, 0, Math.PI * 2);
@@ -699,6 +682,26 @@ function drawUnit(unit, time) {
   ctx.arc(point.x, y + scale * 0.13, scale * 0.25, 0.1, Math.PI - 0.1);
   ctx.stroke();
   ctx.restore();
+
+  if (unit.isGarrison) {
+    const badgeX = point.x - scale * 0.96;
+    const badgeY = y - scale * 1.05;
+    const badgeRadius = clamp(scale * 0.46, 7, 12);
+    ctx.save();
+    ctx.fillStyle = "#34445d";
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(badgeX, badgeY, badgeRadius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#fff";
+    ctx.font = `900 ${clamp(scale * 0.55, 9, 13)}px Inter, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("守", badgeX, badgeY + 0.5);
+    ctx.restore();
+  }
 
   ctx.save();
   ctx.font = `900 ${clamp(scale * 0.62, 10, 14)}px Inter, sans-serif`;
@@ -964,12 +967,21 @@ function moveUnit(unit, dt) {
 function ensureDefender(region, attackerFaction) {
   if (region.faction === attackerFaction) return;
   const center = regionCenter(region);
-  const alreadyPresent = units.some((unit) => unit.faction === region.faction && (unit.targetRegionId === region.id || distance(unit, center) < 0.06));
-  if (alreadyPresent) return;
+  const existing = units.find((unit) => unit.faction === region.faction && (unit.targetRegionId === region.id || distance(unit, center) < 0.06));
+  if (existing) {
+    if (!existing.isGarrison) {
+      existing.isGarrison = true;
+      existing.garrisonRegionId = region.id;
+      existing.targetRegionId = region.id;
+      addEvent(`${region.name}\u306b\u5b88\u5099\u968a\u304c\u5c55\u958b\u3057\u307e\u3057\u305f`);
+    }
+    return existing;
+  }
 
   const defender = createUnit(region.faction, region.id);
   if (!defender) return;
   defender.isGarrison = true;
+  defender.garrisonRegionId = region.id;
   defender.targetRegionId = region.id;
   defender.arrived = true;
   defender.patrolCenter = center;
