@@ -35,7 +35,7 @@
             <span class="meter-segment"></span>
             <span class="meter-chest" aria-hidden="true">▣</span>
           </div>
-          <div class="gold-pill" title="Gold">
+          <div class="gold-pill" id="goldPill" title="Gold" hidden>
             <span class="gold-icon" aria-hidden="true">◎</span>
             <strong id="goldValue">0</strong>
             <small>GOLD</small>
@@ -44,6 +44,17 @@
 
         <div class="topbar-actions">
           <span class="connection-badge"><i></i>LOCAL SIM</span>
+          <div class="header-tools">
+            <button class="header-tool header-tool-shop shop-card" id="shopButton" type="button" aria-label="ショップを開く">
+              <span class="header-tool-icon" aria-hidden="true">▤</span>
+              <span class="header-tool-label">SHOP</span>
+            </button>
+            <button class="header-tool header-tool-intel intel-card" id="intelButton" type="button" aria-label="情報を確認する">
+              <span class="header-tool-icon" aria-hidden="true">⌁</span>
+              <span class="header-tool-label">INTEL</span>
+              <small id="intelValue">3</small>
+            </button>
+          </div>
           <button class="icon-button" id="settingsButton" type="button" aria-label="設定を開く">⚙</button>
         </div>
       </header>
@@ -67,19 +78,6 @@
             <button class="map-control-button" id="zoomInButton" type="button" aria-label="拡大する">＋</button>
             <button class="map-control-button" id="zoomOutButton" type="button" aria-label="縮小する">−</button>
           </div>
-        </div>
-
-        <div class="right-rail">
-          <button class="rail-card shop-card" id="shopButton" type="button">
-            <span class="rail-icon rail-icon-shop" aria-hidden="true">▤</span>
-            <span>SHOP</span>
-            <small>強化</small>
-          </button>
-          <button class="rail-card intel-card" id="intelButton" type="button">
-            <span class="rail-icon rail-icon-intel" aria-hidden="true">⌁</span>
-            <span>INTEL</span>
-            <small id="intelValue">3</small>
-          </button>
         </div>
 
         <div class="dispatch-hint" id="dispatchHint" aria-live="polite">
@@ -171,6 +169,16 @@
         <p>すべての白い部隊が失われました。救済措置としてGoldを受け取れます。</p>
         <strong class="defeat-reward" id="defeatReward">+100 GOLD</strong>
         <button class="primary-action" id="restartButton" type="button">最初から始める</button>
+      </div>
+    </dialog>
+
+    <dialog class="clear-dialog" id="clearDialog">
+      <div class="clear-form">
+        <div class="clear-emblem" aria-hidden="true">★</div>
+        <span class="panel-kicker">MISSION COMPLETE</span>
+        <h2>クリア！</h2>
+        <p>すべての領土をWhite Unionが制圧しました。</p>
+        <button class="primary-action" id="clearRestartButton" type="button">もう一度プレイ</button>
       </div>
     </dialog>
 

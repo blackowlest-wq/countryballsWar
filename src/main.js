@@ -22,6 +22,7 @@ const ui = {
   intel: document.querySelector("#intelValue"),
   defeatDialog: document.querySelector("#defeatDialog"),
   defeatReward: document.querySelector("#defeatReward"),
+  clearDialog: document.querySelector("#clearDialog"),
   shopDialog: document.querySelector("#shopDialog"),
   shopGold: document.querySelector("#shopGoldValue"),
   shopButtons: document.querySelectorAll("[data-shop-upgrade]"),
@@ -132,6 +133,7 @@ const state = {
   eventNotice: true,
   motion: true,
   defeated: false,
+  cleared: false,
   shopOpen: false,
   shopWasPaused: false,
   battles: new Map(),
@@ -882,7 +884,7 @@ function updateUnits(dt) {
     if (units[index].strength <= 0) units.splice(index, 1);
   }
 
-  if (!state.defeated && !units.some((unit) => unit.faction === "blue")) triggerDefeat();
+  if (!state.defeated && !state.cleared && !units.some((unit) => unit.faction === "blue")) triggerDefeat();
 }
 
 function nearestUnit(faction, target) {
@@ -1066,6 +1068,7 @@ function updateHud() {
   const blueRegions = regions.filter((region) => region.faction === "blue").length;
   const progress = Math.round((blueRegions / regions.length) * 100);
   const time = formatTime();
+  if (!state.cleared && !state.defeated && blueRegions === regions.length) triggerClear();
   ui.progress.textContent = `${Math.max(1, progress)}%`;
   ui.gold.textContent = String(state.gold);
   ui.day.textContent = String(time.day).padStart(2, "0");
@@ -1104,7 +1107,7 @@ function setupInitialUnits() {
 }
 
 function triggerDefeat() {
-  if (state.defeated) return;
+  if (state.defeated || state.cleared) return;
   state.defeated = true;
   state.paused = true;
   state.gold += DEFEAT_GOLD_REWARD;
@@ -1112,6 +1115,13 @@ function triggerDefeat() {
   ui.gold.textContent = String(state.gold);
   ui.defeatReward.textContent = `+${DEFEAT_GOLD_REWARD} GOLD`;
   ui.defeatDialog?.showModal();
+}
+
+function triggerClear() {
+  if (state.cleared || state.defeated) return;
+  state.cleared = true;
+  state.paused = true;
+  ui.clearDialog?.showModal();
 }
 
 function restartGame() {
@@ -1129,6 +1139,7 @@ function restartGame() {
   state.recoveryTimer = 0;
   state.toastTimer = 0;
   state.defeated = false;
+  state.cleared = false;
   state.shopOpen = false;
   state.battles.clear();
   state.suppressNextClick = false;
@@ -1141,6 +1152,7 @@ function restartGame() {
   ui.eventFeed.replaceChildren();
   ui.dispatchHint.classList.remove("is-hidden");
   ui.defeatDialog?.close();
+  ui.clearDialog?.close();
   lastTime = performance.now();
   updateHud();
   render();
@@ -1377,7 +1389,9 @@ document.querySelector("#intelButton").addEventListener("click", () => {
 const settingsDialog = document.querySelector("#settingsDialog");
 document.querySelector("#settingsButton").addEventListener("click", () => settingsDialog.showModal());
 document.querySelector("#restartButton").addEventListener("click", restartGame);
+document.querySelector("#clearRestartButton").addEventListener("click", restartGame);
 ui.defeatDialog?.addEventListener("cancel", (event) => event.preventDefault());
+ui.clearDialog?.addEventListener("cancel", (event) => event.preventDefault());
 document.querySelector("#eventToggle").addEventListener("change", (event) => { state.eventNotice = event.target.checked; });
 document.querySelector("#motionToggle").addEventListener("change", (event) => { state.motion = event.target.checked; });
 
