@@ -64,6 +64,8 @@ const COLORS = {
 const GOLD_STORAGE_KEY = "countryfronts.gold";
 const UPGRADES_STORAGE_KEY = "countryfronts.upgrades";
 const DEFEAT_GOLD_REWARD = 100;
+const AI_REINFORCEMENT_LIMIT = 5;
+const AI_ACTIVE_UNIT_LIMIT = 5;
 const SHOP_ITEMS = {
   logistics: { basePrice: 100, label: "兵站網" },
   armor: { basePrice: 100, label: "強化装甲" },
@@ -128,6 +130,7 @@ const state = {
   intel: 3,
   selectedRegionId: null,
   aiTimer: 3.2,
+  aiReinforcements: AI_REINFORCEMENT_LIMIT,
   recoveryTimer: 0,
   toastTimer: 0,
   eventNotice: true,
@@ -277,14 +280,14 @@ const REGION_NEIGHBORS = {
 };
 
 const units = [
-  { id: "blue-1", faction: "blue", x: 0.28, y: 0.34, strength: 18, maxStrength: 18, style: "visor", target: null, pulse: 0 },
-  { id: "blue-2", faction: "blue", x: 0.39, y: 0.42, strength: 18, maxStrength: 18, style: "visor", target: null, pulse: 1.4 },
-  { id: "blue-3", faction: "blue", x: 0.55, y: 0.27, strength: 18, maxStrength: 18, style: "visor", target: null, pulse: 2.1 },
-  { id: "red-1", faction: "red", x: 0.62, y: 0.43, strength: 12, maxStrength: 12, style: "cap", target: null, pulse: 0.8 },
-  { id: "red-2", faction: "red", x: 0.53, y: 0.63, strength: 12, maxStrength: 12, style: "cap", target: null, pulse: 2.5 },
-  { id: "red-3", faction: "red", x: 0.73, y: 0.75, strength: 12, maxStrength: 12, style: "cap", target: null, pulse: 1.2 },
-  { id: "neutral-1", faction: "neutral", x: 0.78, y: 0.55, strength: 12, maxStrength: 12, style: "plain", target: null, pulse: 2.8 },
-  { id: "neutral-2", faction: "neutral", x: 0.84, y: 0.68, strength: 12, maxStrength: 12, style: "plain", target: null, pulse: 0.2 },
+  { id: "blue-1", faction: "blue", regionId: "western-steppe", x: 0.28, y: 0.34, strength: 18, maxStrength: 18, style: "visor", target: null, pulse: 0 },
+  { id: "blue-2", faction: "blue", regionId: "central", x: 0.39, y: 0.42, strength: 18, maxStrength: 18, style: "visor", target: null, pulse: 1.4 },
+  { id: "blue-3", faction: "blue", regionId: "north", x: 0.55, y: 0.27, strength: 18, maxStrength: 18, style: "visor", target: null, pulse: 2.1 },
+  { id: "red-1", faction: "red", regionId: "eastern-border", x: 0.62, y: 0.43, strength: 12, maxStrength: 12, style: "cap", target: null, pulse: 0.8 },
+  { id: "red-2", faction: "red", regionId: "heartland", x: 0.53, y: 0.63, strength: 12, maxStrength: 12, style: "cap", target: null, pulse: 2.5 },
+  { id: "red-3", faction: "red", regionId: "south-coast", x: 0.73, y: 0.75, strength: 12, maxStrength: 12, style: "cap", target: null, pulse: 1.2 },
+  { id: "neutral-1", faction: "neutral", regionId: "pink-coast", x: 0.78, y: 0.55, strength: 12, maxStrength: 12, style: "plain", target: null, pulse: 2.8 },
+  { id: "neutral-2", faction: "neutral", regionId: "frontier-isle", x: 0.84, y: 0.68, strength: 12, maxStrength: 12, style: "plain", target: null, pulse: 0.2 },
 ];
 
 function cloneRegion(region) {
@@ -709,7 +712,7 @@ function drawUnit(unit, time) {
   ctx.lineWidth = 3;
   ctx.strokeStyle = "rgba(255,255,255,0.9)";
   ctx.strokeText(String(unit.strength), point.x, y + scale * 1.6);
-  ctx.fillStyle = "#fff";
+  ctx.fillStyle = "#18202c";
   ctx.fillText(String(unit.strength), point.x, y + scale * 1.6);
   ctx.restore();
 
@@ -1120,8 +1123,10 @@ function createUnit(faction, regionId, targetRegionId = null) {
 
 function runAi(dt) {
   state.aiTimer -= dt;
-  if (state.aiTimer > 0) return;
+  if (state.aiTimer > 0 || state.aiReinforcements <= 0) return;
   state.aiTimer = 3.8 + Math.random() * 2.6;
+
+  if (units.filter((unit) => unit.faction === "red").length >= AI_ACTIVE_UNIT_LIMIT) return;
 
   const redRegions = regions.filter((region) => region.faction === "red");
   const source = redRegions[Math.floor(Math.random() * redRegions.length)] || regions.find((region) => region.faction === "red");
@@ -1131,7 +1136,9 @@ function runAi(dt) {
 
   const existing = units.find((unit) => unit.faction === "red" && unit.targetRegionId === target.id);
   if (!existing) {
-    createUnit("red", source.id, target.id);
+    const created = createUnit("red", source.id, target.id);
+    if (!created) return;
+    state.aiReinforcements -= 1;
     addEvent(`${source.shortName}から敵部隊が移動を開始しました`);
   }
 }
@@ -1141,8 +1148,8 @@ function regionForUnit(unit) {
   return containingRegion || (unit.regionId ? getRegion(unit.regionId) : null) || (unit.targetRegionId ? getRegion(unit.targetRegionId) : null);
 }
 
-function snapUnitToRoadNode(unit) {
-  const region = regionForUnit(unit);
+function snapUnitToRoadNode(unit, regionId = null) {
+  const region = getRegion(regionId) || regionForUnit(unit);
   if (!region) return null;
   const center = regionCenter(region);
   unit.regionId = region.id;
@@ -1300,7 +1307,7 @@ function updateAttackGuide() {
 
 function setupInitialUnits() {
   units.splice(0, units.length, ...initialUnits.map(cloneUnit));
-  units.forEach((unit) => snapUnitToRoadNode(unit));
+  units.forEach((unit) => snapUnitToRoadNode(unit, unit.regionId));
   const reserveCount = state.upgrades.reserve;
   if (reserveCount > 0) {
     const source = initialUnits.find((unit) => unit.faction === "blue");
@@ -1309,7 +1316,7 @@ function setupInitialUnits() {
         ...cloneUnit(source),
         id: `blue-reserve-${index + 1}`,
       };
-      snapUnitToRoadNode(reserve);
+      snapUnitToRoadNode(reserve, reserve.regionId);
       units.push(reserve);
     }
   }
@@ -1346,6 +1353,7 @@ function restartGame() {
   state.intel = 3;
   state.selectedRegionId = null;
   state.aiTimer = 3.2;
+  state.aiReinforcements = AI_REINFORCEMENT_LIMIT;
   state.recoveryTimer = 0;
   state.toastTimer = 0;
   state.defeated = false;
