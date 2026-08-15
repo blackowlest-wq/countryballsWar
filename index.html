@@ -72,6 +72,12 @@
           <span><strong>ATTACK</strong><small id="attackTarget">—</small></span>
         </div>
 
+        <div class="invasion-alert" id="invasionAlert" aria-live="assertive" aria-atomic="true">
+          <span class="invasion-alert-icon" aria-hidden="true">!</span>
+          <span><strong>侵攻予告あり！</strong><small id="invasionTarget">—</small></span>
+          <b id="invasionCountdown">5秒</b>
+        </div>
+
         <div class="map-controls" aria-label="マップ操作">
           <button class="map-control-button" id="homeButton" type="button" aria-label="マップを初期位置に戻す">⌂</button>
           <div class="map-zoom-controls">
@@ -98,7 +104,7 @@
             </div>
           </div>
           <div class="territory-stats">
-            <div><span>守備隊</span><strong id="selectedGarrison">—</strong></div>
+            <div><span>占領進行</span><strong id="selectedOccupation">—</strong></div>
             <div><span>生産力</span><strong id="selectedProduction">—</strong></div>
             <div><span>戦況</span><strong id="selectedThreat">—</strong></div>
           </div>

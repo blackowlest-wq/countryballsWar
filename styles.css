@@ -468,6 +468,68 @@ button:disabled {
   white-space: nowrap;
 }
 
+.invasion-alert {
+  position: absolute;
+  top: 118px;
+  left: 26px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: 230px;
+  padding: 8px 11px;
+  color: #7c2029;
+  border: 1px solid rgba(195, 78, 88, 0.48);
+  border-radius: 10px;
+  background: rgba(255, 239, 238, 0.96);
+  box-shadow: 0 8px 20px rgba(133, 52, 60, 0.16);
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity 180ms ease, transform 180ms ease;
+  pointer-events: none;
+}
+
+.invasion-alert.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.invasion-alert-icon {
+  display: grid;
+  width: 25px;
+  height: 25px;
+  flex: 0 0 auto;
+  place-items: center;
+  color: #fff;
+  border-radius: 7px;
+  background: #c34e58;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.invasion-alert strong,
+.invasion-alert small {
+  display: block;
+}
+
+.invasion-alert strong {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.invasion-alert small {
+  margin-top: 2px;
+  color: #a24e56;
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.invasion-alert b {
+  margin-left: auto;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .caption-dot {
   width: 8px;
   height: 8px;
@@ -1366,6 +1428,32 @@ button:disabled {
 
   .attack-guide small {
     font-size: 7px;
+  }
+
+  .invasion-alert {
+    top: 91px;
+    left: 13px;
+    max-width: 190px;
+    padding: 6px 8px;
+    gap: 7px;
+  }
+
+  .invasion-alert-icon {
+    width: 21px;
+    height: 21px;
+    font-size: 14px;
+  }
+
+  .invasion-alert strong {
+    font-size: 8px;
+  }
+
+  .invasion-alert small {
+    font-size: 7px;
+  }
+
+  .invasion-alert b {
+    font-size: 10px;
   }
 
   .territory-panel {

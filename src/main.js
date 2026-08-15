@@ -16,7 +16,6 @@ const ui = {
   factionDot: document.querySelector("#selectedFactionDot"),
   regionName: document.querySelector("#selectedRegionName"),
   regionStatus: document.querySelector("#selectedRegionStatus"),
-  garrison: document.querySelector("#selectedGarrison"),
   production: document.querySelector("#selectedProduction"),
   threat: document.querySelector("#selectedThreat"),
   intel: document.querySelector("#intelValue"),
@@ -28,6 +27,10 @@ const ui = {
   shopButtons: document.querySelectorAll("[data-shop-upgrade]"),
   attackGuide: document.querySelector("#attackGuide"),
   attackTarget: document.querySelector("#attackTarget"),
+  occupation: document.querySelector("#selectedOccupation"),
+  invasionAlert: document.querySelector("#invasionAlert"),
+  invasionTarget: document.querySelector("#invasionTarget"),
+  invasionCountdown: document.querySelector("#invasionCountdown"),
 };
 
 const COLORS = {
@@ -66,6 +69,8 @@ const UPGRADES_STORAGE_KEY = "countryfronts.upgrades";
 const DEFEAT_GOLD_REWARD = 100;
 const AI_REINFORCEMENT_LIMIT = 5;
 const AI_ACTIVE_UNIT_LIMIT = 5;
+const INVASION_WARNING_DURATION = 5;
+const OCCUPATION_DURATION = 5;
 const SHOP_ITEMS = {
   logistics: { basePrice: 100, label: "兵站網" },
   armor: { basePrice: 100, label: "強化装甲" },
@@ -131,6 +136,7 @@ const state = {
   selectedRegionId: null,
   aiTimer: 3.2,
   aiReinforcements: AI_REINFORCEMENT_LIMIT,
+  invasionWarning: null,
   recoveryTimer: 0,
   toastTimer: 0,
   eventNotice: true,
@@ -159,7 +165,6 @@ const regions = [
     name: "Northwest Reach",
     shortName: "北西辺境",
     faction: "blue",
-    garrison: 18,
     production: 7,
     points: [[0.07, 0.14], [0.26, 0.08], [0.39, 0.14], [0.36, 0.28], [0.2, 0.31], [0.08, 0.26]],
   },
@@ -168,7 +173,6 @@ const regions = [
     name: "Northern Union",
     shortName: "北方連合",
     faction: "blue",
-    garrison: 23,
     production: 9,
     points: [[0.26, 0.08], [0.48, 0.04], [0.68, 0.08], [0.86, 0.14], [0.83, 0.27], [0.63, 0.3], [0.47, 0.27], [0.36, 0.28], [0.39, 0.14]],
   },
@@ -177,7 +181,6 @@ const regions = [
     name: "Eastern Crown",
     shortName: "東方王冠",
     faction: "blue",
-    garrison: 16,
     production: 8,
     points: [[0.86, 0.14], [0.96, 0.19], [0.94, 0.37], [0.83, 0.43], [0.7, 0.37], [0.63, 0.3], [0.83, 0.27]],
   },
@@ -186,7 +189,6 @@ const regions = [
     name: "Western Steppe",
     shortName: "西部草原",
     faction: "blue",
-    garrison: 15,
     production: 6,
     points: [[0.08, 0.26], [0.2, 0.31], [0.36, 0.28], [0.47, 0.4], [0.39, 0.54], [0.19, 0.52], [0.06, 0.42]],
   },
@@ -195,7 +197,6 @@ const regions = [
     name: "Central Corridor",
     shortName: "中央回廊",
     faction: "blue",
-    garrison: 20,
     production: 12,
     points: [[0.36, 0.28], [0.47, 0.27], [0.63, 0.3], [0.7, 0.37], [0.61, 0.51], [0.45, 0.56], [0.39, 0.54], [0.47, 0.4]],
   },
@@ -204,7 +205,6 @@ const regions = [
     name: "Eastern Borderlands",
     shortName: "東部国境",
     faction: "red",
-    garrison: 14,
     production: 7,
     points: [[0.7, 0.37], [0.83, 0.43], [0.9, 0.56], [0.77, 0.66], [0.62, 0.59], [0.61, 0.51]],
   },
@@ -213,7 +213,6 @@ const regions = [
     name: "Crimson Heartland",
     shortName: "紅の中原",
     faction: "red",
-    garrison: 22,
     production: 11,
     points: [[0.45, 0.56], [0.61, 0.51], [0.62, 0.59], [0.56, 0.73], [0.39, 0.7], [0.32, 0.6]],
   },
@@ -222,7 +221,6 @@ const regions = [
     name: "Rose Coast",
     shortName: "桃色沿岸",
     faction: "pink",
-    garrison: 10,
     production: 5,
     points: [[0.77, 0.66], [0.9, 0.56], [0.96, 0.71], [0.9, 0.86], [0.7, 0.82], [0.64, 0.72]],
   },
@@ -231,7 +229,6 @@ const regions = [
     name: "Southern Plains",
     shortName: "南部平原",
     faction: "red",
-    garrison: 17,
     production: 8,
     points: [[0.19, 0.52], [0.39, 0.54], [0.45, 0.56], [0.32, 0.6], [0.39, 0.7], [0.25, 0.78], [0.11, 0.67]],
   },
@@ -240,7 +237,6 @@ const regions = [
     name: "Southern Coast",
     shortName: "南岸連邦",
     faction: "red",
-    garrison: 12,
     production: 6,
     points: [[0.39, 0.7], [0.56, 0.73], [0.64, 0.72], [0.7, 0.82], [0.55, 0.9], [0.33, 0.84], [0.25, 0.78]],
   },
@@ -249,7 +245,6 @@ const regions = [
     name: "Island Chain",
     shortName: "島嶼戦線",
     faction: "pink",
-    garrison: 9,
     production: 4,
     points: [[0.96, 0.71], [0.98, 0.84], [0.91, 0.96], [0.78, 0.94], [0.7, 0.82], [0.9, 0.86]],
   },
@@ -258,7 +253,6 @@ const regions = [
     name: "Frontier Isle",
     shortName: "前線島",
     faction: "neutral",
-    garrison: 6,
     production: 3,
     points: [[0.42, 0.78], [0.52, 0.79], [0.56, 0.9], [0.5, 0.98], [0.42, 0.92]],
   },
@@ -291,7 +285,7 @@ const units = [
 ];
 
 function cloneRegion(region) {
-  return { ...region, points: region.points.map(([x, y]) => [x, y]) };
+  return { ...region, occupation: null, points: region.points.map(([x, y]) => [x, y]) };
 }
 
 function cloneUnit(unit) {
@@ -371,13 +365,14 @@ function getAttackCandidates() {
   const owned = regions.filter((region) => region.faction === "blue");
   return regions
     .filter((region) => region.faction !== "blue")
+    .filter((region) => !region.occupation || region.occupation.faction !== "blue")
     .filter((region) => owned.some((source) => REGION_NEIGHBORS[source.id]?.includes(region.id)))
     .sort((left, right) => attackScore(left) - attackScore(right));
 }
 
 function attackScore(region) {
   const factionPenalty = region.faction === "neutral" ? 0 : region.faction === "pink" ? 2 : 4;
-  return region.garrison + region.production * 0.35 + factionPenalty;
+  return region.production * 0.35 + factionPenalty;
 }
 
 function recommendedAttack() {
@@ -596,6 +591,98 @@ function drawAttackMarkers() {
   });
 }
 
+function drawInvasionWarning() {
+  const warning = state.invasionWarning;
+  if (!warning) return;
+  const source = getRegion(warning.sourceRegionId);
+  const target = getRegion(warning.targetRegionId);
+  if (!source || !target) return;
+
+  const pathIds = findRoadPath(source.id, target.id);
+  if (pathIds.length < 2) return;
+  const points = pathIds.map((regionId) => screenPoint(regionCenter(getRegion(regionId))));
+  const end = points[points.length - 1];
+  const previous = points[points.length - 2];
+  const angle = Math.atan2(end.y - previous.y, end.x - previous.x);
+  const pulse = 1 + Math.sin(state.elapsed * 7) * 0.08;
+
+  ctx.save();
+  ctx.globalAlpha = 0.9;
+  ctx.strokeStyle = "#c34e58";
+  ctx.fillStyle = "#c34e58";
+  ctx.lineWidth = 3;
+  ctx.setLineDash([8, 5]);
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  points.slice(1).forEach((point) => ctx.lineTo(point.x, point.y));
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(end.x, end.y);
+  ctx.lineTo(end.x - Math.cos(angle - 0.5) * 11, end.y - Math.sin(angle - 0.5) * 11);
+  ctx.lineTo(end.x - Math.cos(angle + 0.5) * 11, end.y - Math.sin(angle + 0.5) * 11);
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha = 0.16;
+  ctx.beginPath();
+  ctx.arc(end.x, end.y, clamp(view.width * 0.033, 25, 42) * pulse, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 0.92;
+  ctx.strokeStyle = "#c34e58";
+  ctx.lineWidth = 2.5;
+  ctx.setLineDash([5, 4]);
+  ctx.beginPath();
+  ctx.arc(end.x, end.y, clamp(view.width * 0.025, 20, 32) * pulse, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.font = "900 9px Inter, sans-serif";
+  ctx.textAlign = "center";
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
+  ctx.strokeText("INCOMING", end.x, end.y - clamp(view.width * 0.025, 20, 32) - 8);
+  ctx.fillStyle = "#c34e58";
+  ctx.fillText("INCOMING", end.x, end.y - clamp(view.width * 0.025, 20, 32) - 8);
+  ctx.restore();
+}
+
+function drawOccupationIndicators() {
+  regions.forEach((region) => {
+    const occupation = region.occupation;
+    if (!occupation) return;
+    const center = screenPoint(regionCenter(region));
+    const radius = clamp(view.width * 0.024, 21, 32);
+    const progress = clamp(occupation.progress / occupation.duration, 0, 1);
+    const remaining = Math.max(0, Math.ceil(occupation.duration - occupation.progress));
+    const color = occupation.faction === "blue" ? "#2c5a9f" : "#c34e58";
+
+    ctx.save();
+    ctx.globalAlpha = 0.14;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(center.x, center.y, radius * 1.18, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 0.9;
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(center.x, center.y, radius, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+    ctx.stroke();
+    ctx.font = "900 9px Inter, sans-serif";
+    ctx.textAlign = "center";
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
+    ctx.strokeText(`占領 ${remaining}s`, center.x, center.y - radius - 8);
+    ctx.fillStyle = color;
+    ctx.fillText(`占領 ${remaining}s`, center.x, center.y - radius - 8);
+    ctx.restore();
+  });
+}
+
 function drawFlag(x, y, color, scale) {
   ctx.save();
   ctx.lineWidth = Math.max(1.2, scale * 0.08);
@@ -685,26 +772,6 @@ function drawUnit(unit, time) {
   ctx.arc(point.x, y + scale * 0.13, scale * 0.25, 0.1, Math.PI - 0.1);
   ctx.stroke();
   ctx.restore();
-
-  if (unit.isGarrison) {
-    const badgeX = point.x - scale * 0.96;
-    const badgeY = y - scale * 1.05;
-    const badgeRadius = clamp(scale * 0.46, 7, 12);
-    ctx.save();
-    ctx.fillStyle = "#34445d";
-    ctx.strokeStyle = "#fff";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(badgeX, badgeY, badgeRadius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = "#fff";
-    ctx.font = `900 ${clamp(scale * 0.55, 9, 13)}px Inter, sans-serif`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("守", badgeX, badgeY + 0.5);
-    ctx.restore();
-  }
 
   ctx.save();
   ctx.font = `900 ${clamp(scale * 0.62, 10, 14)}px Inter, sans-serif`;
@@ -903,6 +970,8 @@ function render() {
   drawRegions();
   drawRoadNetwork();
   drawAttackMarkers();
+  drawInvasionWarning();
+  drawOccupationIndicators();
   drawFrontLines();
   drawOrders();
   drawBattleEffects();
@@ -931,6 +1000,8 @@ function setUnitRoute(unit, sourceRegionId, targetRegionId) {
 }
 
 function moveUnit(unit, dt) {
+  if (unit.inBattle) return;
+
   if (unit.arrived && unit.patrolCenter) {
     unit.x = unit.patrolCenter.x;
     unit.y = unit.patrolCenter.y;
@@ -967,66 +1038,83 @@ function moveUnit(unit, dt) {
   unit.y += (dy / distanceToTarget) * speed * dt;
 }
 
-function ensureDefender(region, attackerFaction) {
-  if (region.faction === attackerFaction) return;
-  const center = regionCenter(region);
-  const existing = units.find((unit) => unit.faction === region.faction && (unit.targetRegionId === region.id || distance(unit, center) < 0.06));
-  if (existing) {
-    if (!existing.isGarrison) {
-      existing.isGarrison = true;
-      existing.garrisonRegionId = region.id;
-      existing.targetRegionId = region.id;
-      addEvent(`${region.name}\u306b\u5b88\u5099\u968a\u304c\u5c55\u958b\u3057\u307e\u3057\u305f`);
-    }
-    return existing;
-  }
+function startOccupation(unit, region) {
+  if (!unit || !region || region.faction === unit.faction) return;
+  if (region.occupation?.faction === unit.faction) return;
 
-  const defender = createUnit(region.faction, region.id);
-  if (!defender) return;
-  defender.isGarrison = true;
-  defender.garrisonRegionId = region.id;
-  defender.targetRegionId = region.id;
-  defender.arrived = true;
-  defender.patrolCenter = center;
-  defender.orbitAngle = 0;
-  defender.strength = Math.min(defender.maxStrength, Math.max(4, Math.ceil(region.garrison / 2)));
-  addEvent(`${region.name}に守備隊が展開しました`);
+  region.occupation = {
+    faction: unit.faction,
+    unitId: unit.id,
+    progress: 0,
+    duration: OCCUPATION_DURATION,
+  };
+  addEvent(`${region.shortName}で占領進行を開始しました`);
+}
+
+function cancelOccupationForUnit(unit) {
+  const region = unit.targetRegionId ? getRegion(unit.targetRegionId) : null;
+  if (region?.occupation?.unitId === unit.id) region.occupation = null;
+}
+
+function completeOccupation(unit, region) {
+  if (!region.occupation || region.occupation.unitId !== unit.id) return;
+
+  region.faction = unit.faction;
+  region.occupation = null;
+  unit.regionId = region.id;
+  unit.arrived = true;
+  unit.patrolCenter = regionCenter(region);
+  unit.arrivalResolved = true;
+  showToast(`${region.name}を占領しました`);
+  addEvent(`${region.shortName}が${unit.faction === "blue" ? "White Union" : "敵勢力"}の支配下に入りました`);
+}
+
+function updateOccupationProgress(dt) {
+  regions.forEach((region) => {
+    const occupation = region.occupation;
+    if (!occupation) return;
+
+    let unit = units.find((candidate) => candidate.id === occupation.unitId && candidate.faction === occupation.faction && candidate.arrived && candidate.targetRegionId === region.id && candidate.strength > 0);
+    if (!unit) {
+      unit = units.find((candidate) => candidate.faction === occupation.faction && candidate.arrived && candidate.targetRegionId === region.id && candidate.strength > 0);
+      if (unit) occupation.unitId = unit.id;
+    }
+    if (!unit) {
+      region.occupation = null;
+      return;
+    }
+    if (unit.inBattle) return;
+
+    occupation.progress += dt;
+    if (occupation.progress >= occupation.duration) completeOccupation(unit, region);
+  });
 }
 
 function onUnitArrived(unit) {
   if (!unit.targetRegionId) return;
   const region = getRegion(unit.targetRegionId);
-  if (!region) return;
+  if (!region || unit.arrivalResolved) return;
 
-  if (unit.arrivalResolved) return;
   unit.arrivalResolved = true;
-
-  if (unit.faction === "blue" && region.faction !== "blue") {
-    ensureDefender(region, unit.faction);
-    region.garrison -= Math.max(2, Math.round(unit.strength / 3));
-    unit.strength -= 2;
-    addEvent(`${region.shortName}へ到着。敵部隊と交戦を開始しました`);
-  }
-
-  if (unit.faction === "red" && region.faction === "blue") {
-    ensureDefender(region, unit.faction);
-    region.garrison = Math.max(0, region.garrison - 2);
-    addEvent(`${region.shortName}へ敵部隊が到着。防衛戦が始まりました`);
-  }
-  unit.strength = Math.min(unit.maxStrength, Math.max(3, unit.strength));
+  if (region.faction !== unit.faction) startOccupation(unit, region);
+  unit.strength = Math.min(unit.maxStrength, Math.max(1, unit.strength));
 }
 
-function completeCapture(winner, loser) {
-  const region = winner.targetRegionId ? getRegion(winner.targetRegionId) : null;
-  if (!region || region.faction === winner.faction || loser.faction !== region.faction) return;
+function resolveBattleWinner(winner, loser) {
+  const battleRegion = winner.targetRegionId ? getRegion(winner.targetRegionId) : loser?.targetRegionId ? getRegion(loser.targetRegionId) : null;
+  if (battleRegion && winner.arrived && winner.targetRegionId === battleRegion.id && battleRegion.faction !== winner.faction) {
+    const region = battleRegion;
+    startOccupation(winner, region);
+    addEvent(`${region.shortName}で勝利。占領進行を開始しました`);
+    return;
+  }
 
-  region.faction = winner.faction;
-  region.garrison = Math.max(5, winner.strength);
-  winner.arrived = true;
-  winner.patrolCenter = regionCenter(region);
-  winner.arrivalResolved = true;
-  showToast(`${region.name}を制圧しました`);
-  addEvent(`${region.shortName}が${winner.faction === "blue" ? "White Union" : "敵勢力"}の支配下に入りました`);
+  if (battleRegion?.occupation && battleRegion.occupation.faction !== winner.faction) battleRegion.occupation = null;
+  if (battleRegion && battleRegion.faction === winner.faction) {
+    addEvent(`${battleRegion.shortName}の防衛に成功しました`);
+  } else if (winner.targetRegionId) {
+    addEvent(winner.faction === "blue" ? "道路上の迎撃に成功しました" : "道路上の交戦に勝利。侵攻を再開します");
+  }
 }
 
 function updateBattles(dt) {
@@ -1062,8 +1150,8 @@ function updateBattles(dt) {
         battle.notified = true;
       }
 
-      if (left.strength <= 0 && right.strength > 0) completeCapture(right, left);
-      if (right.strength <= 0 && left.strength > 0) completeCapture(left, right);
+      if (left.strength <= 0 && right.strength > 0) resolveBattleWinner(right, left);
+      if (right.strength <= 0 && left.strength > 0) resolveBattleWinner(left, right);
     }
   }
 
@@ -1080,6 +1168,7 @@ function updateUnits(dt) {
     if (units[index].strength <= 0) units.splice(index, 1);
   }
 
+  updateOccupationProgress(dt);
   if (!state.defeated && !state.cleared && !units.some((unit) => unit.faction === "blue")) triggerDefeat();
 }
 
@@ -1123,7 +1212,7 @@ function createUnit(faction, regionId, targetRegionId = null) {
 
 function runAi(dt) {
   state.aiTimer -= dt;
-  if (state.aiTimer > 0 || state.aiReinforcements <= 0) return;
+  if (state.aiTimer > 0 || state.aiReinforcements <= 0 || state.invasionWarning) return;
   state.aiTimer = 3.8 + Math.random() * 2.6;
 
   if (units.filter((unit) => unit.faction === "red").length >= AI_ACTIVE_UNIT_LIMIT) return;
@@ -1136,11 +1225,37 @@ function runAi(dt) {
 
   const existing = units.find((unit) => unit.faction === "red" && unit.targetRegionId === target.id);
   if (!existing) {
-    const created = createUnit("red", source.id, target.id);
-    if (!created) return;
-    state.aiReinforcements -= 1;
-    addEvent(`${source.shortName}から敵部隊が移動を開始しました`);
+    state.invasionWarning = {
+      sourceRegionId: source.id,
+      targetRegionId: target.id,
+      remaining: INVASION_WARNING_DURATION,
+    };
+    addEvent("侵攻予告あり！");
+    showToast("侵攻予告あり！");
+    updateInvasionAlert();
   }
+}
+
+function updateInvasionWarning(dt) {
+  const warning = state.invasionWarning;
+  if (!warning) return;
+
+  const source = getRegion(warning.sourceRegionId);
+  const target = getRegion(warning.targetRegionId);
+  if (!source || !target || source.faction !== "red" || target.faction !== "blue") {
+    state.invasionWarning = null;
+    return;
+  }
+
+  warning.remaining -= dt;
+  if (warning.remaining > 0) return;
+  state.invasionWarning = null;
+  if (units.filter((unit) => unit.faction === "red").length >= AI_ACTIVE_UNIT_LIMIT) return;
+
+  const created = createUnit("red", source.id, target.id);
+  if (!created) return;
+  state.aiReinforcements -= 1;
+  addEvent(`${source.shortName}から敵部隊が出撃しました`);
 }
 
 function regionForUnit(unit) {
@@ -1201,6 +1316,7 @@ function update(dt) {
   state.elapsed += scaledDt;
   updateStrength(scaledDt);
   updateUnits(scaledDt);
+  updateInvasionWarning(scaledDt);
   runAi(scaledDt);
   state.toastTimer = Math.max(0, state.toastTimer - dt);
 
@@ -1241,7 +1357,7 @@ function updateSelectedPanel() {
     ui.factionDot.className = "faction-dot";
     ui.regionName.textContent = "マップをクリック";
     ui.regionStatus.textContent = "領土を選択すると作戦情報が表示されます";
-    ui.garrison.textContent = "—";
+    ui.occupation.textContent = "—";
     ui.production.textContent = "—";
     ui.threat.textContent = "—";
     return;
@@ -1251,10 +1367,11 @@ function updateSelectedPanel() {
   ui.factionDot.className = `faction-dot ${region.faction === "pink" ? "neutral" : region.faction}`;
   ui.regionName.textContent = region.name;
   const battleActive = regionHasBattle(region);
-  ui.regionStatus.textContent = battleActive ? "⚔ 戦闘中 — 部隊が交戦しています" : region.faction === "blue" ? "White Unionの支配領域" : region.faction === "red" ? "敵対勢力が展開中" : "勢力未確定の中立地域";
-  ui.garrison.textContent = region.garrison;
+  const occupationActive = Boolean(region.occupation);
+  ui.regionStatus.textContent = battleActive ? "⚔ 交戦中 — 侵攻が停止しています" : occupationActive ? "占領進行中 — タイマーが動いています" : region.faction === "blue" ? "White Unionの支配領域" : region.faction === "red" ? "敵対勢力が展開中" : "勢力未確定の中立地域";
+  ui.occupation.textContent = occupationActive ? `${Math.ceil(region.occupation.progress)}/${region.occupation.duration}秒` : "—";
   ui.production.textContent = `+${getRegionProduction(region)}/秒`;
-  ui.threat.textContent = battleActive ? "交戦中" : region.faction === "blue" ? "安定" : region.faction === "red" ? "高" : "警戒";
+  ui.threat.textContent = battleActive ? "交戦中" : occupationActive ? "占領中" : region.faction === "blue" ? "安定" : region.faction === "red" ? "高" : "警戒";
 }
 
 function showToast(message) {
@@ -1294,6 +1411,7 @@ function updateHud() {
   ui.intel.textContent = String(state.intel);
   ui.pause.classList.toggle("is-paused", state.paused);
   ui.pause.textContent = state.paused ? "▶" : "Ⅱ";
+  updateInvasionAlert();
   updateAttackGuide();
   updateSelectedPanel();
 }
@@ -1303,6 +1421,21 @@ function updateAttackGuide() {
   if (!ui.attackGuide || !ui.attackTarget) return;
   ui.attackGuide.classList.toggle("is-hidden", !target);
   if (target) ui.attackTarget.textContent = target.name;
+}
+
+function updateInvasionAlert() {
+  if (!ui.invasionAlert) return;
+  const warning = state.invasionWarning;
+  ui.invasionAlert.classList.toggle("is-visible", Boolean(warning));
+  if (!warning) {
+    if (ui.invasionTarget) ui.invasionTarget.textContent = "";
+    if (ui.invasionCountdown) ui.invasionCountdown.textContent = "";
+    return;
+  }
+
+  const target = getRegion(warning.targetRegionId);
+  if (ui.invasionTarget) ui.invasionTarget.textContent = target ? `${target.name}へ侵攻` : "";
+  if (ui.invasionCountdown) ui.invasionCountdown.textContent = `${Math.max(1, Math.ceil(warning.remaining))}秒`;
 }
 
 function setupInitialUnits() {
@@ -1354,6 +1487,7 @@ function restartGame() {
   state.selectedRegionId = null;
   state.aiTimer = 3.2;
   state.aiReinforcements = AI_REINFORCEMENT_LIMIT;
+  state.invasionWarning = null;
   state.recoveryTimer = 0;
   state.toastTimer = 0;
   state.defeated = false;
@@ -1508,6 +1642,7 @@ function dispatchUnitToRegion(unit, region) {
     return false;
   }
 
+  cancelOccupationForUnit(unit);
   unit.targetRegionId = region.id;
   unit.arrived = false;
   unit.patrolCenter = null;
@@ -1621,7 +1756,7 @@ document.querySelector("#intelButton").addEventListener("click", () => {
   }
   state.intel -= 1;
   const hostile = regions.find((region) => region.faction === "red" || region.faction === "pink");
-  if (hostile) showToast(`偵察結果：${hostile.shortName}の守備隊は${hostile.garrison}`);
+  if (hostile) showToast(`偵察結果：${hostile.shortName}の生産力は+${getRegionProduction(hostile)}/秒`);
 });
 
 const settingsDialog = document.querySelector("#settingsDialog");
