@@ -11,6 +11,7 @@ const ui = {
   toast: document.querySelector("#toast"),
   eventFeed: document.querySelector("#eventFeed"),
   panel: document.querySelector("#territoryPanel"),
+  territoryClose: document.querySelector("#territoryCloseButton"),
   dispatchHint: document.querySelector("#dispatchHint"),
   factionDot: document.querySelector("#selectedFactionDot"),
   regionName: document.querySelector("#selectedRegionName"),
@@ -273,9 +274,9 @@ const REGION_NEIGHBORS = {
 };
 
 const units = [
-  { id: "blue-1", faction: "blue", x: 0.28, y: 0.34, strength: 12, maxStrength: 12, style: "visor", target: null, pulse: 0 },
-  { id: "blue-2", faction: "blue", x: 0.39, y: 0.42, strength: 12, maxStrength: 12, style: "visor", target: null, pulse: 1.4 },
-  { id: "blue-3", faction: "blue", x: 0.55, y: 0.27, strength: 12, maxStrength: 12, style: "visor", target: null, pulse: 2.1 },
+  { id: "blue-1", faction: "blue", x: 0.28, y: 0.34, strength: 18, maxStrength: 18, style: "visor", target: null, pulse: 0 },
+  { id: "blue-2", faction: "blue", x: 0.39, y: 0.42, strength: 18, maxStrength: 18, style: "visor", target: null, pulse: 1.4 },
+  { id: "blue-3", faction: "blue", x: 0.55, y: 0.27, strength: 18, maxStrength: 18, style: "visor", target: null, pulse: 2.1 },
   { id: "red-1", faction: "red", x: 0.62, y: 0.43, strength: 12, maxStrength: 12, style: "cap", target: null, pulse: 0.8 },
   { id: "red-2", faction: "red", x: 0.53, y: 0.63, strength: 12, maxStrength: 12, style: "cap", target: null, pulse: 2.5 },
   { id: "red-3", faction: "red", x: 0.73, y: 0.75, strength: 12, maxStrength: 12, style: "cap", target: null, pulse: 1.2 },
@@ -894,13 +895,14 @@ function createUnit(faction, regionId, targetRegionId = null) {
   const region = getRegion(regionId);
   if (!region) return null;
   const center = regionCenter(region);
+  const maxStrength = getMaxUnitStrength(faction);
   const unit = {
     id: `${faction}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     faction,
     x: center.x + (Math.random() - 0.5) * 0.025,
     y: center.y + (Math.random() - 0.5) * 0.025,
-    strength: 12,
-    maxStrength: getMaxUnitStrength(faction),
+    strength: maxStrength,
+    maxStrength,
     style: faction === "blue" ? "visor" : faction === "red" ? "cap" : "plain",
     target: null,
     targetRegionId,
@@ -952,7 +954,8 @@ function getUnitProduction(unit) {
 }
 
 function getMaxUnitStrength(faction) {
-  return 12 + (faction === "blue" ? state.upgrades.armor * 3 : 0);
+  const baseStrength = faction === "blue" ? 18 : 12;
+  return baseStrength + (faction === "blue" ? state.upgrades.armor * 3 : 0);
 }
 
 function applyArmorUpgrade() {
@@ -1263,7 +1266,6 @@ function dispatchUnitToRegion(unit, region) {
   unit.patrolCenter = null;
   unit.arrivalResolved = false;
   unit.orbitAngle = 0;
-  state.selectedRegionId = region.id;
   ui.dispatchHint.classList.add("is-hidden");
   addEvent(`白い部隊が${region.shortName}へ移動を開始しました`);
   showToast(`${region.name}へ部隊を派遣しました`);
@@ -1354,6 +1356,7 @@ window.addEventListener("resize", () => {
 document.querySelector("#zoomInButton").addEventListener("click", () => setZoom(state.zoom + 0.12));
 document.querySelector("#zoomOutButton").addEventListener("click", () => setZoom(state.zoom - 0.12));
 document.querySelector("#homeButton").addEventListener("click", resetMap);
+ui.territoryClose?.addEventListener("click", () => selectRegion(null));
 
 document.querySelector("#shopButton").addEventListener("click", openShop);
 ui.shopButtons.forEach((button) => {
