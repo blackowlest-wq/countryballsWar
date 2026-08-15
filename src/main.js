@@ -565,7 +565,7 @@ function drawUnit(unit, time) {
   if (unit.faction === "blue") {
     ctx.fillStyle = "#d94f58";
     ctx.beginPath();
-    ctx.arc(point.x, y, scale * 0.23, 0, Math.PI * 2);
+    ctx.arc(point.x, y, scale * 0.62, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = "#fff";
     ctx.lineWidth = Math.max(1, scale * 0.05);
