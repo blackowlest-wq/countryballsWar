@@ -1938,9 +1938,19 @@ ui.clearDialog?.addEventListener("cancel", (event) => event.preventDefault());
 document.querySelector("#eventToggle").addEventListener("change", (event) => { state.eventNotice = event.target.checked; });
 document.querySelector("#motionToggle").addEventListener("change", (event) => { state.motion = event.target.checked; });
 
+function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(() => {
+      // The game remains fully playable when service workers are unavailable.
+    });
+  }, { once: true });
+}
+
 setupInitialUnits();
 updateShopDialog();
 resizeCanvas();
 updateSelectedPanel();
 updateHud();
+registerServiceWorker();
 requestAnimationFrame(loop);

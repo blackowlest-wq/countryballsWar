@@ -1,0 +1,26 @@
+{
+  "id": "./",
+  "name": "COUNTRYFRONTS",
+  "short_name": "COUNTRYFRONTS",
+  "description": "A real-time strategy game played directly in the browser.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#edf1f6",
+  "theme_color": "#f7f9fb",
+  "icons": [
+    {
+      "src": "./assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
