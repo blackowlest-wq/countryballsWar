@@ -71,6 +71,8 @@ const AI_REINFORCEMENT_LIMIT = 5;
 const AI_ACTIVE_UNIT_LIMIT = 5;
 const INVASION_WARNING_DURATION = 5;
 const OCCUPATION_DURATION = 5;
+const BATTLE_DISTANCE = 0.055;
+const BATTLE_TICK_INTERVAL = 0.72;
 const SHOP_ITEMS = {
   logistics: { basePrice: 100, label: "兵站網" },
   armor: { basePrice: 100, label: "強化装甲" },
@@ -907,13 +909,15 @@ function drawOrders() {
 
 function drawBattleEffects() {
   state.battles.forEach((battle) => {
-    const left = units.find((unit) => unit.id === battle.leftId);
-    const right = units.find((unit) => unit.id === battle.rightId);
-    if (!left || !right) return;
+    const battleUnits = (battle.unitIds || []).map((unitId) => units.find((unit) => unit.id === unitId)).filter(Boolean);
+    if (battleUnits.length < 2) return;
 
-    const center = screenPoint([(left.x + right.x) / 2, (left.y + right.y) / 2]);
+    const center = screenPoint({
+      x: battleUnits.reduce((sum, unit) => sum + unit.x, 0) / battleUnits.length,
+      y: battleUnits.reduce((sum, unit) => sum + unit.y, 0) / battleUnits.length,
+    });
     const pulse = 1 + Math.sin(state.elapsed * 10 + battle.phase) * 0.08;
-    const radius = clamp(view.width * 0.032, 25, 42) * pulse;
+    const radius = clamp(view.width * (0.03 + battleUnits.length * 0.003), 25, 48) * pulse;
 
     ctx.save();
     ctx.globalAlpha = 0.18;
@@ -1053,7 +1057,15 @@ function startOccupation(unit, region) {
 
 function cancelOccupationForUnit(unit) {
   const region = unit.targetRegionId ? getRegion(unit.targetRegionId) : null;
-  if (region?.occupation?.unitId === unit.id) region.occupation = null;
+  if (region?.occupation?.unitId !== unit.id) return;
+
+  const replacement = units.find((candidate) => candidate.id !== unit.id && candidate.faction === unit.faction && candidate.arrived && candidate.targetRegionId === region.id && candidate.strength > 0);
+  if (replacement) region.occupation.unitId = replacement.id;
+  else region.occupation = null;
+}
+
+function occupationMembers(region, faction) {
+  return units.filter((unit) => unit.faction === faction && unit.arrived && unit.targetRegionId === region.id && unit.strength > 0);
 }
 
 function completeOccupation(unit, region) {
@@ -1074,16 +1086,17 @@ function updateOccupationProgress(dt) {
     const occupation = region.occupation;
     if (!occupation) return;
 
-    let unit = units.find((candidate) => candidate.id === occupation.unitId && candidate.faction === occupation.faction && candidate.arrived && candidate.targetRegionId === region.id && candidate.strength > 0);
+    const occupants = occupationMembers(region, occupation.faction);
+    let unit = occupants.find((candidate) => candidate.id === occupation.unitId);
     if (!unit) {
-      unit = units.find((candidate) => candidate.faction === occupation.faction && candidate.arrived && candidate.targetRegionId === region.id && candidate.strength > 0);
+      unit = occupants[0];
       if (unit) occupation.unitId = unit.id;
     }
     if (!unit) {
       region.occupation = null;
       return;
     }
-    if (unit.inBattle) return;
+    if (occupants.some((candidate) => candidate.inBattle)) return;
 
     occupation.progress += dt;
     if (occupation.progress >= occupation.duration) completeOccupation(unit, region);
@@ -1117,43 +1130,174 @@ function resolveBattleWinner(winner, loser) {
   }
 }
 
-function updateBattles(dt) {
-  const activeKeys = new Set();
-  units.forEach((unit) => { unit.inBattle = false; });
+function groupStrength(members) {
+  return members.reduce((total, unit) => total + Math.max(0, unit.strength), 0);
+}
 
+function groupProduction(members) {
+  return members.reduce((total, unit) => total + getUnitProduction(unit), 0);
+}
+
+function groupCombatDamage(members) {
+  const totalStrength = groupStrength(members);
+  if (totalStrength <= 0) return 0;
+
+  // A group deals one shared hit per tick. Strength makes the hit stronger,
+  // while production keeps the existing recovery-focused balance relevant.
+  const damage = Math.ceil(totalStrength * 0.1 + groupProduction(members) * 0.6);
+  return Math.min(totalStrength, Math.max(2, damage));
+}
+
+function redistributeGroupStrength(members, totalStrength) {
+  if (members.length === 0) return;
+  const maxStrengthTotal = members.reduce((total, unit) => total + Math.max(1, unit.maxStrength || 12), 0);
+  const targetStrength = Math.min(maxStrengthTotal, Math.max(0, Math.round(totalStrength)));
+
+  if (targetStrength === 0) {
+    members.forEach((unit) => { unit.strength = 0; });
+    return;
+  }
+
+  if (targetStrength < members.length) {
+    const priority = members.slice().sort((left, right) => right.strength - left.strength);
+    members.forEach((unit) => { unit.strength = 0; });
+    priority.slice(0, targetStrength).forEach((unit) => { unit.strength = 1; });
+    return;
+  }
+
+  const minimumStrength = 1;
+  const distributable = targetStrength - minimumStrength * members.length;
+  const allocations = [];
+  let allocated = 0;
+  members.forEach((unit) => {
+    const weight = Math.max(1, unit.maxStrength || 12) / maxStrengthTotal;
+    const raw = distributable * weight;
+    const whole = Math.floor(raw);
+    unit.strength = minimumStrength + whole;
+    allocated += unit.strength;
+    allocations.push({ unit, remainder: raw - whole });
+  });
+
+  allocations.sort((left, right) => right.remainder - left.remainder);
+  let leftover = targetStrength - allocated;
+  let index = 0;
+  while (leftover > 0 && allocations.length > 0) {
+    allocations[index % allocations.length].unit.strength += 1;
+    leftover -= 1;
+    index += 1;
+  }
+}
+
+function applyGroupDamage(members, damage) {
+  const remaining = groupStrength(members) - Math.max(0, damage);
+  redistributeGroupStrength(members, remaining);
+}
+
+function collectBattleGroups() {
+  const contacts = new Map(units.map((unit) => [unit.id, []]));
+  const enemyContacts = new Set();
   for (let leftIndex = 0; leftIndex < units.length; leftIndex += 1) {
     for (let rightIndex = leftIndex + 1; rightIndex < units.length; rightIndex += 1) {
       const left = units[leftIndex];
       const right = units[rightIndex];
-      if (left.faction === right.faction || distance(left, right) > 0.055) continue;
-
-      const key = [left.id, right.id].sort().join("::");
-      activeKeys.add(key);
-      left.inBattle = true;
-      right.inBattle = true;
-
-      let battle = state.battles.get(key);
-      if (!battle) {
-        battle = { leftId: left.id, rightId: right.id, cooldown: 0.2, phase: Math.random() * 6, notified: false };
-        state.battles.set(key, battle);
+      if (distance(left, right) > BATTLE_DISTANCE) continue;
+      contacts.get(left.id).push(right.id);
+      contacts.get(right.id).push(left.id);
+      if (left.faction !== right.faction) {
+        enemyContacts.add(left.id);
+        enemyContacts.add(right.id);
       }
-      battle.cooldown -= dt;
-      if (battle.cooldown > 0) continue;
-
-      battle.cooldown = 0.72;
-      // Combat drain is slightly greater than local recovery so battles can resolve.
-      left.strength -= Math.max(2, Math.ceil(getUnitProduction(left) * 0.75) + 1);
-      right.strength -= Math.max(2, Math.ceil(getUnitProduction(right) * 0.75) + 1);
-      battle.phase += 0.9;
-      if (!battle.notified) {
-        addEvent("前線で戦闘が発生しました");
-        battle.notified = true;
-      }
-
-      if (left.strength <= 0 && right.strength > 0) resolveBattleWinner(right, left);
-      if (right.strength <= 0 && left.strength > 0) resolveBattleWinner(left, right);
     }
   }
+
+  const visited = new Set();
+  const groups = [];
+  units.forEach((unit) => {
+    if (visited.has(unit.id) || !enemyContacts.has(unit.id)) return;
+
+    const queue = [unit.id];
+    const memberIds = [];
+    visited.add(unit.id);
+    while (queue.length > 0) {
+      const currentId = queue.shift();
+      memberIds.push(currentId);
+      contacts.get(currentId).forEach((neighborId) => {
+        if (visited.has(neighborId)) return;
+        visited.add(neighborId);
+        queue.push(neighborId);
+      });
+    }
+
+    const sortedIds = memberIds.sort();
+    const sideMap = new Map();
+    sortedIds.forEach((memberId) => {
+      const member = units.find((candidate) => candidate.id === memberId);
+      if (!member) return;
+      if (!sideMap.has(member.faction)) sideMap.set(member.faction, []);
+      sideMap.get(member.faction).push(memberId);
+    });
+    groups.push({
+      id: sortedIds.join("::"),
+      unitIds: sortedIds,
+      sides: [...sideMap.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([faction, unitIds]) => ({ faction, unitIds })),
+    });
+  });
+  return groups;
+}
+
+function battleRepresentative(members) {
+  return members.find((unit) => unit.arrived && unit.targetRegionId) || members.find((unit) => unit.targetRegionId) || members.find((unit) => unit.arrived) || members[0] || null;
+}
+
+function updateBattles(dt) {
+  const activeKeys = new Set();
+  units.forEach((unit) => { unit.inBattle = false; });
+
+  collectBattleGroups().forEach((group) => {
+    const sides = group.sides
+      .map((side) => ({ ...side, units: side.unitIds.map((unitId) => units.find((unit) => unit.id === unitId)).filter(Boolean) }))
+      .filter((side) => side.units.length > 0);
+    if (sides.length < 2) return;
+
+    activeKeys.add(group.id);
+    sides.forEach((side) => side.units.forEach((unit) => { unit.inBattle = true; }));
+
+    let battle = state.battles.get(group.id);
+    if (!battle) {
+      battle = { unitIds: group.unitIds, sides: group.sides, cooldown: 0.2, phase: Math.random() * 6, notified: false };
+      state.battles.set(group.id, battle);
+    } else {
+      battle.unitIds = group.unitIds;
+      battle.sides = group.sides;
+    }
+
+    battle.cooldown -= dt;
+    if (battle.cooldown > 0) return;
+
+    battle.cooldown = BATTLE_TICK_INTERVAL;
+    battle.phase += 0.9;
+    if (!battle.notified) {
+      addEvent("前線で戦闘が発生しました");
+      battle.notified = true;
+    }
+
+    const incomingDamage = new Map(sides.map((side) => [side.faction, 0]));
+    sides.forEach((source) => {
+      const targets = sides.filter((target) => target.faction !== source.faction);
+      if (targets.length === 0) return;
+      const sharedDamage = groupCombatDamage(source.units) / targets.length;
+      targets.forEach((target) => incomingDamage.set(target.faction, incomingDamage.get(target.faction) + sharedDamage));
+    });
+    sides.forEach((side) => applyGroupDamage(side.units, Math.round(incomingDamage.get(side.faction))));
+
+    const survivors = sides.filter((side) => groupStrength(side.units) > 0);
+    if (survivors.length === 1) {
+      const winner = battleRepresentative(survivors[0].units);
+      const losers = sides.filter((side) => side !== survivors[0]).flatMap((side) => side.units);
+      const loser = battleRepresentative(losers);
+      if (winner) resolveBattleWinner(winner, loser);
+    }
+  });
 
   state.battles.forEach((battle, key) => {
     if (!activeKeys.has(key)) state.battles.delete(key);
@@ -1344,9 +1488,10 @@ function selectRegion(region) {
 
 function regionHasBattle(region) {
   return [...state.battles.values()].some((battle) => {
-    const left = units.find((unit) => unit.id === battle.leftId);
-    const right = units.find((unit) => unit.id === battle.rightId);
-    return [left, right].some((unit) => unit?.targetRegionId === region.id);
+    return (battle.unitIds || []).some((unitId) => {
+      const unit = units.find((candidate) => candidate.id === unitId);
+      return unit?.targetRegionId === region.id || unit?.regionId === region.id;
+    });
   });
 }
 
