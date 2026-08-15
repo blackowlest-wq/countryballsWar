@@ -68,7 +68,7 @@ const UNIT_SPRITE_SOURCES = {
   blue: "./assets/units/player-red-circle.png",
   red: "./assets/units/enemy-china.png",
   neutral: "./assets/units/enemy-korea.png",
-  pink: "./assets/units/enemy-korea.png",
+  pink: "./assets/units/enemy-north-korea.png",
 };
 
 const UNIT_SPRITES = Object.fromEntries(
@@ -300,6 +300,7 @@ const units = [
   { id: "red-3", faction: "red", regionId: "south-coast", x: 0.73, y: 0.75, strength: 12, maxStrength: 12, style: "cap", target: null, pulse: 1.2 },
   { id: "neutral-1", faction: "neutral", regionId: "pink-coast", x: 0.78, y: 0.55, strength: 12, maxStrength: 12, style: "plain", target: null, pulse: 2.8 },
   { id: "neutral-2", faction: "neutral", regionId: "frontier-isle", x: 0.84, y: 0.68, strength: 12, maxStrength: 12, style: "plain", target: null, pulse: 0.2 },
+  { id: "pink-1", faction: "pink", regionId: "island-chain", x: 0.84, y: 0.84, strength: 12, maxStrength: 12, style: "plain", target: null, pulse: 1.7 },
 ];
 
 function cloneRegion(region) {
