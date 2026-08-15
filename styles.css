@@ -340,6 +340,63 @@ button:disabled {
   color: var(--blue-deep);
 }
 
+.attack-guide {
+  position: absolute;
+  top: 64px;
+  left: 26px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  max-width: 190px;
+  padding: 8px 11px;
+  color: #7a4d1d;
+  border: 1px solid rgba(225, 136, 50, 0.38);
+  border-radius: 10px;
+  background: rgba(255, 248, 231, 0.94);
+  box-shadow: 0 8px 20px rgba(137, 91, 33, 0.13);
+  transition: opacity 180ms ease, transform 180ms ease;
+  pointer-events: none;
+}
+
+.attack-guide.is-hidden {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+.attack-guide-icon {
+  display: grid;
+  width: 25px;
+  height: 25px;
+  flex: 0 0 auto;
+  place-items: center;
+  color: #fff;
+  border-radius: 7px;
+  background: #e18832;
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.attack-guide strong,
+.attack-guide small {
+  display: block;
+}
+
+.attack-guide strong {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.attack-guide small {
+  overflow: hidden;
+  margin-top: 2px;
+  color: #966c3a;
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .caption-dot {
   width: 8px;
   height: 8px;
@@ -923,6 +980,13 @@ button:disabled {
   font-size: 12px;
 }
 
+.shop-item-level {
+  margin-left: 3px;
+  color: #54719a;
+  font-size: 8px;
+  letter-spacing: 0.04em;
+}
+
 .shop-item-copy p {
   margin: 3px 0 0;
   color: var(--muted);
@@ -1142,6 +1206,27 @@ button:disabled {
     left: 13px;
     padding: 6px 8px;
     font-size: 8px;
+  }
+
+  .attack-guide {
+    top: 49px;
+    left: 13px;
+    max-width: 155px;
+    padding: 6px 8px;
+  }
+
+  .attack-guide-icon {
+    width: 21px;
+    height: 21px;
+    font-size: 14px;
+  }
+
+  .attack-guide strong {
+    font-size: 8px;
+  }
+
+  .attack-guide small {
+    font-size: 7px;
   }
 
   .territory-panel {

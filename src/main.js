@@ -24,6 +24,8 @@ const ui = {
   shopDialog: document.querySelector("#shopDialog"),
   shopGold: document.querySelector("#shopGoldValue"),
   shopButtons: document.querySelectorAll("[data-shop-upgrade]"),
+  attackGuide: document.querySelector("#attackGuide"),
+  attackTarget: document.querySelector("#attackTarget"),
 };
 
 const COLORS = {
@@ -61,9 +63,9 @@ const GOLD_STORAGE_KEY = "countryfronts.gold";
 const UPGRADES_STORAGE_KEY = "countryfronts.upgrades";
 const DEFEAT_GOLD_REWARD = 100;
 const SHOP_ITEMS = {
-  logistics: { price: 100, label: "兵站網" },
-  armor: { price: 100, label: "強化装甲" },
-  reserve: { price: 150, label: "予備部隊" },
+  logistics: { basePrice: 100, label: "兵站網" },
+  armor: { basePrice: 100, label: "強化装甲" },
+  reserve: { basePrice: 150, label: "予備部隊" },
 };
 
 function loadGold() {
@@ -83,13 +85,18 @@ function saveGold() {
 }
 
 function loadUpgrades() {
-  const empty = { logistics: false, armor: false, reserve: false };
+  const empty = { logistics: 0, armor: 0, reserve: 0 };
   try {
     const saved = JSON.parse(window.localStorage.getItem(UPGRADES_STORAGE_KEY) || "null");
+    const toLevel = (value) => {
+      if (typeof value === "boolean") return value ? 1 : 0;
+      const level = Number(value);
+      return Number.isFinite(level) ? Math.max(0, Math.floor(level)) : 0;
+    };
     return {
-      logistics: Boolean(saved?.logistics),
-      armor: Boolean(saved?.armor),
-      reserve: Boolean(saved?.reserve),
+      logistics: toLevel(saved?.logistics),
+      armor: toLevel(saved?.armor),
+      reserve: toLevel(saved?.reserve),
     };
   } catch {
     return empty;
@@ -250,6 +257,21 @@ const regions = [
   },
 ];
 
+const REGION_NEIGHBORS = {
+  northwest: ["north", "western-steppe", "central"],
+  north: ["northwest", "northeast", "central"],
+  northeast: ["north", "eastern-border"],
+  "western-steppe": ["northwest", "central", "southern-plains"],
+  central: ["north", "western-steppe", "eastern-border", "heartland", "southern-plains"],
+  "eastern-border": ["northeast", "central", "heartland", "pink-coast"],
+  heartland: ["central", "eastern-border", "southern-plains", "south-coast", "pink-coast"],
+  "pink-coast": ["eastern-border", "heartland", "island-chain"],
+  "southern-plains": ["western-steppe", "central", "heartland", "south-coast"],
+  "south-coast": ["southern-plains", "heartland", "island-chain", "frontier-isle"],
+  "island-chain": ["pink-coast", "south-coast", "frontier-isle"],
+  "frontier-isle": ["south-coast", "island-chain"],
+};
+
 const units = [
   { id: "blue-1", faction: "blue", x: 0.28, y: 0.34, strength: 12, maxStrength: 12, style: "visor", target: null, pulse: 0 },
   { id: "blue-2", faction: "blue", x: 0.39, y: 0.42, strength: 12, maxStrength: 12, style: "visor", target: null, pulse: 1.4 },
@@ -301,6 +323,23 @@ function getRegion(id) {
   return regions.find((region) => region.id === id);
 }
 
+function getAttackCandidates() {
+  const owned = regions.filter((region) => region.faction === "blue");
+  return regions
+    .filter((region) => region.faction !== "blue")
+    .filter((region) => owned.some((source) => REGION_NEIGHBORS[source.id]?.includes(region.id)))
+    .sort((left, right) => attackScore(left) - attackScore(right));
+}
+
+function attackScore(region) {
+  const factionPenalty = region.faction === "neutral" ? 0 : region.faction === "pink" ? 2 : 4;
+  return region.garrison + region.production * 0.35 + factionPenalty;
+}
+
+function recommendedAttack() {
+  return getAttackCandidates()[0] || null;
+}
+
 function regionCenter(region) {
   const points = region.points;
   const total = points.reduce((result, point) => ({ x: result.x + point[0], y: result.y + point[1] }), { x: 0, y: 0 });
@@ -310,9 +349,11 @@ function regionCenter(region) {
 function screenPoint(point) {
   const centerX = view.width / 2;
   const centerY = view.height / 2;
+  const x = Array.isArray(point) ? point[0] : point.x;
+  const y = Array.isArray(point) ? point[1] : point.y;
   return {
-    x: centerX + (point[0] * view.width - centerX) * state.zoom + state.panX,
-    y: centerY + (point[1] * view.height - centerY) * state.zoom + state.panY,
+    x: centerX + (x * view.width - centerX) * state.zoom + state.panX,
+    y: centerY + (y * view.height - centerY) * state.zoom + state.panY,
   };
 }
 
@@ -421,6 +462,54 @@ function drawFrontLines() {
     ctx.stroke();
   });
   ctx.restore();
+}
+
+function drawAttackMarkers() {
+  const candidates = getAttackCandidates();
+  const recommendedId = candidates[0]?.id;
+  candidates.forEach((region) => {
+    const center = screenPoint(regionCenter(region));
+    const recommended = region.id === recommendedId;
+    const pulse = recommended ? Math.sin(state.elapsed * 5) * 2 : 0;
+    const radius = clamp(view.width * 0.018, 18, 28) + pulse;
+    const label = recommended ? "ATTACK" : "TARGET";
+    const accent = recommended ? "#e18832" : "#c99745";
+
+    ctx.save();
+    ctx.globalAlpha = recommended ? 0.18 : 0.1;
+    ctx.fillStyle = accent;
+    ctx.beginPath();
+    ctx.arc(center.x, center.y, radius * 1.28, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.globalAlpha = recommended ? 0.98 : 0.72;
+    ctx.strokeStyle = accent;
+    ctx.fillStyle = accent;
+    ctx.lineWidth = recommended ? 2.5 : 1.5;
+    ctx.setLineDash(recommended ? [6, 4] : [3, 4]);
+    ctx.beginPath();
+    ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(center.x - radius - 5, center.y);
+    ctx.lineTo(center.x - radius + 3, center.y);
+    ctx.moveTo(center.x + radius - 3, center.y);
+    ctx.lineTo(center.x + radius + 5, center.y);
+    ctx.moveTo(center.x, center.y - radius - 5);
+    ctx.lineTo(center.x, center.y - radius + 3);
+    ctx.moveTo(center.x, center.y + radius - 3);
+    ctx.lineTo(center.x, center.y + radius + 5);
+    ctx.stroke();
+    ctx.font = `900 ${recommended ? 10 : 8}px Inter, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
+    ctx.strokeText(label, center.x, center.y - radius - 8);
+    ctx.fillStyle = accent;
+    ctx.fillText(label, center.x, center.y - radius - 8);
+    ctx.restore();
+  });
 }
 
 function drawFlag(x, y, color, scale) {
@@ -648,6 +737,7 @@ function render() {
   drawBackground();
   drawSeaDetails();
   drawRegions();
+  drawAttackMarkers();
   drawFrontLines();
   drawOrders();
   drawBattleEffects();
@@ -854,7 +944,7 @@ function regionForUnit(unit) {
 
 function getRegionProduction(region) {
   if (!region) return 1;
-  return region.production + (region.faction === "blue" && state.upgrades.logistics ? 1 : 0);
+  return region.production + (region.faction === "blue" ? state.upgrades.logistics : 0);
 }
 
 function getUnitProduction(unit) {
@@ -862,7 +952,7 @@ function getUnitProduction(unit) {
 }
 
 function getMaxUnitStrength(faction) {
-  return 12 + (faction === "blue" && state.upgrades.armor ? 3 : 0);
+  return 12 + (faction === "blue" ? state.upgrades.armor * 3 : 0);
 }
 
 function applyArmorUpgrade() {
@@ -980,20 +1070,32 @@ function updateHud() {
   ui.intel.textContent = String(state.intel);
   ui.pause.classList.toggle("is-paused", state.paused);
   ui.pause.textContent = state.paused ? "▶" : "Ⅱ";
+  updateAttackGuide();
   updateSelectedPanel();
+}
+
+function updateAttackGuide() {
+  const target = recommendedAttack();
+  if (!ui.attackGuide || !ui.attackTarget) return;
+  ui.attackGuide.classList.toggle("is-hidden", !target);
+  if (target) ui.attackTarget.textContent = target.name;
 }
 
 function setupInitialUnits() {
   units.splice(0, units.length, ...initialUnits.map(cloneUnit));
-  if (state.upgrades.reserve) {
-    const blueStarts = initialUnits.filter((unit) => unit.faction === "blue");
-    const source = blueStarts[0];
-    units.push({
-      ...cloneUnit(source),
-      id: "blue-reserve-1",
-      x: clamp(source.x + 0.028, 0.02, 0.98),
-      y: clamp(source.y + 0.018, 0.03, 0.98),
-    });
+  const reserveCount = state.upgrades.reserve;
+  if (reserveCount > 0) {
+    const source = initialUnits.find((unit) => unit.faction === "blue");
+    for (let index = 0; index < reserveCount; index += 1) {
+      const angle = index * 2.35;
+      const radius = 0.028 + Math.floor(index / 6) * 0.014;
+      units.push({
+        ...cloneUnit(source),
+        id: `blue-reserve-${index + 1}`,
+        x: clamp(source.x + Math.cos(angle) * radius, 0.02, 0.98),
+        y: clamp(source.y + Math.sin(angle) * radius * 0.7, 0.03, 0.98),
+      });
+    }
   }
   applyArmorUpgrade();
 }
@@ -1042,6 +1144,13 @@ function restartGame() {
   showToast("新しい作戦を開始しました");
 }
 
+function getUpgradePrice(key) {
+  const item = SHOP_ITEMS[key];
+  const level = Number(state.upgrades[key]) || 0;
+  if (!item) return Number.MAX_SAFE_INTEGER;
+  return Math.min(999999, Math.ceil((item.basePrice * 1.45 ** level) / 10) * 10);
+}
+
 function updateShopDialog() {
   if (!ui.shopGold) return;
   ui.shopGold.textContent = String(state.gold);
@@ -1049,32 +1158,37 @@ function updateShopDialog() {
     const key = button.dataset.shopUpgrade;
     const item = SHOP_ITEMS[key];
     if (!item) return;
-    const purchased = Boolean(state.upgrades[key]);
-    const unaffordable = !purchased && state.gold < item.price;
-    button.disabled = purchased || unaffordable;
-    button.textContent = purchased ? "購入済み" : `${item.price} Gold`;
+    const level = Number(state.upgrades[key]) || 0;
+    const price = getUpgradePrice(key);
+    const unaffordable = state.gold < price;
+    button.disabled = unaffordable;
+    button.textContent = `${price} Gold`;
     const card = button.closest("[data-shop-card]");
-    card?.classList.toggle("is-purchased", purchased);
+    card?.classList.toggle("is-purchased", level > 0);
     card?.classList.toggle("is-unaffordable", unaffordable);
+    const levelLabel = card?.querySelector("[data-shop-level]");
+    if (levelLabel) levelLabel.textContent = `Lv.${level}`;
   });
 }
 
 function purchaseUpgrade(key) {
   const item = SHOP_ITEMS[key];
-  if (!item || state.upgrades[key]) return;
-  if (state.gold < item.price) {
+  if (!item) return;
+  const level = Number(state.upgrades[key]) || 0;
+  const price = getUpgradePrice(key);
+  if (state.gold < price) {
     showToast("Goldが不足しています");
     return;
   }
 
-  state.gold -= item.price;
-  state.upgrades[key] = true;
+  state.gold -= price;
+  state.upgrades[key] = level + 1;
   saveGold();
   saveUpgrades();
   if (key === "armor") applyArmorUpgrade();
   updateShopDialog();
   updateHud();
-  showToast(`${item.label}を購入しました`);
+  showToast(`${item.label}をLv.${level + 1}に強化しました`);
 }
 
 function openShop() {

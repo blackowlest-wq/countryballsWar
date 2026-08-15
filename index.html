@@ -56,6 +56,11 @@
           <span>アジア戦線 / DAY <strong id="dayValue">01</strong></span>
         </div>
 
+        <div class="attack-guide" id="attackGuide" aria-live="polite">
+          <span class="attack-guide-icon" aria-hidden="true">⌖</span>
+          <span><strong>ATTACK</strong><small id="attackTarget">—</small></span>
+        </div>
+
         <div class="map-controls" aria-label="マップ操作">
           <button class="map-control-button" id="homeButton" type="button" aria-label="マップを初期位置に戻す">⌂</button>
           <div class="map-zoom-controls">
@@ -79,7 +84,7 @@
 
         <div class="dispatch-hint" id="dispatchHint" aria-live="polite">
           <span class="dispatch-hint-icon" aria-hidden="true">↗</span>
-          <span><strong>白い部隊をドラッグ</strong><small>目的地へ派遣</small></span>
+          <span><strong>白い部隊をドラッグ</strong><small>オレンジのATTACKを目標に派遣</small></span>
         </div>
 
         <aside class="territory-panel" id="territoryPanel" aria-live="polite">
@@ -180,7 +185,7 @@
           <article class="shop-item" data-shop-card>
             <div class="shop-item-icon">✚</div>
             <div class="shop-item-copy">
-              <h3>兵站網</h3>
+              <h3>兵站網 <span class="shop-item-level" data-shop-level>Lv.0</span></h3>
               <p>自軍領土の生産力を＋1。部隊の回復量が増えます。</p>
             </div>
             <button class="shop-buy" data-shop-upgrade="logistics" type="button">100 Gold</button>
@@ -188,7 +193,7 @@
           <article class="shop-item" data-shop-card>
             <div class="shop-item-icon">◆</div>
             <div class="shop-item-copy">
-              <h3>強化装甲</h3>
+              <h3>強化装甲 <span class="shop-item-level" data-shop-level>Lv.0</span></h3>
               <p>白い部隊の最大戦力を＋3。</p>
             </div>
             <button class="shop-buy" data-shop-upgrade="armor" type="button">100 Gold</button>
@@ -196,13 +201,13 @@
           <article class="shop-item" data-shop-card>
             <div class="shop-item-icon">＋</div>
             <div class="shop-item-copy">
-              <h3>予備部隊</h3>
+              <h3>予備部隊 <span class="shop-item-level" data-shop-level>Lv.0</span></h3>
               <p>次回の新規作戦から、白い部隊が1体増えます。</p>
             </div>
             <button class="shop-buy" data-shop-upgrade="reserve" type="button">150 Gold</button>
           </article>
         </div>
-        <p class="shop-note">ショップを開いている間は戦場が一時停止します。</p>
+        <p class="shop-note">ショップを開いている間は戦場が一時停止します。購入するたびに次の価格が上がります。</p>
       </div>
     </dialog>
 
