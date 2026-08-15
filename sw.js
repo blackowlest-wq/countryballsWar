@@ -1,4 +1,4 @@
-const CACHE_NAME = "countryfronts-shell-v1";
+const CACHE_NAME = "countryfronts-shell-v2";
 
 const APP_SHELL = [
   "./",

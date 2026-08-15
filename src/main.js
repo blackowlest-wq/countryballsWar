@@ -380,6 +380,10 @@ function areRoadNeighbors(sourceRegion, targetRegion) {
   return Boolean(sourceRegion && targetRegion && sourceRegion.id !== targetRegion.id && roadNeighbors(sourceRegion.id).includes(targetRegion.id));
 }
 
+function hasRoadPath(sourceRegion, targetRegion) {
+  return Boolean(sourceRegion && targetRegion && sourceRegion.id !== targetRegion.id && findRoadPath(sourceRegion.id, targetRegion.id).length >= 2);
+}
+
 function getAttackCandidates() {
   const owned = regions.filter((region) => region.faction === "blue");
   return regions
@@ -1764,7 +1768,7 @@ function mapPointFromPointer(event) {
 }
 
 function canDispatchToRegion(unit, targetRegion) {
-  return areRoadNeighbors(regionForUnit(unit), targetRegion);
+  return hasRoadPath(regionForUnit(unit), targetRegion);
 }
 
 function beginDispatch(event) {
@@ -1802,8 +1806,8 @@ function dispatchUnitToRegion(unit, region) {
   }
 
   const sourceRegion = regionForUnit(unit);
-  if (!areRoadNeighbors(sourceRegion, region)) {
-    showToast("道路でつながった隣接領土にのみ派遣できます");
+  if (!hasRoadPath(sourceRegion, region)) {
+    showToast("道路でつながった領土にのみ派遣できます");
     return false;
   }
 
@@ -1841,7 +1845,7 @@ function endDispatch(event) {
   if (wasDrag) {
     state.suppressNextClick = true;
     if (targetRegion) dispatchUnitToRegion(sourceUnit, targetRegion);
-    else if (invalidTarget) showToast("道路でつながった隣接領土にのみ派遣できます");
+    else if (invalidTarget) showToast("道路でつながった領土にのみ派遣できます");
     else showToast("目的地の領土の上で指を離してください");
     updateSelectedPanel();
     render();
