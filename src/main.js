@@ -145,6 +145,7 @@ const dragState = {
   sourceUnit: null,
   currentPoint: null,
   targetRegion: null,
+  invalidTarget: false,
   moved: false,
   pointerId: null,
 };
@@ -294,6 +295,8 @@ function cloneUnit(unit) {
   return {
     ...unit,
     target: unit.target ? { ...unit.target } : null,
+    route: unit.route ? unit.route.map((point) => ({ ...point })) : null,
+    routeIndex: unit.routeIndex || 0,
     patrolCenter: unit.patrolCenter ? { ...unit.patrolCenter } : null,
   };
 }
@@ -324,6 +327,41 @@ function clamp(value, min, max) {
 
 function getRegion(id) {
   return regions.find((region) => region.id === id);
+}
+
+function roadNeighbors(regionId) {
+  return REGION_NEIGHBORS[regionId] || [];
+}
+
+function findRoadPath(startId, targetId) {
+  if (!startId || !targetId) return [];
+  if (startId === targetId) return [startId];
+
+  const queue = [startId];
+  const previous = new Map([[startId, null]]);
+  while (queue.length > 0) {
+    const currentId = queue.shift();
+    for (const neighborId of roadNeighbors(currentId)) {
+      if (previous.has(neighborId)) continue;
+      previous.set(neighborId, currentId);
+      if (neighborId === targetId) {
+        const path = [targetId];
+        let parentId = currentId;
+        while (parentId) {
+          path.unshift(parentId);
+          parentId = previous.get(parentId);
+        }
+        return path;
+      }
+      queue.push(neighborId);
+    }
+  }
+
+  return [];
+}
+
+function areRoadNeighbors(sourceRegion, targetRegion) {
+  return Boolean(sourceRegion && targetRegion && sourceRegion.id !== targetRegion.id && roadNeighbors(sourceRegion.id).includes(targetRegion.id));
 }
 
 function getAttackCandidates() {
@@ -443,6 +481,46 @@ function drawRegions() {
       ctx.restore();
     }
   });
+}
+
+function drawRoadNetwork() {
+  const drawnEdges = new Set();
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.setLineDash([7, 7]);
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "rgba(72, 96, 132, 0.34)";
+
+  regions.forEach((sourceRegion) => {
+    roadNeighbors(sourceRegion.id).forEach((targetId) => {
+      const edgeKey = [sourceRegion.id, targetId].sort().join("::");
+      if (drawnEdges.has(edgeKey)) return;
+      const targetRegion = getRegion(targetId);
+      if (!targetRegion) return;
+      drawnEdges.add(edgeKey);
+
+      const start = screenPoint(regionCenter(sourceRegion));
+      const end = screenPoint(regionCenter(targetRegion));
+      ctx.beginPath();
+      ctx.moveTo(start.x, start.y);
+      ctx.lineTo(end.x, end.y);
+      ctx.stroke();
+    });
+  });
+
+  ctx.setLineDash([]);
+  ctx.globalAlpha = 0.72;
+  ctx.fillStyle = "#fff";
+  ctx.strokeStyle = "rgba(72, 96, 132, 0.38)";
+  ctx.lineWidth = 1;
+  regions.forEach((region) => {
+    const center = screenPoint(regionCenter(region));
+    ctx.beginPath();
+    ctx.arc(center.x, center.y, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  });
+  ctx.restore();
 }
 
 function drawFrontLines() {
@@ -657,23 +735,83 @@ function drawOrderLine(unit, target, active = false) {
   ctx.restore();
 }
 
+function drawRoadOrderPreview(unit, targetRegion) {
+  const sourceRegion = regionForUnit(unit);
+  if (!sourceRegion) return;
+  const pathIds = findRoadPath(sourceRegion.id, targetRegion.id);
+  if (pathIds.length < 2) return;
+
+  const points = [{ x: unit.x, y: unit.y }];
+  const sourceCenter = regionCenter(sourceRegion);
+  if (distance(unit, sourceCenter) > 0.008) points.push(sourceCenter);
+  pathIds.slice(1).forEach((regionId) => points.push(regionCenter(getRegion(regionId))));
+
+  const screenPoints = points.map((point) => screenPoint([point.x, point.y]));
+  const start = screenPoints[0];
+  const end = screenPoints[screenPoints.length - 1];
+  const previous = screenPoints[screenPoints.length - 2];
+  const angle = Math.atan2(end.y - previous.y, end.x - previous.x);
+
+  ctx.save();
+  ctx.globalAlpha = 0.95;
+  ctx.strokeStyle = "#2c5a9f";
+  ctx.fillStyle = "#2c5a9f";
+  ctx.lineWidth = 3;
+  ctx.setLineDash([8, 5]);
+  ctx.beginPath();
+  ctx.moveTo(start.x, start.y);
+  screenPoints.slice(1).forEach((point) => ctx.lineTo(point.x, point.y));
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(end.x, end.y);
+  ctx.lineTo(end.x - Math.cos(angle - 0.5) * 10, end.y - Math.sin(angle - 0.5) * 10);
+  ctx.lineTo(end.x - Math.cos(angle + 0.5) * 10, end.y - Math.sin(angle + 0.5) * 10);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawInvalidDispatchMarker(point) {
+  const screen = screenPoint([point.x, point.y]);
+  const radius = clamp(view.width * 0.021, 17, 27);
+  ctx.save();
+  ctx.globalAlpha = 0.9;
+  ctx.strokeStyle = "#c34e58";
+  ctx.fillStyle = "#c34e58";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.arc(screen.x, screen.y, radius, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(screen.x - 7, screen.y - 7);
+  ctx.lineTo(screen.x + 7, screen.y + 7);
+  ctx.moveTo(screen.x + 7, screen.y - 7);
+  ctx.lineTo(screen.x - 7, screen.y + 7);
+  ctx.stroke();
+  ctx.font = "900 8px Inter, sans-serif";
+  ctx.textAlign = "center";
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
+  ctx.strokeText("ROAD ONLY", screen.x, screen.y - radius - 8);
+  ctx.fillStyle = "#c34e58";
+  ctx.fillText("ROAD ONLY", screen.x, screen.y - radius - 8);
+  ctx.restore();
+}
+
 function drawOrders() {
   units.forEach((unit) => {
     if (unit.target && !unit.arrived) drawOrderLine(unit, unit.target);
   });
 
   if (dragState.active && dragState.sourceUnit && dragState.currentPoint) {
-    drawOrderLine(dragState.sourceUnit, dragState.currentPoint, true);
-    const point = screenPoint([dragState.currentPoint.x, dragState.currentPoint.y]);
-    ctx.save();
-    ctx.globalAlpha = 0.9;
-    ctx.strokeStyle = "#2c5a9f";
-    ctx.lineWidth = 2;
-    ctx.setLineDash([4, 4]);
-    ctx.beginPath();
-    ctx.arc(point.x, point.y, clamp(view.width * 0.021, 17, 27), 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
+    if (dragState.targetRegion) {
+      drawRoadOrderPreview(dragState.sourceUnit, dragState.targetRegion);
+    } else if (dragState.invalidTarget) {
+      drawInvalidDispatchMarker(dragState.currentPoint);
+    }
   }
 }
 
@@ -740,6 +878,7 @@ function render() {
   drawBackground();
   drawSeaDetails();
   drawRegions();
+  drawRoadNetwork();
   drawAttackMarkers();
   drawFrontLines();
   drawOrders();
@@ -750,6 +889,22 @@ function render() {
 
 function distance(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function setUnitRoute(unit, sourceRegionId, targetRegionId) {
+  const pathIds = findRoadPath(sourceRegionId, targetRegionId);
+  if (pathIds.length < 2) return false;
+
+  const points = [];
+  const sourceCenter = regionCenter(getRegion(sourceRegionId));
+  if (distance(unit, sourceCenter) > 0.008) points.push(sourceCenter);
+  pathIds.slice(1).forEach((regionId) => points.push(regionCenter(getRegion(regionId))));
+  if (points.length === 0) return false;
+
+  unit.route = points;
+  unit.routeIndex = 0;
+  unit.target = { ...points[0] };
+  return true;
 }
 
 function moveUnit(unit, dt) {
@@ -771,6 +926,15 @@ function moveUnit(unit, dt) {
   if (distanceToTarget < speed * dt) {
     unit.x = target.x;
     unit.y = target.y;
+
+    if (unit.route && unit.routeIndex < unit.route.length - 1) {
+      unit.routeIndex += 1;
+      unit.target = { ...unit.route[unit.routeIndex] };
+      return;
+    }
+
+    unit.route = null;
+    unit.routeIndex = 0;
     unit.target = null;
     unit.arrived = true;
     unit.patrolCenter = { x: target.x, y: target.y };
@@ -907,6 +1071,8 @@ function createUnit(faction, regionId, targetRegionId = null) {
     maxStrength,
     style: faction === "blue" ? "visor" : faction === "red" ? "cap" : "plain",
     target: null,
+    route: null,
+    routeIndex: 0,
     targetRegionId,
     arrived: false,
     patrolCenter: null,
@@ -916,8 +1082,7 @@ function createUnit(faction, regionId, targetRegionId = null) {
     pulse: Math.random() * 4,
   };
   if (targetRegionId) {
-    const target = regionCenter(getRegion(targetRegionId));
-    unit.target = target;
+    setUnitRoute(unit, region.id, targetRegionId);
   }
   units.push(unit);
   return unit;
@@ -928,9 +1093,9 @@ function runAi(dt) {
   if (state.aiTimer > 0) return;
   state.aiTimer = 3.8 + Math.random() * 2.6;
 
-  const targets = regions.filter((region) => region.faction === "blue");
   const redRegions = regions.filter((region) => region.faction === "red");
   const source = redRegions[Math.floor(Math.random() * redRegions.length)] || regions.find((region) => region.faction === "red");
+  const targets = source ? regions.filter((region) => region.faction === "blue" && areRoadNeighbors(source, region)) : [];
   const target = targets[Math.floor(Math.random() * targets.length)];
   if (!source || !target) return;
 
@@ -1147,6 +1312,7 @@ function restartGame() {
   dragState.sourceUnit = null;
   dragState.currentPoint = null;
   dragState.targetRegion = null;
+  dragState.invalidTarget = false;
   dragState.moved = false;
   dragState.pointerId = null;
   ui.eventFeed.replaceChildren();
@@ -1240,6 +1406,10 @@ function mapPointFromPointer(event) {
   return { x: point[0], y: point[1], screenX: x, screenY: y };
 }
 
+function canDispatchToRegion(unit, targetRegion) {
+  return areRoadNeighbors(regionForUnit(unit), targetRegion);
+}
+
 function beginDispatch(event) {
   if (event.pointerType === "mouse" && event.button !== 0) return;
   const point = mapPointFromPointer(event);
@@ -1250,6 +1420,7 @@ function beginDispatch(event) {
   dragState.sourceUnit = sourceUnit;
   dragState.currentPoint = { x: point.x, y: point.y };
   dragState.targetRegion = null;
+  dragState.invalidTarget = false;
   dragState.moved = false;
   dragState.pointerId = event.pointerId;
   canvas.setPointerCapture?.(event.pointerId);
@@ -1261,7 +1432,9 @@ function updateDispatch(event) {
   const point = mapPointFromPointer(event);
   dragState.currentPoint = { x: point.x, y: point.y };
   dragState.moved = dragState.moved || distance(dragState.sourceUnit, point) > 0.012;
-  dragState.targetRegion = [...regions].reverse().find((region) => pointInPolygon([point.x, point.y], region.points)) || null;
+  const candidate = [...regions].reverse().find((region) => pointInPolygon([point.x, point.y], region.points)) || null;
+  dragState.targetRegion = candidate && canDispatchToRegion(dragState.sourceUnit, candidate) ? candidate : null;
+  dragState.invalidTarget = Boolean(candidate && !dragState.targetRegion);
   render();
 }
 
@@ -1271,8 +1444,17 @@ function dispatchUnitToRegion(unit, region) {
     return false;
   }
 
-  const target = regionCenter(region);
-  unit.target = { x: target.x, y: target.y };
+  const sourceRegion = regionForUnit(unit);
+  if (!areRoadNeighbors(sourceRegion, region)) {
+    showToast("道路でつながった隣接領土にのみ派遣できます");
+    return false;
+  }
+
+  if (!setUnitRoute(unit, sourceRegion.id, region.id)) {
+    showToast("この領土への道路がありません");
+    return false;
+  }
+
   unit.targetRegionId = region.id;
   unit.arrived = false;
   unit.patrolCenter = null;
@@ -1293,12 +1475,15 @@ function endDispatch(event) {
   dragState.sourceUnit = null;
   dragState.currentPoint = null;
   dragState.targetRegion = null;
+  const invalidTarget = dragState.invalidTarget;
+  dragState.invalidTarget = false;
   dragState.pointerId = null;
   canvas.releasePointerCapture?.(event.pointerId);
 
   if (wasDrag) {
     state.suppressNextClick = true;
     if (targetRegion) dispatchUnitToRegion(sourceUnit, targetRegion);
+    else if (invalidTarget) showToast("道路でつながった隣接領土にのみ派遣できます");
     else showToast("目的地の領土の上で指を離してください");
     updateSelectedPanel();
     render();
