@@ -633,6 +633,23 @@ function drawUnit(unit, time) {
 
   drawFlag(point.x + scale * 0.72, y - scale * 0.2, palette.flag, scale * 0.75);
 
+  if (unit.isGarrison) {
+    ctx.save();
+    ctx.fillStyle = "#586b86";
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(point.x - scale * 0.78, y - scale * 0.82, scale * 0.31, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#fff";
+    ctx.font = `900 ${clamp(scale * 0.42, 8, 11)}px Inter, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("守", point.x - scale * 0.78, y - scale * 0.82 + 0.5);
+    ctx.restore();
+  }
+
   ctx.save();
   ctx.beginPath();
   ctx.arc(point.x, y, scale, 0, Math.PI * 2);
@@ -909,11 +926,8 @@ function setUnitRoute(unit, sourceRegionId, targetRegionId) {
 
 function moveUnit(unit, dt) {
   if (unit.arrived && unit.patrolCenter) {
-    const patrolSpeed = unit.inBattle ? 0.85 : 0.38;
-    unit.orbitAngle += patrolSpeed * dt;
-    const patrolRadius = unit.inBattle ? 0.012 : 0.019;
-    unit.x = clamp(unit.patrolCenter.x + Math.cos(unit.orbitAngle) * patrolRadius, 0.02, 0.98);
-    unit.y = clamp(unit.patrolCenter.y + Math.sin(unit.orbitAngle) * patrolRadius * 0.72, 0.03, 0.98);
+    unit.x = unit.patrolCenter.x;
+    unit.y = unit.patrolCenter.y;
     return;
   }
 
@@ -937,8 +951,9 @@ function moveUnit(unit, dt) {
     unit.routeIndex = 0;
     unit.target = null;
     unit.arrived = true;
+    if (unit.targetRegionId) unit.regionId = unit.targetRegionId;
     unit.patrolCenter = { x: target.x, y: target.y };
-    unit.orbitAngle = Math.random() * Math.PI * 2;
+    unit.orbitAngle = 0;
     onUnitArrived(unit);
     return;
   }
@@ -954,11 +969,13 @@ function ensureDefender(region, attackerFaction) {
 
   const defender = createUnit(region.faction, region.id);
   if (!defender) return;
+  defender.isGarrison = true;
   defender.targetRegionId = region.id;
   defender.arrived = true;
   defender.patrolCenter = center;
-  defender.orbitAngle = Math.random() * Math.PI * 2;
+  defender.orbitAngle = 0;
   defender.strength = Math.min(defender.maxStrength, Math.max(4, Math.ceil(region.garrison / 2)));
+  addEvent(`${region.name}に守備隊が展開しました`);
 }
 
 function onUnitArrived(unit) {
@@ -1065,17 +1082,18 @@ function createUnit(faction, regionId, targetRegionId = null) {
   const unit = {
     id: `${faction}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     faction,
-    x: center.x + (Math.random() - 0.5) * 0.025,
-    y: center.y + (Math.random() - 0.5) * 0.025,
+    x: center.x,
+    y: center.y,
     strength: maxStrength,
     maxStrength,
     style: faction === "blue" ? "visor" : faction === "red" ? "cap" : "plain",
     target: null,
     route: null,
     routeIndex: 0,
+    regionId: region.id,
     targetRegionId,
-    arrived: false,
-    patrolCenter: null,
+    arrived: !targetRegionId,
+    patrolCenter: targetRegionId ? null : { ...center },
     orbitAngle: 0,
     arrivalResolved: false,
     inBattle: false,
@@ -1108,7 +1126,23 @@ function runAi(dt) {
 
 function regionForUnit(unit) {
   const containingRegion = [...regions].reverse().find((region) => pointInPolygon([unit.x, unit.y], region.points));
-  return containingRegion || (unit.targetRegionId ? getRegion(unit.targetRegionId) : null);
+  return containingRegion || (unit.regionId ? getRegion(unit.regionId) : null) || (unit.targetRegionId ? getRegion(unit.targetRegionId) : null);
+}
+
+function snapUnitToRoadNode(unit) {
+  const region = regionForUnit(unit);
+  if (!region) return null;
+  const center = regionCenter(region);
+  unit.regionId = region.id;
+  unit.x = center.x;
+  unit.y = center.y;
+  unit.target = null;
+  unit.route = null;
+  unit.routeIndex = 0;
+  unit.arrived = true;
+  unit.patrolCenter = { ...center };
+  unit.orbitAngle = 0;
+  return region;
 }
 
 function getRegionProduction(region) {
@@ -1254,18 +1288,17 @@ function updateAttackGuide() {
 
 function setupInitialUnits() {
   units.splice(0, units.length, ...initialUnits.map(cloneUnit));
+  units.forEach((unit) => snapUnitToRoadNode(unit));
   const reserveCount = state.upgrades.reserve;
   if (reserveCount > 0) {
     const source = initialUnits.find((unit) => unit.faction === "blue");
     for (let index = 0; index < reserveCount; index += 1) {
-      const angle = index * 2.35;
-      const radius = 0.028 + Math.floor(index / 6) * 0.014;
-      units.push({
+      const reserve = {
         ...cloneUnit(source),
         id: `blue-reserve-${index + 1}`,
-        x: clamp(source.x + Math.cos(angle) * radius, 0.02, 0.98),
-        y: clamp(source.y + Math.sin(angle) * radius * 0.7, 0.03, 0.98),
-      });
+      };
+      snapUnitToRoadNode(reserve);
+      units.push(reserve);
     }
   }
   applyArmorUpgrade();
