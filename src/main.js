@@ -21,6 +21,9 @@ const ui = {
   intel: document.querySelector("#intelValue"),
   defeatDialog: document.querySelector("#defeatDialog"),
   defeatReward: document.querySelector("#defeatReward"),
+  shopDialog: document.querySelector("#shopDialog"),
+  shopGold: document.querySelector("#shopGoldValue"),
+  shopButtons: document.querySelectorAll("[data-shop-upgrade]"),
 };
 
 const COLORS = {
@@ -55,7 +58,13 @@ const COLORS = {
 };
 
 const GOLD_STORAGE_KEY = "countryfronts.gold";
+const UPGRADES_STORAGE_KEY = "countryfronts.upgrades";
 const DEFEAT_GOLD_REWARD = 100;
+const SHOP_ITEMS = {
+  logistics: { price: 100, label: "兵站網" },
+  armor: { price: 100, label: "強化装甲" },
+  reserve: { price: 150, label: "予備部隊" },
+};
 
 function loadGold() {
   try {
@@ -73,6 +82,28 @@ function saveGold() {
   }
 }
 
+function loadUpgrades() {
+  const empty = { logistics: false, armor: false, reserve: false };
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(UPGRADES_STORAGE_KEY) || "null");
+    return {
+      logistics: Boolean(saved?.logistics),
+      armor: Boolean(saved?.armor),
+      reserve: Boolean(saved?.reserve),
+    };
+  } catch {
+    return empty;
+  }
+}
+
+function saveUpgrades() {
+  try {
+    window.localStorage.setItem(UPGRADES_STORAGE_KEY, JSON.stringify(state.upgrades));
+  } catch {
+    // Local storage may be unavailable in private browsing; the session still works.
+  }
+}
+
 const state = {
   width: 0,
   height: 0,
@@ -84,6 +115,7 @@ const state = {
   speed: 1,
   elapsed: 0,
   gold: loadGold(),
+  upgrades: loadUpgrades(),
   intel: 3,
   selectedRegionId: null,
   aiTimer: 3.2,
@@ -92,6 +124,8 @@ const state = {
   eventNotice: true,
   motion: true,
   defeated: false,
+  shopOpen: false,
+  shopWasPaused: false,
   battles: new Map(),
   suppressNextClick: false,
 };
@@ -776,7 +810,7 @@ function createUnit(faction, regionId, targetRegionId = null) {
     x: center.x + (Math.random() - 0.5) * 0.025,
     y: center.y + (Math.random() - 0.5) * 0.025,
     strength: 12,
-    maxStrength: 12,
+    maxStrength: getMaxUnitStrength(faction),
     style: faction === "blue" ? "visor" : faction === "red" ? "cap" : "plain",
     target: null,
     targetRegionId,
@@ -818,8 +852,24 @@ function regionForUnit(unit) {
   return containingRegion || (unit.targetRegionId ? getRegion(unit.targetRegionId) : null);
 }
 
+function getRegionProduction(region) {
+  if (!region) return 1;
+  return region.production + (region.faction === "blue" && state.upgrades.logistics ? 1 : 0);
+}
+
 function getUnitProduction(unit) {
-  return regionForUnit(unit)?.production ?? 1;
+  return getRegionProduction(regionForUnit(unit));
+}
+
+function getMaxUnitStrength(faction) {
+  return 12 + (faction === "blue" && state.upgrades.armor ? 3 : 0);
+}
+
+function applyArmorUpgrade() {
+  const maxStrength = getMaxUnitStrength("blue");
+  units.filter((unit) => unit.faction === "blue").forEach((unit) => {
+    unit.maxStrength = Math.max(unit.maxStrength || 12, maxStrength);
+  });
 }
 
 function updateStrength(dt) {
@@ -890,7 +940,7 @@ function updateSelectedPanel() {
   const battleActive = regionHasBattle(region);
   ui.regionStatus.textContent = battleActive ? "⚔ 戦闘中 — 部隊が交戦しています" : region.faction === "blue" ? "White Unionの支配領域" : region.faction === "red" ? "敵対勢力が展開中" : "勢力未確定の中立地域";
   ui.garrison.textContent = region.garrison;
-  ui.production.textContent = `+${region.production}/秒`;
+  ui.production.textContent = `+${getRegionProduction(region)}/秒`;
   ui.threat.textContent = battleActive ? "交戦中" : region.faction === "blue" ? "安定" : region.faction === "red" ? "高" : "警戒";
 }
 
@@ -933,6 +983,21 @@ function updateHud() {
   updateSelectedPanel();
 }
 
+function setupInitialUnits() {
+  units.splice(0, units.length, ...initialUnits.map(cloneUnit));
+  if (state.upgrades.reserve) {
+    const blueStarts = initialUnits.filter((unit) => unit.faction === "blue");
+    const source = blueStarts[0];
+    units.push({
+      ...cloneUnit(source),
+      id: "blue-reserve-1",
+      x: clamp(source.x + 0.028, 0.02, 0.98),
+      y: clamp(source.y + 0.018, 0.03, 0.98),
+    });
+  }
+  applyArmorUpgrade();
+}
+
 function triggerDefeat() {
   if (state.defeated) return;
   state.defeated = true;
@@ -946,7 +1011,7 @@ function triggerDefeat() {
 
 function restartGame() {
   regions.splice(0, regions.length, ...initialRegions.map(cloneRegion));
-  units.splice(0, units.length, ...initialUnits.map(cloneUnit));
+  setupInitialUnits();
   state.zoom = 1;
   state.panX = 0;
   state.panY = 0;
@@ -959,6 +1024,7 @@ function restartGame() {
   state.recoveryTimer = 0;
   state.toastTimer = 0;
   state.defeated = false;
+  state.shopOpen = false;
   state.battles.clear();
   state.suppressNextClick = false;
   dragState.active = false;
@@ -974,6 +1040,58 @@ function restartGame() {
   updateHud();
   render();
   showToast("新しい作戦を開始しました");
+}
+
+function updateShopDialog() {
+  if (!ui.shopGold) return;
+  ui.shopGold.textContent = String(state.gold);
+  ui.shopButtons.forEach((button) => {
+    const key = button.dataset.shopUpgrade;
+    const item = SHOP_ITEMS[key];
+    if (!item) return;
+    const purchased = Boolean(state.upgrades[key]);
+    const unaffordable = !purchased && state.gold < item.price;
+    button.disabled = purchased || unaffordable;
+    button.textContent = purchased ? "購入済み" : `${item.price} Gold`;
+    const card = button.closest("[data-shop-card]");
+    card?.classList.toggle("is-purchased", purchased);
+    card?.classList.toggle("is-unaffordable", unaffordable);
+  });
+}
+
+function purchaseUpgrade(key) {
+  const item = SHOP_ITEMS[key];
+  if (!item || state.upgrades[key]) return;
+  if (state.gold < item.price) {
+    showToast("Goldが不足しています");
+    return;
+  }
+
+  state.gold -= item.price;
+  state.upgrades[key] = true;
+  saveGold();
+  saveUpgrades();
+  if (key === "armor") applyArmorUpgrade();
+  updateShopDialog();
+  updateHud();
+  showToast(`${item.label}を購入しました`);
+}
+
+function openShop() {
+  if (!ui.shopDialog) return;
+  state.shopWasPaused = state.paused;
+  state.shopOpen = true;
+  state.paused = true;
+  updateShopDialog();
+  ui.shopDialog.showModal();
+  updateHud();
+}
+
+function finishShop() {
+  if (!state.shopOpen) return;
+  state.shopOpen = false;
+  state.paused = state.shopWasPaused;
+  updateHud();
 }
 
 function unitAtScreenPoint(x, y) {
@@ -1123,7 +1241,12 @@ document.querySelector("#zoomInButton").addEventListener("click", () => setZoom(
 document.querySelector("#zoomOutButton").addEventListener("click", () => setZoom(state.zoom - 0.12));
 document.querySelector("#homeButton").addEventListener("click", resetMap);
 
-document.querySelector("#shopButton").addEventListener("click", () => showToast("ショップは現在準備中です"));
+document.querySelector("#shopButton").addEventListener("click", openShop);
+ui.shopButtons.forEach((button) => {
+  button.addEventListener("click", () => purchaseUpgrade(button.dataset.shopUpgrade));
+});
+document.querySelector("#shopCloseButton").addEventListener("click", () => ui.shopDialog.close());
+ui.shopDialog?.addEventListener("close", finishShop);
 document.querySelector("#intelButton").addEventListener("click", () => {
   if (state.intel <= 0) {
     showToast("情報ポイントがありません");
@@ -1141,6 +1264,8 @@ ui.defeatDialog?.addEventListener("cancel", (event) => event.preventDefault());
 document.querySelector("#eventToggle").addEventListener("change", (event) => { state.eventNotice = event.target.checked; });
 document.querySelector("#motionToggle").addEventListener("change", (event) => { state.motion = event.target.checked; });
 
+setupInitialUnits();
+updateShopDialog();
 resizeCanvas();
 updateSelectedPanel();
 updateHud();

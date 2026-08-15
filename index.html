@@ -68,7 +68,7 @@
           <button class="rail-card shop-card" id="shopButton" type="button">
             <span class="rail-icon rail-icon-shop" aria-hidden="true">▤</span>
             <span>SHOP</span>
-            <small>準備中</small>
+            <small>強化</small>
           </button>
           <button class="rail-card intel-card" id="intelButton" type="button">
             <span class="rail-icon rail-icon-intel" aria-hidden="true">⌁</span>
@@ -163,6 +163,46 @@
         <p>すべての白い部隊が失われました。救済措置としてGoldを受け取れます。</p>
         <strong class="defeat-reward" id="defeatReward">+100 GOLD</strong>
         <button class="primary-action" id="restartButton" type="button">最初から始める</button>
+      </div>
+    </dialog>
+
+    <dialog class="shop-dialog" id="shopDialog">
+      <div class="shop-form">
+        <div class="dialog-heading">
+          <div>
+            <span class="panel-kicker">FIELD SHOP</span>
+            <h2>ショップ</h2>
+          </div>
+          <button class="dialog-close" id="shopCloseButton" type="button" aria-label="ショップを閉じる">×</button>
+        </div>
+        <div class="shop-balance"><span>所持Gold</span><strong id="shopGoldValue">0</strong></div>
+        <div class="shop-list">
+          <article class="shop-item" data-shop-card>
+            <div class="shop-item-icon">✚</div>
+            <div class="shop-item-copy">
+              <h3>兵站網</h3>
+              <p>自軍領土の生産力を＋1。部隊の回復量が増えます。</p>
+            </div>
+            <button class="shop-buy" data-shop-upgrade="logistics" type="button">100 Gold</button>
+          </article>
+          <article class="shop-item" data-shop-card>
+            <div class="shop-item-icon">◆</div>
+            <div class="shop-item-copy">
+              <h3>強化装甲</h3>
+              <p>白い部隊の最大戦力を＋3。</p>
+            </div>
+            <button class="shop-buy" data-shop-upgrade="armor" type="button">100 Gold</button>
+          </article>
+          <article class="shop-item" data-shop-card>
+            <div class="shop-item-icon">＋</div>
+            <div class="shop-item-copy">
+              <h3>予備部隊</h3>
+              <p>次回の新規作戦から、白い部隊が1体増えます。</p>
+            </div>
+            <button class="shop-buy" data-shop-upgrade="reserve" type="button">150 Gold</button>
+          </article>
+        </div>
+        <p class="shop-note">ショップを開いている間は戦場が一時停止します。</p>
       </div>
     </dialog>
 

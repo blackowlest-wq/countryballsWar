@@ -843,6 +843,123 @@ button:disabled {
   max-width: 240px;
 }
 
+.shop-dialog {
+  width: min(520px, calc(100% - 32px));
+  padding: 0;
+  color: var(--ink);
+  border: 0;
+  border-radius: 17px;
+  background: #fff;
+  box-shadow: 0 30px 90px rgba(22, 36, 63, 0.3);
+}
+
+.shop-dialog::backdrop {
+  background: rgba(14, 23, 39, 0.5);
+  backdrop-filter: blur(3px);
+}
+
+.shop-form {
+  padding: 22px;
+}
+
+.shop-balance {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 4px 0 13px;
+  padding: 10px 12px;
+  color: #6f4a0d;
+  border: 1px solid #ead18a;
+  border-radius: 10px;
+  background: #fff8df;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.shop-balance strong {
+  font-size: 17px;
+}
+
+.shop-list {
+  display: grid;
+  gap: 9px;
+}
+
+.shop-item {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #f8fafc;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.shop-item.is-purchased {
+  border-color: #9fd38c;
+  background: #f2faee;
+}
+
+.shop-item.is-unaffordable {
+  opacity: 0.62;
+}
+
+.shop-item-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  color: #fff;
+  border-radius: 9px;
+  background: var(--blue-deep);
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.shop-item-copy h3 {
+  margin: 0;
+  font-size: 12px;
+}
+
+.shop-item-copy p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.shop-buy {
+  min-width: 78px;
+  padding: 8px 9px;
+  color: #fff;
+  border-radius: 8px;
+  background: #e5a631;
+  box-shadow: 0 3px 0 #b8791d;
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.shop-buy:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #b8791d;
+}
+
+.shop-buy:disabled {
+  color: #738096;
+  background: #dce2e9;
+  box-shadow: 0 3px 0 #bcc5d1;
+}
+
+.shop-note {
+  margin: 13px 0 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.5;
+  text-align: center;
+}
+
 .settings-dialog {
   width: min(390px, calc(100% - 32px));
   padding: 0;
@@ -1068,6 +1185,35 @@ button:disabled {
   .primary-action {
     padding: 8px 9px;
     font-size: 9px;
+  }
+
+  .shop-form {
+    padding: 16px;
+  }
+
+  .shop-item {
+    grid-template-columns: 32px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .shop-item-icon {
+    width: 30px;
+    height: 30px;
+    font-size: 15px;
+  }
+
+  .shop-item-copy h3 {
+    font-size: 11px;
+  }
+
+  .shop-item-copy p {
+    font-size: 8px;
+  }
+
+  .shop-buy {
+    grid-column: 2;
+    justify-self: start;
+    padding: 6px 8px;
   }
 
   .dispatch-note {
