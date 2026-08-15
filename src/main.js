@@ -1,0 +1,1147 @@
+const canvas = document.querySelector("#mapCanvas");
+const ctx = canvas.getContext("2d");
+const stage = document.querySelector("#gameStage");
+
+const ui = {
+  progress: document.querySelector("#progressValue"),
+  gold: document.querySelector("#goldValue"),
+  day: document.querySelector("#dayValue"),
+  time: document.querySelector("#timeValue"),
+  pause: document.querySelector("#pauseButton"),
+  toast: document.querySelector("#toast"),
+  eventFeed: document.querySelector("#eventFeed"),
+  panel: document.querySelector("#territoryPanel"),
+  dispatchHint: document.querySelector("#dispatchHint"),
+  factionDot: document.querySelector("#selectedFactionDot"),
+  regionName: document.querySelector("#selectedRegionName"),
+  regionStatus: document.querySelector("#selectedRegionStatus"),
+  garrison: document.querySelector("#selectedGarrison"),
+  production: document.querySelector("#selectedProduction"),
+  threat: document.querySelector("#selectedThreat"),
+  intel: document.querySelector("#intelValue"),
+  defeatDialog: document.querySelector("#defeatDialog"),
+  defeatReward: document.querySelector("#defeatReward"),
+};
+
+const COLORS = {
+  blue: {
+    territory: "#f7f9fb",
+    territoryDark: "#d4dce7",
+    unit: "#f2f5f8",
+    accent: "#263751",
+    flag: "#d94f58",
+  },
+  red: {
+    territory: "#e15a5b",
+    territoryDark: "#b93d4b",
+    unit: "#d53646",
+    accent: "#ffe0d8",
+    flag: "#c84349",
+  },
+  neutral: {
+    territory: "#c9d1dd",
+    territoryDark: "#9eaabd",
+    unit: "#eef2f6",
+    accent: "#7b8798",
+    flag: "#8b98aa",
+  },
+  pink: {
+    territory: "#f2b6ba",
+    territoryDark: "#d78891",
+    unit: "#f3f1eb",
+    accent: "#df4754",
+    flag: "#e0737b",
+  },
+};
+
+const GOLD_STORAGE_KEY = "countryfronts.gold";
+const DEFEAT_GOLD_REWARD = 100;
+
+function loadGold() {
+  try {
+    return Math.max(0, Number(window.localStorage.getItem(GOLD_STORAGE_KEY)) || 0);
+  } catch {
+    return 0;
+  }
+}
+
+function saveGold() {
+  try {
+    window.localStorage.setItem(GOLD_STORAGE_KEY, String(state.gold));
+  } catch {
+    // Local storage may be unavailable in private browsing; the session still works.
+  }
+}
+
+const state = {
+  width: 0,
+  height: 0,
+  dpr: 1,
+  zoom: 1,
+  panX: 0,
+  panY: 0,
+  paused: false,
+  speed: 1,
+  elapsed: 0,
+  gold: loadGold(),
+  intel: 3,
+  selectedRegionId: null,
+  aiTimer: 3.2,
+  recoveryTimer: 0,
+  toastTimer: 0,
+  eventNotice: true,
+  motion: true,
+  defeated: false,
+  battles: new Map(),
+  suppressNextClick: false,
+};
+
+const dragState = {
+  active: false,
+  sourceUnit: null,
+  currentPoint: null,
+  targetRegion: null,
+  moved: false,
+  pointerId: null,
+};
+
+const regions = [
+  {
+    id: "northwest",
+    name: "Northwest Reach",
+    shortName: "北西辺境",
+    faction: "blue",
+    garrison: 18,
+    production: 7,
+    points: [[0.07, 0.14], [0.26, 0.08], [0.39, 0.14], [0.36, 0.28], [0.2, 0.31], [0.08, 0.26]],
+  },
+  {
+    id: "north",
+    name: "Northern Union",
+    shortName: "北方連合",
+    faction: "blue",
+    garrison: 23,
+    production: 9,
+    points: [[0.26, 0.08], [0.48, 0.04], [0.68, 0.08], [0.86, 0.14], [0.83, 0.27], [0.63, 0.3], [0.47, 0.27], [0.36, 0.28], [0.39, 0.14]],
+  },
+  {
+    id: "northeast",
+    name: "Eastern Crown",
+    shortName: "東方王冠",
+    faction: "blue",
+    garrison: 16,
+    production: 8,
+    points: [[0.86, 0.14], [0.96, 0.19], [0.94, 0.37], [0.83, 0.43], [0.7, 0.37], [0.63, 0.3], [0.83, 0.27]],
+  },
+  {
+    id: "western-steppe",
+    name: "Western Steppe",
+    shortName: "西部草原",
+    faction: "blue",
+    garrison: 15,
+    production: 6,
+    points: [[0.08, 0.26], [0.2, 0.31], [0.36, 0.28], [0.47, 0.4], [0.39, 0.54], [0.19, 0.52], [0.06, 0.42]],
+  },
+  {
+    id: "central",
+    name: "Central Corridor",
+    shortName: "中央回廊",
+    faction: "blue",
+    garrison: 20,
+    production: 12,
+    points: [[0.36, 0.28], [0.47, 0.27], [0.63, 0.3], [0.7, 0.37], [0.61, 0.51], [0.45, 0.56], [0.39, 0.54], [0.47, 0.4]],
+  },
+  {
+    id: "eastern-border",
+    name: "Eastern Borderlands",
+    shortName: "東部国境",
+    faction: "red",
+    garrison: 14,
+    production: 7,
+    points: [[0.7, 0.37], [0.83, 0.43], [0.9, 0.56], [0.77, 0.66], [0.62, 0.59], [0.61, 0.51]],
+  },
+  {
+    id: "heartland",
+    name: "Crimson Heartland",
+    shortName: "紅の中原",
+    faction: "red",
+    garrison: 22,
+    production: 11,
+    points: [[0.45, 0.56], [0.61, 0.51], [0.62, 0.59], [0.56, 0.73], [0.39, 0.7], [0.32, 0.6]],
+  },
+  {
+    id: "pink-coast",
+    name: "Rose Coast",
+    shortName: "桃色沿岸",
+    faction: "pink",
+    garrison: 10,
+    production: 5,
+    points: [[0.77, 0.66], [0.9, 0.56], [0.96, 0.71], [0.9, 0.86], [0.7, 0.82], [0.64, 0.72]],
+  },
+  {
+    id: "southern-plains",
+    name: "Southern Plains",
+    shortName: "南部平原",
+    faction: "red",
+    garrison: 17,
+    production: 8,
+    points: [[0.19, 0.52], [0.39, 0.54], [0.45, 0.56], [0.32, 0.6], [0.39, 0.7], [0.25, 0.78], [0.11, 0.67]],
+  },
+  {
+    id: "south-coast",
+    name: "Southern Coast",
+    shortName: "南岸連邦",
+    faction: "red",
+    garrison: 12,
+    production: 6,
+    points: [[0.39, 0.7], [0.56, 0.73], [0.64, 0.72], [0.7, 0.82], [0.55, 0.9], [0.33, 0.84], [0.25, 0.78]],
+  },
+  {
+    id: "island-chain",
+    name: "Island Chain",
+    shortName: "島嶼戦線",
+    faction: "pink",
+    garrison: 9,
+    production: 4,
+    points: [[0.96, 0.71], [0.98, 0.84], [0.91, 0.96], [0.78, 0.94], [0.7, 0.82], [0.9, 0.86]],
+  },
+  {
+    id: "frontier-isle",
+    name: "Frontier Isle",
+    shortName: "前線島",
+    faction: "neutral",
+    garrison: 6,
+    production: 3,
+    points: [[0.42, 0.78], [0.52, 0.79], [0.56, 0.9], [0.5, 0.98], [0.42, 0.92]],
+  },
+];
+
+const units = [
+  { id: "blue-1", faction: "blue", x: 0.28, y: 0.34, strength: 12, maxStrength: 12, style: "visor", target: null, pulse: 0 },
+  { id: "blue-2", faction: "blue", x: 0.39, y: 0.42, strength: 12, maxStrength: 12, style: "visor", target: null, pulse: 1.4 },
+  { id: "blue-3", faction: "blue", x: 0.55, y: 0.27, strength: 12, maxStrength: 12, style: "visor", target: null, pulse: 2.1 },
+  { id: "red-1", faction: "red", x: 0.62, y: 0.43, strength: 12, maxStrength: 12, style: "cap", target: null, pulse: 0.8 },
+  { id: "red-2", faction: "red", x: 0.53, y: 0.63, strength: 12, maxStrength: 12, style: "cap", target: null, pulse: 2.5 },
+  { id: "red-3", faction: "red", x: 0.73, y: 0.75, strength: 12, maxStrength: 12, style: "cap", target: null, pulse: 1.2 },
+  { id: "neutral-1", faction: "neutral", x: 0.78, y: 0.55, strength: 12, maxStrength: 12, style: "plain", target: null, pulse: 2.8 },
+  { id: "neutral-2", faction: "neutral", x: 0.84, y: 0.68, strength: 12, maxStrength: 12, style: "plain", target: null, pulse: 0.2 },
+];
+
+function cloneRegion(region) {
+  return { ...region, points: region.points.map(([x, y]) => [x, y]) };
+}
+
+function cloneUnit(unit) {
+  return {
+    ...unit,
+    target: unit.target ? { ...unit.target } : null,
+    patrolCenter: unit.patrolCenter ? { ...unit.patrolCenter } : null,
+  };
+}
+
+const initialRegions = regions.map(cloneRegion);
+const initialUnits = units.map(cloneUnit);
+
+const view = { width: 0, height: 0 };
+let lastTime = performance.now();
+let toastTimeout = null;
+
+function resizeCanvas() {
+  const rect = stage.getBoundingClientRect();
+  state.dpr = Math.min(window.devicePixelRatio || 1, 2);
+  view.width = Math.max(320, rect.width);
+  view.height = Math.max(450, rect.height);
+  canvas.width = Math.floor(view.width * state.dpr);
+  canvas.height = Math.floor(view.height * state.dpr);
+  canvas.style.width = `${view.width}px`;
+  canvas.style.height = `${view.height}px`;
+  state.width = view.width;
+  state.height = view.height;
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function getRegion(id) {
+  return regions.find((region) => region.id === id);
+}
+
+function regionCenter(region) {
+  const points = region.points;
+  const total = points.reduce((result, point) => ({ x: result.x + point[0], y: result.y + point[1] }), { x: 0, y: 0 });
+  return { x: total.x / points.length, y: total.y / points.length };
+}
+
+function screenPoint(point) {
+  const centerX = view.width / 2;
+  const centerY = view.height / 2;
+  return {
+    x: centerX + (point[0] * view.width - centerX) * state.zoom + state.panX,
+    y: centerY + (point[1] * view.height - centerY) * state.zoom + state.panY,
+  };
+}
+
+function worldPointFromScreen(x, y) {
+  const centerX = view.width / 2;
+  const centerY = view.height / 2;
+  return [
+    (centerX + (x - centerX - state.panX) / state.zoom) / view.width,
+    (centerY + (y - centerY - state.panY) / state.zoom) / view.height,
+  ];
+}
+
+function pathForPoints(points) {
+  ctx.beginPath();
+  points.forEach((point, index) => {
+    const screen = screenPoint(point);
+    if (index === 0) ctx.moveTo(screen.x, screen.y);
+    else ctx.lineTo(screen.x, screen.y);
+  });
+  ctx.closePath();
+}
+
+function drawBackground() {
+  const gradient = ctx.createLinearGradient(0, 0, 0, view.height);
+  gradient.addColorStop(0, "#f6f8fb");
+  gradient.addColorStop(1, "#e4e9f0");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, view.width, view.height);
+
+  ctx.save();
+  ctx.globalAlpha = 0.32;
+  ctx.strokeStyle = "#c5cedb";
+  ctx.lineWidth = 1;
+  for (let x = -view.height; x < view.width + view.height; x += 44) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x + view.height * 0.34, view.height);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawSeaDetails() {
+  ctx.save();
+  ctx.globalAlpha = 0.26;
+  ctx.fillStyle = "#9eacbf";
+  ctx.font = "800 10px Inter, sans-serif";
+  ctx.letterSpacing = "0.2em";
+  ctx.fillText("EASTERN OCEAN", view.width * 0.77, view.height * 0.18);
+  ctx.fillText("SOUTHERN SEA", view.width * 0.56, view.height * 0.95);
+  ctx.restore();
+}
+
+function drawRegions() {
+  regions.forEach((region) => {
+    const palette = COLORS[region.faction];
+    pathForPoints(region.points);
+    ctx.fillStyle = palette.territory;
+    ctx.fill();
+
+    const selected = region.id === state.selectedRegionId;
+    ctx.lineWidth = selected ? 4 : 2;
+    ctx.strokeStyle = selected ? "#fff" : region.faction === "blue" ? "#aebdce" : "rgba(255, 255, 255, 0.9)";
+    ctx.shadowColor = selected ? "rgba(36, 76, 134, 0.35)" : "transparent";
+    ctx.shadowBlur = selected ? 12 : 0;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    const center = screenPoint(regionCenter(region));
+    ctx.save();
+    ctx.globalAlpha = selected ? 0.55 : 0.2;
+    ctx.fillStyle = palette.territoryDark;
+    ctx.beginPath();
+    ctx.arc(center.x, center.y, Math.max(18, view.width * 0.017), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    if (state.zoom > 0.94) {
+      ctx.save();
+      ctx.fillStyle = region.faction === "blue" || region.faction === "neutral" ? "#6e7c91" : "rgba(255,255,255,0.7)";
+      ctx.font = `800 ${clamp(view.width * 0.009, 8, 12)}px Inter, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.fillText(region.shortName, center.x, center.y + view.height * 0.046);
+      ctx.restore();
+    }
+  });
+}
+
+function drawFrontLines() {
+  const lines = [
+    [[0.53, 0.35], [0.62, 0.59]],
+    [[0.39, 0.54], [0.56, 0.73]],
+    [[0.62, 0.59], [0.77, 0.66]],
+    [[0.65, 0.18], [0.83, 0.43]],
+  ];
+  ctx.save();
+  ctx.setLineDash([7, 7]);
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = "rgba(114, 79, 85, 0.27)";
+  lines.forEach(([start, end]) => {
+    const a = screenPoint(start);
+    const b = screenPoint(end);
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+
+function drawFlag(x, y, color, scale) {
+  ctx.save();
+  ctx.lineWidth = Math.max(1.2, scale * 0.08);
+  ctx.strokeStyle = "#1d2536";
+  ctx.beginPath();
+  ctx.moveTo(x, y - scale * 0.9);
+  ctx.lineTo(x, y + scale * 0.65);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x, y - scale * 0.88);
+  ctx.lineTo(x + scale * 0.66, y - scale * 0.67);
+  ctx.lineTo(x, y - scale * 0.42);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawUnit(unit, time) {
+  const point = screenPoint([unit.x, unit.y]);
+  const scale = clamp(view.width * 0.021, 15, 25) * (state.zoom > 1 ? 1.07 : 1);
+  const palette = COLORS[unit.faction];
+  const bob = state.motion ? Math.sin(time * 2.6 + unit.pulse) * 1.8 : 0;
+  const y = point.y + bob;
+  const battleJitter = unit.inBattle && state.motion ? Math.sin(time * 24 + unit.pulse) * 2.2 : 0;
+
+  ctx.save();
+  ctx.translate(battleJitter, 0);
+
+  ctx.save();
+  ctx.globalAlpha = 0.22;
+  ctx.fillStyle = "#27334b";
+  ctx.beginPath();
+  ctx.ellipse(point.x, y + scale * 0.9, scale * 0.8, scale * 0.25, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  drawFlag(point.x + scale * 0.72, y - scale * 0.2, palette.flag, scale * 0.75);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(point.x, y, scale, 0, Math.PI * 2);
+  ctx.fillStyle = palette.unit;
+  ctx.fill();
+  ctx.lineWidth = Math.max(1.5, scale * 0.1);
+  ctx.strokeStyle = "#222b3d";
+  ctx.stroke();
+
+  if (unit.faction === "blue") {
+    ctx.fillStyle = "#d94f58";
+    ctx.beginPath();
+    ctx.arc(point.x, y, scale * 0.23, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = Math.max(1, scale * 0.05);
+    ctx.stroke();
+  } else if (unit.faction === "red") {
+    ctx.fillStyle = "#ffd75d";
+    ctx.beginPath();
+    ctx.moveTo(point.x - scale * 0.86, y - scale * 0.54);
+    ctx.lineTo(point.x, y - scale * 1.13);
+    ctx.lineTo(point.x + scale * 0.86, y - scale * 0.54);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  } else if (unit.faction === "pink") {
+    ctx.fillStyle = "#ec5461";
+    ctx.fillRect(point.x - scale * 0.83, y - scale * 0.12, scale * 1.66, scale * 0.28);
+  }
+
+  const eyeY = y - scale * 0.13;
+  const eyeOffset = scale * 0.39;
+  ctx.fillStyle = "#fff";
+  ctx.beginPath();
+  ctx.arc(point.x - eyeOffset, eyeY, scale * 0.21, 0, Math.PI * 2);
+  ctx.arc(point.x + eyeOffset, eyeY, scale * 0.21, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#1c2334";
+  ctx.beginPath();
+  ctx.arc(point.x - eyeOffset, eyeY, scale * 0.1, 0, Math.PI * 2);
+  ctx.arc(point.x + eyeOffset, eyeY, scale * 0.1, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#1c2334";
+  ctx.lineWidth = Math.max(1, scale * 0.055);
+  ctx.beginPath();
+  ctx.arc(point.x, y + scale * 0.13, scale * 0.25, 0.1, Math.PI - 0.1);
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.save();
+  ctx.font = `900 ${clamp(scale * 0.62, 10, 14)}px Inter, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "rgba(255,255,255,0.9)";
+  ctx.strokeText(String(unit.strength), point.x, y + scale * 1.6);
+  ctx.fillStyle = "#fff";
+  ctx.fillText(String(unit.strength), point.x, y + scale * 1.6);
+  ctx.restore();
+
+  if (unit.inBattle) {
+    ctx.save();
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = "#ffcf56";
+    ctx.strokeStyle = "#713b3f";
+    ctx.lineWidth = 2;
+    ctx.font = `900 ${clamp(scale * 0.72, 12, 17)}px Inter, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.strokeText("⚔", point.x, y - scale * 1.2);
+    ctx.fillText("⚔", point.x, y - scale * 1.2);
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+function drawOrderLine(unit, target, active = false) {
+  const start = screenPoint([unit.x, unit.y]);
+  const end = screenPoint([target.x, target.y]);
+  const angle = Math.atan2(end.y - start.y, end.x - start.x);
+  const color = unit.faction === "blue" ? "rgba(79, 96, 121, 0.66)" : "rgba(178, 61, 75, 0.66)";
+
+  ctx.save();
+  ctx.globalAlpha = active ? 0.95 : 0.55;
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = active ? 3 : 1.7;
+  ctx.setLineDash(active ? [8, 5] : [5, 7]);
+  ctx.beginPath();
+  ctx.moveTo(start.x, start.y);
+  ctx.lineTo(end.x, end.y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(end.x, end.y);
+  ctx.lineTo(end.x - Math.cos(angle - 0.5) * 10, end.y - Math.sin(angle - 0.5) * 10);
+  ctx.lineTo(end.x - Math.cos(angle + 0.5) * 10, end.y - Math.sin(angle + 0.5) * 10);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawOrders() {
+  units.forEach((unit) => {
+    if (unit.target && !unit.arrived) drawOrderLine(unit, unit.target);
+  });
+
+  if (dragState.active && dragState.sourceUnit && dragState.currentPoint) {
+    drawOrderLine(dragState.sourceUnit, dragState.currentPoint, true);
+    const point = screenPoint([dragState.currentPoint.x, dragState.currentPoint.y]);
+    ctx.save();
+    ctx.globalAlpha = 0.9;
+    ctx.strokeStyle = "#2c5a9f";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, clamp(view.width * 0.021, 17, 27), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function drawBattleEffects() {
+  state.battles.forEach((battle) => {
+    const left = units.find((unit) => unit.id === battle.leftId);
+    const right = units.find((unit) => unit.id === battle.rightId);
+    if (!left || !right) return;
+
+    const center = screenPoint([(left.x + right.x) / 2, (left.y + right.y) / 2]);
+    const pulse = 1 + Math.sin(state.elapsed * 10 + battle.phase) * 0.08;
+    const radius = clamp(view.width * 0.032, 25, 42) * pulse;
+
+    ctx.save();
+    ctx.globalAlpha = 0.18;
+    ctx.fillStyle = "#f2a536";
+    ctx.beginPath();
+    ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 0.82;
+    ctx.strokeStyle = "#db7b31";
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.strokeStyle = "#b9474c";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(center.x - 8, center.y - 8);
+    ctx.lineTo(center.x + 8, center.y + 8);
+    ctx.moveTo(center.x + 8, center.y - 8);
+    ctx.lineTo(center.x - 8, center.y + 8);
+    ctx.stroke();
+    ctx.font = "900 9px Inter, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#8b3c45";
+    ctx.fillText("BATTLE", center.x, center.y + radius + 13);
+    ctx.restore();
+  });
+}
+
+function drawSelectionMarker() {
+  if (!state.selectedRegionId) return;
+  const region = getRegion(state.selectedRegionId);
+  if (!region) return;
+  const center = screenPoint(regionCenter(region));
+  const radius = clamp(view.width * 0.023, 22, 34) + Math.sin(state.elapsed * 4) * 2;
+  ctx.save();
+  ctx.globalAlpha = 0.75;
+  ctx.strokeStyle = "#fff";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 4]);
+  ctx.beginPath();
+  ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function render() {
+  ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+  ctx.clearRect(0, 0, view.width, view.height);
+  drawBackground();
+  drawSeaDetails();
+  drawRegions();
+  drawFrontLines();
+  drawOrders();
+  drawBattleEffects();
+  units.forEach((unit) => drawUnit(unit, state.elapsed));
+  drawSelectionMarker();
+}
+
+function distance(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function moveUnit(unit, dt) {
+  if (unit.arrived && unit.patrolCenter) {
+    const patrolSpeed = unit.inBattle ? 0.85 : 0.38;
+    unit.orbitAngle += patrolSpeed * dt;
+    const patrolRadius = unit.inBattle ? 0.012 : 0.019;
+    unit.x = clamp(unit.patrolCenter.x + Math.cos(unit.orbitAngle) * patrolRadius, 0.02, 0.98);
+    unit.y = clamp(unit.patrolCenter.y + Math.sin(unit.orbitAngle) * patrolRadius * 0.72, 0.03, 0.98);
+    return;
+  }
+
+  if (!unit.target) return;
+  const target = unit.target;
+  const dx = target.x - unit.x;
+  const dy = target.y - unit.y;
+  const distanceToTarget = Math.hypot(dx, dy);
+  const speed = unit.faction === "blue" ? 0.045 : 0.035;
+  if (distanceToTarget < speed * dt) {
+    unit.x = target.x;
+    unit.y = target.y;
+    unit.target = null;
+    unit.arrived = true;
+    unit.patrolCenter = { x: target.x, y: target.y };
+    unit.orbitAngle = Math.random() * Math.PI * 2;
+    onUnitArrived(unit);
+    return;
+  }
+  unit.x += (dx / distanceToTarget) * speed * dt;
+  unit.y += (dy / distanceToTarget) * speed * dt;
+}
+
+function ensureDefender(region, attackerFaction) {
+  if (region.faction === attackerFaction) return;
+  const center = regionCenter(region);
+  const alreadyPresent = units.some((unit) => unit.faction === region.faction && (unit.targetRegionId === region.id || distance(unit, center) < 0.06));
+  if (alreadyPresent) return;
+
+  const defender = createUnit(region.faction, region.id);
+  if (!defender) return;
+  defender.targetRegionId = region.id;
+  defender.arrived = true;
+  defender.patrolCenter = center;
+  defender.orbitAngle = Math.random() * Math.PI * 2;
+  defender.strength = Math.min(defender.maxStrength, Math.max(4, Math.ceil(region.garrison / 2)));
+}
+
+function onUnitArrived(unit) {
+  if (!unit.targetRegionId) return;
+  const region = getRegion(unit.targetRegionId);
+  if (!region) return;
+
+  if (unit.arrivalResolved) return;
+  unit.arrivalResolved = true;
+
+  if (unit.faction === "blue" && region.faction !== "blue") {
+    ensureDefender(region, unit.faction);
+    region.garrison -= Math.max(2, Math.round(unit.strength / 3));
+    unit.strength -= 2;
+    addEvent(`${region.shortName}へ到着。敵部隊と交戦を開始しました`);
+  }
+
+  if (unit.faction === "red" && region.faction === "blue") {
+    ensureDefender(region, unit.faction);
+    region.garrison = Math.max(0, region.garrison - 2);
+    addEvent(`${region.shortName}へ敵部隊が到着。防衛戦が始まりました`);
+  }
+  unit.strength = Math.min(unit.maxStrength, Math.max(3, unit.strength));
+}
+
+function completeCapture(winner, loser) {
+  const region = winner.targetRegionId ? getRegion(winner.targetRegionId) : null;
+  if (!region || region.faction === winner.faction || loser.faction !== region.faction) return;
+
+  region.faction = winner.faction;
+  region.garrison = Math.max(5, winner.strength);
+  winner.arrived = true;
+  winner.patrolCenter = regionCenter(region);
+  winner.arrivalResolved = true;
+  showToast(`${region.name}を制圧しました`);
+  addEvent(`${region.shortName}が${winner.faction === "blue" ? "White Union" : "敵勢力"}の支配下に入りました`);
+}
+
+function updateBattles(dt) {
+  const activeKeys = new Set();
+  units.forEach((unit) => { unit.inBattle = false; });
+
+  for (let leftIndex = 0; leftIndex < units.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < units.length; rightIndex += 1) {
+      const left = units[leftIndex];
+      const right = units[rightIndex];
+      if (left.faction === right.faction || distance(left, right) > 0.055) continue;
+
+      const key = [left.id, right.id].sort().join("::");
+      activeKeys.add(key);
+      left.inBattle = true;
+      right.inBattle = true;
+
+      let battle = state.battles.get(key);
+      if (!battle) {
+        battle = { leftId: left.id, rightId: right.id, cooldown: 0.2, phase: Math.random() * 6, notified: false };
+        state.battles.set(key, battle);
+      }
+      battle.cooldown -= dt;
+      if (battle.cooldown > 0) continue;
+
+      battle.cooldown = 0.72;
+      // Combat drain is slightly greater than local recovery so battles can resolve.
+      left.strength -= Math.max(2, Math.ceil(getUnitProduction(left) * 0.75) + 1);
+      right.strength -= Math.max(2, Math.ceil(getUnitProduction(right) * 0.75) + 1);
+      battle.phase += 0.9;
+      if (!battle.notified) {
+        addEvent("前線で戦闘が発生しました");
+        battle.notified = true;
+      }
+
+      if (left.strength <= 0 && right.strength > 0) completeCapture(right, left);
+      if (right.strength <= 0 && left.strength > 0) completeCapture(left, right);
+    }
+  }
+
+  state.battles.forEach((battle, key) => {
+    if (!activeKeys.has(key)) state.battles.delete(key);
+  });
+}
+
+function updateUnits(dt) {
+  units.forEach((unit) => moveUnit(unit, dt));
+  updateBattles(dt);
+
+  for (let index = units.length - 1; index >= 0; index -= 1) {
+    if (units[index].strength <= 0) units.splice(index, 1);
+  }
+
+  if (!state.defeated && !units.some((unit) => unit.faction === "blue")) triggerDefeat();
+}
+
+function nearestUnit(faction, target) {
+  return units
+    .filter((unit) => unit.faction === faction)
+    .sort((a, b) => distance(a, target) - distance(b, target))[0];
+}
+
+function createUnit(faction, regionId, targetRegionId = null) {
+  const region = getRegion(regionId);
+  if (!region) return null;
+  const center = regionCenter(region);
+  const unit = {
+    id: `${faction}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    faction,
+    x: center.x + (Math.random() - 0.5) * 0.025,
+    y: center.y + (Math.random() - 0.5) * 0.025,
+    strength: 12,
+    maxStrength: 12,
+    style: faction === "blue" ? "visor" : faction === "red" ? "cap" : "plain",
+    target: null,
+    targetRegionId,
+    arrived: false,
+    patrolCenter: null,
+    orbitAngle: 0,
+    arrivalResolved: false,
+    inBattle: false,
+    pulse: Math.random() * 4,
+  };
+  if (targetRegionId) {
+    const target = regionCenter(getRegion(targetRegionId));
+    unit.target = target;
+  }
+  units.push(unit);
+  return unit;
+}
+
+function runAi(dt) {
+  state.aiTimer -= dt;
+  if (state.aiTimer > 0) return;
+  state.aiTimer = 3.8 + Math.random() * 2.6;
+
+  const targets = regions.filter((region) => region.faction === "blue");
+  const redRegions = regions.filter((region) => region.faction === "red");
+  const source = redRegions[Math.floor(Math.random() * redRegions.length)] || regions.find((region) => region.faction === "red");
+  const target = targets[Math.floor(Math.random() * targets.length)];
+  if (!source || !target) return;
+
+  const existing = units.find((unit) => unit.faction === "red" && unit.targetRegionId === target.id);
+  if (!existing) {
+    createUnit("red", source.id, target.id);
+    addEvent(`${source.shortName}から敵部隊が移動を開始しました`);
+  }
+}
+
+function regionForUnit(unit) {
+  const containingRegion = [...regions].reverse().find((region) => pointInPolygon([unit.x, unit.y], region.points));
+  return containingRegion || (unit.targetRegionId ? getRegion(unit.targetRegionId) : null);
+}
+
+function getUnitProduction(unit) {
+  return regionForUnit(unit)?.production ?? 1;
+}
+
+function updateStrength(dt) {
+  state.recoveryTimer += dt;
+  while (state.recoveryTimer >= 1) {
+    units.forEach((unit) => {
+      const maxStrength = unit.maxStrength || 12;
+      unit.strength = Math.min(maxStrength, unit.strength + getUnitProduction(unit));
+    });
+    state.recoveryTimer -= 1;
+  }
+}
+
+function update(dt) {
+  const scaledDt = dt * state.speed;
+  state.elapsed += scaledDt;
+  updateStrength(scaledDt);
+  updateUnits(scaledDt);
+  runAi(scaledDt);
+  state.toastTimer = Math.max(0, state.toastTimer - dt);
+
+  if (state.toastTimer === 0) ui.toast.classList.remove("is-visible");
+}
+
+function pointInPolygon(point, polygon) {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i][0];
+    const yi = polygon[i][1];
+    const xj = polygon[j][0];
+    const yj = polygon[j][1];
+    const intersect = yi > point[1] !== yj > point[1] && point[0] < ((xj - xi) * (point[1] - yi)) / (yj - yi) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function selectRegion(region) {
+  state.selectedRegionId = region?.id || null;
+  updateSelectedPanel();
+  render();
+}
+
+function regionHasBattle(region) {
+  return [...state.battles.values()].some((battle) => {
+    const left = units.find((unit) => unit.id === battle.leftId);
+    const right = units.find((unit) => unit.id === battle.rightId);
+    return [left, right].some((unit) => unit?.targetRegionId === region.id);
+  });
+}
+
+function updateSelectedPanel() {
+  const region = getRegion(state.selectedRegionId);
+  if (!region) {
+    ui.panel.classList.remove("has-selection");
+    ui.factionDot.className = "faction-dot";
+    ui.regionName.textContent = "マップをクリック";
+    ui.regionStatus.textContent = "領土を選択すると作戦情報が表示されます";
+    ui.garrison.textContent = "—";
+    ui.production.textContent = "—";
+    ui.threat.textContent = "—";
+    return;
+  }
+
+  ui.panel.classList.add("has-selection");
+  ui.factionDot.className = `faction-dot ${region.faction === "pink" ? "neutral" : region.faction}`;
+  ui.regionName.textContent = region.name;
+  const battleActive = regionHasBattle(region);
+  ui.regionStatus.textContent = battleActive ? "⚔ 戦闘中 — 部隊が交戦しています" : region.faction === "blue" ? "White Unionの支配領域" : region.faction === "red" ? "敵対勢力が展開中" : "勢力未確定の中立地域";
+  ui.garrison.textContent = region.garrison;
+  ui.production.textContent = `+${region.production}/秒`;
+  ui.threat.textContent = battleActive ? "交戦中" : region.faction === "blue" ? "安定" : region.faction === "red" ? "高" : "警戒";
+}
+
+function showToast(message) {
+  ui.toast.textContent = message;
+  ui.toast.classList.add("is-visible");
+  state.toastTimer = 2.6;
+}
+
+function addEvent(message) {
+  if (!state.eventNotice) return;
+  const item = document.createElement("span");
+  item.className = "event-item";
+  item.textContent = message;
+  ui.eventFeed.prepend(item);
+  while (ui.eventFeed.children.length > 2) ui.eventFeed.lastElementChild.remove();
+  window.setTimeout(() => item.remove(), 6500);
+}
+
+function formatTime() {
+  const totalSeconds = Math.max(0, Math.floor(state.elapsed));
+  const day = Math.floor(totalSeconds / 90) + 1;
+  const daySeconds = totalSeconds % 90;
+  const minutes = String(Math.floor(daySeconds / 60)).padStart(2, "0");
+  const seconds = String(daySeconds % 60).padStart(2, "0");
+  return { day, text: `DAY ${String(day).padStart(2, "0")} · ${minutes}:${seconds}` };
+}
+
+function updateHud() {
+  const blueRegions = regions.filter((region) => region.faction === "blue").length;
+  const progress = Math.round((blueRegions / regions.length) * 100);
+  const time = formatTime();
+  ui.progress.textContent = `${Math.max(1, progress)}%`;
+  ui.gold.textContent = String(state.gold);
+  ui.day.textContent = String(time.day).padStart(2, "0");
+  ui.time.textContent = time.text;
+  ui.intel.textContent = String(state.intel);
+  ui.pause.classList.toggle("is-paused", state.paused);
+  ui.pause.textContent = state.paused ? "▶" : "Ⅱ";
+  updateSelectedPanel();
+}
+
+function triggerDefeat() {
+  if (state.defeated) return;
+  state.defeated = true;
+  state.paused = true;
+  state.gold += DEFEAT_GOLD_REWARD;
+  saveGold();
+  ui.gold.textContent = String(state.gold);
+  ui.defeatReward.textContent = `+${DEFEAT_GOLD_REWARD} GOLD`;
+  ui.defeatDialog?.showModal();
+}
+
+function restartGame() {
+  regions.splice(0, regions.length, ...initialRegions.map(cloneRegion));
+  units.splice(0, units.length, ...initialUnits.map(cloneUnit));
+  state.zoom = 1;
+  state.panX = 0;
+  state.panY = 0;
+  state.paused = false;
+  state.speed = 1;
+  state.elapsed = 0;
+  state.intel = 3;
+  state.selectedRegionId = null;
+  state.aiTimer = 3.2;
+  state.recoveryTimer = 0;
+  state.toastTimer = 0;
+  state.defeated = false;
+  state.battles.clear();
+  state.suppressNextClick = false;
+  dragState.active = false;
+  dragState.sourceUnit = null;
+  dragState.currentPoint = null;
+  dragState.targetRegion = null;
+  dragState.moved = false;
+  dragState.pointerId = null;
+  ui.eventFeed.replaceChildren();
+  ui.dispatchHint.classList.remove("is-hidden");
+  ui.defeatDialog?.close();
+  lastTime = performance.now();
+  updateHud();
+  render();
+  showToast("新しい作戦を開始しました");
+}
+
+function unitAtScreenPoint(x, y) {
+  const point = worldPointFromScreen(x, y);
+  return units
+    .filter((unit) => unit.faction === "blue")
+    .map((unit) => ({ unit, distance: distance(unit, { x: point[0], y: point[1] }) }))
+    .filter((entry) => entry.distance < 0.055)
+    .sort((left, right) => left.distance - right.distance)[0]?.unit || null;
+}
+
+function mapPointFromPointer(event) {
+  const rect = canvas.getBoundingClientRect();
+  const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
+  const point = worldPointFromScreen(x, y);
+  return { x: point[0], y: point[1], screenX: x, screenY: y };
+}
+
+function beginDispatch(event) {
+  if (event.pointerType === "mouse" && event.button !== 0) return;
+  const point = mapPointFromPointer(event);
+  const sourceUnit = unitAtScreenPoint(point.screenX, point.screenY);
+  if (!sourceUnit) return;
+
+  dragState.active = true;
+  dragState.sourceUnit = sourceUnit;
+  dragState.currentPoint = { x: point.x, y: point.y };
+  dragState.targetRegion = null;
+  dragState.moved = false;
+  dragState.pointerId = event.pointerId;
+  canvas.setPointerCapture?.(event.pointerId);
+  render();
+}
+
+function updateDispatch(event) {
+  if (!dragState.active || event.pointerId !== dragState.pointerId) return;
+  const point = mapPointFromPointer(event);
+  dragState.currentPoint = { x: point.x, y: point.y };
+  dragState.moved = dragState.moved || distance(dragState.sourceUnit, point) > 0.012;
+  dragState.targetRegion = [...regions].reverse().find((region) => pointInPolygon([point.x, point.y], region.points)) || null;
+  render();
+}
+
+function dispatchUnitToRegion(unit, region) {
+  if (unit.inBattle) {
+    showToast("戦闘中の部隊は移動できません");
+    return false;
+  }
+
+  const target = regionCenter(region);
+  unit.target = { x: target.x, y: target.y };
+  unit.targetRegionId = region.id;
+  unit.arrived = false;
+  unit.patrolCenter = null;
+  unit.arrivalResolved = false;
+  unit.orbitAngle = 0;
+  state.selectedRegionId = region.id;
+  ui.dispatchHint.classList.add("is-hidden");
+  addEvent(`白い部隊が${region.shortName}へ移動を開始しました`);
+  showToast(`${region.name}へ部隊を派遣しました`);
+  return true;
+}
+
+function endDispatch(event) {
+  if (!dragState.active || event.pointerId !== dragState.pointerId) return;
+  const sourceUnit = dragState.sourceUnit;
+  const targetRegion = dragState.targetRegion;
+  const wasDrag = dragState.moved;
+  dragState.active = false;
+  dragState.sourceUnit = null;
+  dragState.currentPoint = null;
+  dragState.targetRegion = null;
+  dragState.pointerId = null;
+  canvas.releasePointerCapture?.(event.pointerId);
+
+  if (wasDrag) {
+    state.suppressNextClick = true;
+    if (targetRegion) dispatchUnitToRegion(sourceUnit, targetRegion);
+    else showToast("目的地の領土の上で指を離してください");
+    updateSelectedPanel();
+    render();
+  }
+}
+
+function handleMapClick(event) {
+  if (state.suppressNextClick) {
+    state.suppressNextClick = false;
+    return;
+  }
+  const rect = canvas.getBoundingClientRect();
+  const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
+  const point = worldPointFromScreen(x, y);
+  const clicked = [...regions].reverse().find((region) => pointInPolygon(point, region.points));
+  selectRegion(clicked || null);
+  if (clicked) showToast(`${clicked.name}を選択しました`);
+}
+
+function setZoom(nextZoom) {
+  state.zoom = clamp(nextZoom, 0.82, 1.42);
+  render();
+}
+
+function resetMap() {
+  state.zoom = 1;
+  state.panX = 0;
+  state.panY = 0;
+  render();
+  showToast("マップを初期位置に戻しました");
+}
+
+function loop(now) {
+  const rawDt = Math.max(0, (now - lastTime) / 1000);
+  const dt = Math.min(rawDt, 0.06);
+  lastTime = now;
+  if (!state.paused) update(dt);
+  render();
+  updateHud();
+  requestAnimationFrame(loop);
+}
+
+ui.pause.addEventListener("click", () => {
+  state.paused = !state.paused;
+  showToast(state.paused ? "シミュレーションを一時停止しました" : "シミュレーションを再開しました");
+});
+
+document.querySelectorAll("[data-speed]").forEach((button) => {
+  button.addEventListener("click", () => {
+    state.speed = Number(button.dataset.speed);
+    document.querySelectorAll("[data-speed]").forEach((candidate) => candidate.classList.toggle("is-active", candidate === button));
+    showToast(`ゲーム速度を×${state.speed}に変更しました`);
+  });
+});
+
+canvas.addEventListener("pointerdown", beginDispatch);
+canvas.addEventListener("pointermove", updateDispatch);
+canvas.addEventListener("pointerup", endDispatch);
+canvas.addEventListener("pointercancel", endDispatch);
+canvas.addEventListener("click", handleMapClick);
+window.addEventListener("resize", () => {
+  resizeCanvas();
+  render();
+});
+
+document.querySelector("#zoomInButton").addEventListener("click", () => setZoom(state.zoom + 0.12));
+document.querySelector("#zoomOutButton").addEventListener("click", () => setZoom(state.zoom - 0.12));
+document.querySelector("#homeButton").addEventListener("click", resetMap);
+
+document.querySelector("#shopButton").addEventListener("click", () => showToast("ショップは現在準備中です"));
+document.querySelector("#intelButton").addEventListener("click", () => {
+  if (state.intel <= 0) {
+    showToast("情報ポイントがありません");
+    return;
+  }
+  state.intel -= 1;
+  const hostile = regions.find((region) => region.faction === "red" || region.faction === "pink");
+  if (hostile) showToast(`偵察結果：${hostile.shortName}の守備隊は${hostile.garrison}`);
+});
+
+const settingsDialog = document.querySelector("#settingsDialog");
+document.querySelector("#settingsButton").addEventListener("click", () => settingsDialog.showModal());
+document.querySelector("#restartButton").addEventListener("click", restartGame);
+ui.defeatDialog?.addEventListener("cancel", (event) => event.preventDefault());
+document.querySelector("#eventToggle").addEventListener("change", (event) => { state.eventNotice = event.target.checked; });
+document.querySelector("#motionToggle").addEventListener("change", (event) => { state.motion = event.target.checked; });
+
+resizeCanvas();
+updateSelectedPanel();
+updateHud();
+requestAnimationFrame(loop);

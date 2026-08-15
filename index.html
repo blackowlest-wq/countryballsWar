@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="国旗をモチーフにした部隊を率いて領土を広げる、オリジナルのリアルタイム戦略ゲーム試作"
+    />
+    <title>COUNTRYFRONTS — リアルタイム戦略</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="game-shell" id="gameShell">
+      <header class="topbar">
+        <div class="brand-block">
+          <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+          <div>
+            <p class="eyebrow">REAL-TIME WORLD STRATEGY</p>
+            <h1>COUNTRYFRONTS</h1>
+          </div>
+        </div>
+
+        <div class="topbar-center">
+          <div class="world-progress" title="現在の世界支配度">
+            <span class="globe-mark" aria-hidden="true">◉</span>
+            <div>
+              <span class="hud-label">世界支配度</span>
+              <strong id="progressValue">1%</strong>
+            </div>
+          </div>
+          <div class="mission-meter" aria-label="作戦進行度">
+            <span class="meter-segment is-filled"></span>
+            <span class="meter-segment is-filled"></span>
+            <span class="meter-segment"></span>
+            <span class="meter-chest" aria-hidden="true">▣</span>
+          </div>
+          <div class="gold-pill" title="Gold">
+            <span class="gold-icon" aria-hidden="true">◎</span>
+            <strong id="goldValue">0</strong>
+            <small>GOLD</small>
+          </div>
+        </div>
+
+        <div class="topbar-actions">
+          <span class="connection-badge"><i></i>LOCAL SIM</span>
+          <button class="icon-button" id="settingsButton" type="button" aria-label="設定を開く">⚙</button>
+        </div>
+      </header>
+
+      <section class="game-stage" id="gameStage" aria-label="戦場マップ">
+        <canvas id="mapCanvas" aria-label="リアルタイム戦場マップ"></canvas>
+
+        <div class="map-caption">
+          <span class="caption-dot"></span>
+          <span>アジア戦線 / DAY <strong id="dayValue">01</strong></span>
+        </div>
+
+        <div class="map-controls" aria-label="マップ操作">
+          <button class="map-control-button" id="homeButton" type="button" aria-label="マップを初期位置に戻す">⌂</button>
+          <div class="map-zoom-controls">
+            <button class="map-control-button" id="zoomInButton" type="button" aria-label="拡大する">＋</button>
+            <button class="map-control-button" id="zoomOutButton" type="button" aria-label="縮小する">−</button>
+          </div>
+        </div>
+
+        <div class="right-rail">
+          <button class="rail-card shop-card" id="shopButton" type="button">
+            <span class="rail-icon rail-icon-shop" aria-hidden="true">▤</span>
+            <span>SHOP</span>
+            <small>準備中</small>
+          </button>
+          <button class="rail-card intel-card" id="intelButton" type="button">
+            <span class="rail-icon rail-icon-intel" aria-hidden="true">⌁</span>
+            <span>INTEL</span>
+            <small id="intelValue">3</small>
+          </button>
+        </div>
+
+        <div class="dispatch-hint" id="dispatchHint" aria-live="polite">
+          <span class="dispatch-hint-icon" aria-hidden="true">↗</span>
+          <span><strong>白い部隊をドラッグ</strong><small>目的地へ派遣</small></span>
+        </div>
+
+        <aside class="territory-panel" id="territoryPanel" aria-live="polite">
+          <div class="panel-kicker">SELECTED TERRITORY</div>
+          <div class="territory-heading">
+            <span class="faction-dot" id="selectedFactionDot"></span>
+            <div>
+              <h2 id="selectedRegionName">マップをクリック</h2>
+              <p id="selectedRegionStatus">領土を選択すると作戦情報が表示されます</p>
+            </div>
+          </div>
+          <div class="territory-stats">
+            <div><span>守備隊</span><strong id="selectedGarrison">—</strong></div>
+            <div><span>生産力</span><strong id="selectedProduction">—</strong></div>
+            <div><span>戦況</span><strong id="selectedThreat">—</strong></div>
+          </div>
+          <div class="dispatch-note" id="dispatchNote">
+            <span class="dispatch-note-icon" aria-hidden="true">↗</span>
+            白い部隊をドラッグして、この地域へ派遣できます
+          </div>
+        </aside>
+
+        <div class="toast" id="toast" role="status" aria-live="polite"></div>
+        <div class="event-feed" id="eventFeed" aria-live="polite"></div>
+      </section>
+
+      <footer class="control-bar">
+        <div class="faction-summary">
+          <span class="faction-emblem faction-emblem-player" aria-hidden="true">✦</span>
+          <div>
+            <span class="hud-label">あなたの勢力</span>
+            <strong>White Union</strong>
+          </div>
+        </div>
+
+        <div class="simulation-controls">
+          <button class="pause-button" id="pauseButton" type="button" aria-label="一時停止">Ⅱ</button>
+          <span class="simulation-time" id="timeValue">DAY 01 · 00:00</span>
+          <div class="speed-buttons" aria-label="ゲーム速度">
+            <button type="button" data-speed="1" class="is-active">×1</button>
+            <button type="button" data-speed="2">×2</button>
+            <button type="button" data-speed="4">×4</button>
+          </div>
+        </div>
+
+        <div class="legend">
+          <span><i class="legend-dot player"></i>自軍（白）</span>
+          <span><i class="legend-dot red"></i>敵対勢力</span>
+          <span><i class="legend-dot neutral"></i>中立</span>
+        </div>
+      </footer>
+    </main>
+
+    <dialog class="settings-dialog" id="settingsDialog">
+      <form method="dialog">
+        <div class="dialog-heading">
+          <div>
+            <span class="panel-kicker">LOCAL SIMULATION</span>
+            <h2>設定</h2>
+          </div>
+          <button class="dialog-close" value="cancel" aria-label="閉じる">×</button>
+        </div>
+        <label class="setting-row">
+          <span>自動イベント通知</span>
+          <input id="eventToggle" type="checkbox" checked />
+        </label>
+        <label class="setting-row">
+          <span>簡易アニメーション</span>
+          <input id="motionToggle" type="checkbox" checked />
+        </label>
+        <p class="dialog-note">この試作はブラウザ内だけで動作します。セーブ機能は次の段階で追加します。</p>
+        <button class="primary-action" value="default">閉じる</button>
+      </form>
+    </dialog>
+
+    <dialog class="defeat-dialog" id="defeatDialog">
+      <div class="defeat-form">
+        <div class="defeat-emblem" aria-hidden="true">×</div>
+        <span class="panel-kicker">BATTLE LOST</span>
+        <h2>敗北しました</h2>
+        <p>すべての白い部隊が失われました。救済措置としてGoldを受け取れます。</p>
+        <strong class="defeat-reward" id="defeatReward">+100 GOLD</strong>
+        <button class="primary-action" id="restartButton" type="button">最初から始める</button>
+      </div>
+    </dialog>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
