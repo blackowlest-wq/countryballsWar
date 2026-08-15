@@ -64,6 +64,22 @@ const COLORS = {
   },
 };
 
+const UNIT_SPRITE_SOURCES = {
+  blue: "./assets/units/player-red-circle.png",
+  red: "./assets/units/enemy-china.png",
+  neutral: "./assets/units/enemy-korea.png",
+  pink: "./assets/units/enemy-korea.png",
+};
+
+const UNIT_SPRITES = Object.fromEntries(
+  Object.entries(UNIT_SPRITE_SOURCES).map(([faction, source]) => {
+    const image = new Image();
+    image.decoding = "async";
+    image.src = source;
+    return [faction, image];
+  }),
+);
+
 const GOLD_STORAGE_KEY = "countryfronts.gold";
 const UPGRADES_STORAGE_KEY = "countryfronts.upgrades";
 const DEFEAT_GOLD_REWARD = 100;
@@ -723,57 +739,65 @@ function drawUnit(unit, time) {
   ctx.fill();
   ctx.restore();
 
-  drawFlag(point.x + scale * 0.72, y - scale * 0.2, palette.flag, scale * 0.75);
+  const sprite = UNIT_SPRITES[unit.faction];
+  const spriteReady = Boolean(sprite?.complete && sprite.naturalWidth > 0);
+  if (spriteReady) {
+    const spriteSize = scale * 2.42;
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(sprite, point.x - spriteSize / 2, y - spriteSize / 2, spriteSize, spriteSize);
+  } else {
+    drawFlag(point.x + scale * 0.72, y - scale * 0.2, palette.flag, scale * 0.75);
 
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(point.x, y, scale, 0, Math.PI * 2);
-  ctx.fillStyle = palette.unit;
-  ctx.fill();
-  ctx.lineWidth = Math.max(1.5, scale * 0.1);
-  ctx.strokeStyle = "#222b3d";
-  ctx.stroke();
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(point.x, y, scale, 0, Math.PI * 2);
+    ctx.fillStyle = palette.unit;
+    ctx.fill();
+    ctx.lineWidth = Math.max(1.5, scale * 0.1);
+    ctx.strokeStyle = "#222b3d";
+    ctx.stroke();
 
-  if (unit.faction === "blue") {
-    ctx.fillStyle = "#d94f58";
+    if (unit.faction === "blue") {
+      ctx.fillStyle = "#d94f58";
+      ctx.beginPath();
+      ctx.arc(point.x, y, scale * 0.62, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = Math.max(1, scale * 0.05);
+      ctx.stroke();
+    } else if (unit.faction === "red") {
+      ctx.fillStyle = "#ffd75d";
+      ctx.beginPath();
+      ctx.moveTo(point.x - scale * 0.86, y - scale * 0.54);
+      ctx.lineTo(point.x, y - scale * 1.13);
+      ctx.lineTo(point.x + scale * 0.86, y - scale * 0.54);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    } else if (unit.faction === "pink") {
+      ctx.fillStyle = "#ec5461";
+      ctx.fillRect(point.x - scale * 0.83, y - scale * 0.12, scale * 1.66, scale * 0.28);
+    }
+
+    const eyeY = y - scale * 0.13;
+    const eyeOffset = scale * 0.39;
+    ctx.fillStyle = "#fff";
     ctx.beginPath();
-    ctx.arc(point.x, y, scale * 0.62, 0, Math.PI * 2);
+    ctx.arc(point.x - eyeOffset, eyeY, scale * 0.21, 0, Math.PI * 2);
+    ctx.arc(point.x + eyeOffset, eyeY, scale * 0.21, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = "#fff";
-    ctx.lineWidth = Math.max(1, scale * 0.05);
-    ctx.stroke();
-  } else if (unit.faction === "red") {
-    ctx.fillStyle = "#ffd75d";
+    ctx.fillStyle = "#1c2334";
     ctx.beginPath();
-    ctx.moveTo(point.x - scale * 0.86, y - scale * 0.54);
-    ctx.lineTo(point.x, y - scale * 1.13);
-    ctx.lineTo(point.x + scale * 0.86, y - scale * 0.54);
-    ctx.closePath();
+    ctx.arc(point.x - eyeOffset, eyeY, scale * 0.1, 0, Math.PI * 2);
+    ctx.arc(point.x + eyeOffset, eyeY, scale * 0.1, 0, Math.PI * 2);
     ctx.fill();
+    ctx.strokeStyle = "#1c2334";
+    ctx.lineWidth = Math.max(1, scale * 0.055);
+    ctx.beginPath();
+    ctx.arc(point.x, y + scale * 0.13, scale * 0.25, 0.1, Math.PI - 0.1);
     ctx.stroke();
-  } else if (unit.faction === "pink") {
-    ctx.fillStyle = "#ec5461";
-    ctx.fillRect(point.x - scale * 0.83, y - scale * 0.12, scale * 1.66, scale * 0.28);
+    ctx.restore();
   }
-
-  const eyeY = y - scale * 0.13;
-  const eyeOffset = scale * 0.39;
-  ctx.fillStyle = "#fff";
-  ctx.beginPath();
-  ctx.arc(point.x - eyeOffset, eyeY, scale * 0.21, 0, Math.PI * 2);
-  ctx.arc(point.x + eyeOffset, eyeY, scale * 0.21, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#1c2334";
-  ctx.beginPath();
-  ctx.arc(point.x - eyeOffset, eyeY, scale * 0.1, 0, Math.PI * 2);
-  ctx.arc(point.x + eyeOffset, eyeY, scale * 0.1, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = "#1c2334";
-  ctx.lineWidth = Math.max(1, scale * 0.055);
-  ctx.beginPath();
-  ctx.arc(point.x, y + scale * 0.13, scale * 0.25, 0.1, Math.PI - 0.1);
-  ctx.stroke();
-  ctx.restore();
 
   ctx.save();
   ctx.font = `900 ${clamp(scale * 0.62, 10, 14)}px Inter, sans-serif`;
