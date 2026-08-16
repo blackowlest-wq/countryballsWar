@@ -19,6 +19,14 @@
 
 ユニット画像は `assets/units` に収録したローカルアセットを使用しています。BGMや外部APIへの接続はありません。
 
+## 設計資料
+
+- [ゲーム設計仕様](./docs/game-design.md)
+- [ドメイン用語集](./CONTEXT.md)
+- [ADR: 静的PWA](./docs/adr/0001-static-single-player-pwa.md)
+- [ADR: リアルタイム道路侵攻](./docs/adr/0002-realtime-road-conquest-without-garrisons.md)
+- [ADR: 共有戦力による集団戦闘](./docs/adr/0003-shared-strength-group-combat.md)
+
 ## ローカル確認
 
 ビルドツール不要の静的サイトです。簡易サーバーを起動して `index.html` を開いてください。
