@@ -1,4 +1,4 @@
-const CACHE_NAME = "countryfronts-shell-v5";
+const CACHE_NAME = "countryfronts-shell-v7";
 
 const APP_SHELL = [
   "./",
@@ -10,6 +10,7 @@ const APP_SHELL = [
   "./src/config/map.js",
   "./src/config/scenario.js",
   "./src/config/game-config.js",
+  "./src/storage/persistent-state.js",
   "./manifest.webmanifest",
   "./assets/icons/icon-192.png",
   "./assets/icons/icon-512.png",

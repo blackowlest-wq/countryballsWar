@@ -1,4 +1,9 @@
 import { GAME_CONFIG, createRuntimeScenario } from "./config/game-config.js";
+import {
+  loadPersistentState,
+  resetPersistentState,
+  savePersistentState,
+} from "./storage/persistent-state.js";
 
 const canvas = document.querySelector("#mapCanvas");
 const ctx = canvas.getContext("2d");
@@ -36,6 +41,13 @@ const ui = {
   invasionAlert: document.querySelector("#invasionAlert"),
   invasionTarget: document.querySelector("#invasionTarget"),
   invasionCountdown: document.querySelector("#invasionCountdown"),
+  titleDialog: document.querySelector("#titleDialog"),
+  titleStart: document.querySelector("#titleStartButton"),
+  titleReset: document.querySelector("#titleResetButton"),
+  titleMessage: document.querySelector("#titleMessage"),
+  dataResetDialog: document.querySelector("#dataResetDialog"),
+  cancelDataReset: document.querySelector("#cancelDataResetButton"),
+  confirmDataReset: document.querySelector("#confirmDataResetButton"),
 };
 
 const BALANCE = GAME_CONFIG.balance;
@@ -75,47 +87,12 @@ const UNIT_SPRITES = Object.fromEntries(
   }),
 );
 
-const GOLD_STORAGE_KEY = "countryfronts.gold";
-const UPGRADES_STORAGE_KEY = "countryfronts.upgrades";
 const SHOP_ITEMS = BALANCE.economy.shopItems;
+const upgradeKeys = Object.keys(SHOP_ITEMS);
+const persistentState = loadPersistentState(undefined, upgradeKeys);
 
-function loadGold() {
-  try {
-    return Math.max(0, Number(window.localStorage.getItem(GOLD_STORAGE_KEY)) || 0);
-  } catch {
-    return 0;
-  }
-}
-
-function saveGold() {
-  try {
-    window.localStorage.setItem(GOLD_STORAGE_KEY, String(state.gold));
-  } catch {
-    // Local storage may be unavailable in private browsing; the session still works.
-  }
-}
-
-function loadUpgrades() {
-  const empty = Object.fromEntries(Object.keys(SHOP_ITEMS).map((key) => [key, 0]));
-  try {
-    const saved = JSON.parse(window.localStorage.getItem(UPGRADES_STORAGE_KEY) || "null");
-    const toLevel = (value) => {
-      if (typeof value === "boolean") return value ? 1 : 0;
-      const level = Number(value);
-      return Number.isFinite(level) ? Math.max(0, Math.floor(level)) : 0;
-    };
-    return Object.fromEntries(Object.keys(SHOP_ITEMS).map((key) => [key, toLevel(saved?.[key])]));
-  } catch {
-    return empty;
-  }
-}
-
-function saveUpgrades() {
-  try {
-    window.localStorage.setItem(UPGRADES_STORAGE_KEY, JSON.stringify(state.upgrades));
-  } catch {
-    // Local storage may be unavailable in private browsing; the session still works.
-  }
+function savePersistentProgress() {
+  savePersistentState(undefined, { gold: state.gold, upgrades: state.upgrades });
 }
 
 const state = {
@@ -128,8 +105,8 @@ const state = {
   paused: false,
   speed: 1,
   elapsed: 0,
-  gold: loadGold(),
-  upgrades: loadUpgrades(),
+  gold: persistentState.gold,
+  upgrades: persistentState.upgrades,
   intel: CLOCK_BALANCE.initialIntel,
   selectedRegionId: null,
   aiTimer: AI_BALANCE.initialDelaySeconds,
@@ -141,6 +118,7 @@ const state = {
   motion: true,
   defeated: false,
   cleared: false,
+  started: false,
   shopOpen: false,
   shopWasPaused: false,
   battles: new Map(),
@@ -1491,7 +1469,7 @@ function triggerDefeat() {
   state.defeated = true;
   state.paused = true;
   state.gold += DEFEAT_GOLD_REWARD;
-  saveGold();
+  savePersistentProgress();
   ui.gold.textContent = String(state.gold);
   ui.defeatReward.textContent = `+${DEFEAT_GOLD_REWARD} GOLD`;
   ui.defeatDialog?.showModal();
@@ -1504,7 +1482,7 @@ function triggerClear() {
   ui.clearDialog?.showModal();
 }
 
-function restartGame() {
+function restartGame({ announce = true } = {}) {
   regions.splice(0, regions.length, ...initialRegions.map(cloneRegion));
   setupInitialUnits();
   state.zoom = 1;
@@ -1522,6 +1500,7 @@ function restartGame() {
   state.toastTimer = 0;
   state.defeated = false;
   state.cleared = false;
+  state.started = true;
   state.shopOpen = false;
   state.battles.clear();
   state.suppressNextClick = false;
@@ -1539,7 +1518,7 @@ function restartGame() {
   lastTime = performance.now();
   updateHud();
   render();
-  showToast("新しい作戦を開始しました");
+  if (announce) showToast("新しい作戦を開始しました");
 }
 
 function getUpgradePrice(key) {
@@ -1581,8 +1560,7 @@ function purchaseUpgrade(key) {
 
   state.gold -= price;
   state.upgrades[key] = level + 1;
-  saveGold();
-  saveUpgrades();
+  savePersistentProgress();
   if (key === "armor") applyArmorUpgrade();
   updateShopDialog();
   updateHud();
@@ -1604,6 +1582,48 @@ function finishShop() {
   state.shopOpen = false;
   state.paused = state.shopWasPaused;
   updateHud();
+}
+
+function openTitleScreen() {
+  state.started = false;
+  state.paused = true;
+  if (!ui.titleDialog || ui.titleDialog.open) return;
+  ui.titleDialog.showModal();
+  requestAnimationFrame(() => ui.titleStart?.focus());
+}
+
+function closeTitleScreen() {
+  ui.titleDialog?.close();
+}
+
+function startFromTitle() {
+  restartGame();
+  closeTitleScreen();
+}
+
+function openDataResetDialog() {
+  if (!ui.dataResetDialog || ui.dataResetDialog.open) return;
+  ui.dataResetDialog.showModal();
+  requestAnimationFrame(() => ui.cancelDataReset?.focus());
+}
+
+function closeDataResetDialog(nextFocus = ui.titleReset) {
+  if (ui.dataResetDialog?.open) ui.dataResetDialog.close();
+  requestAnimationFrame(() => nextFocus?.focus());
+}
+
+function confirmPersistentDataReset() {
+  const clean = resetPersistentState(undefined, upgradeKeys);
+  state.gold = clean.gold;
+  state.upgrades = clean.upgrades;
+  restartGame({ announce: false });
+  state.started = false;
+  state.paused = true;
+  updateShopDialog();
+  updateHud();
+  render();
+  if (ui.titleMessage) ui.titleMessage.textContent = "データをリセットしました。";
+  closeDataResetDialog(ui.titleStart);
 }
 
 function unitAtScreenPoint(x, y) {
@@ -1738,7 +1758,7 @@ function loop(now) {
   const rawDt = Math.max(0, (now - lastTime) / 1000);
   const dt = Math.min(rawDt, CLOCK_BALANCE.maxFrameDeltaSeconds);
   lastTime = now;
-  if (!state.paused) update(dt);
+  if (state.started && !state.paused) update(dt);
   render();
   updateHud();
   requestAnimationFrame(loop);
@@ -1792,6 +1812,20 @@ const settingsDialog = document.querySelector("#settingsDialog");
 document.querySelector("#settingsButton").addEventListener("click", () => settingsDialog.showModal());
 document.querySelector("#restartButton").addEventListener("click", restartGame);
 document.querySelector("#clearRestartButton").addEventListener("click", restartGame);
+ui.titleStart?.addEventListener("click", startFromTitle);
+ui.titleReset?.addEventListener("click", openDataResetDialog);
+ui.titleDialog?.addEventListener("cancel", (event) => event.preventDefault());
+ui.cancelDataReset?.addEventListener("click", () => closeDataResetDialog());
+ui.confirmDataReset?.addEventListener("click", confirmPersistentDataReset);
+ui.dataResetDialog?.addEventListener("cancel", (event) => {
+  event.preventDefault();
+  closeDataResetDialog();
+});
+ui.dataResetDialog?.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  event.preventDefault();
+  closeDataResetDialog();
+});
 ui.defeatDialog?.addEventListener("cancel", (event) => event.preventDefault());
 ui.clearDialog?.addEventListener("cancel", (event) => event.preventDefault());
 document.querySelector("#eventToggle").addEventListener("change", (event) => { state.eventNotice = event.target.checked; });
@@ -1812,5 +1846,6 @@ updateShopDialog();
 resizeCanvas();
 updateSelectedPanel();
 updateHud();
+openTitleScreen();
 registerServiceWorker();
 requestAnimationFrame(loop);

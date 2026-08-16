@@ -152,6 +152,51 @@
       </footer>
     </main>
 
+    <dialog
+      class="title-dialog"
+      id="titleDialog"
+      aria-labelledby="titleDialogHeading"
+      aria-describedby="titleDialogDescription"
+    >
+      <div class="title-screen">
+        <div class="title-mark" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>
+        <p class="eyebrow">REAL-TIME WORLD STRATEGY</p>
+        <h2 id="titleDialogHeading">COUNTRYFRONTS</h2>
+        <p id="titleDialogDescription" class="title-description">
+          戦場を見渡し、部隊を派遣してすべての領土を制圧しよう。
+        </p>
+        <div class="title-actions">
+          <button class="primary-action title-start" id="titleStartButton" type="button">
+            スタート
+          </button>
+          <button class="title-reset" id="titleResetButton" type="button" aria-haspopup="dialog">
+            データをリセット
+          </button>
+        </div>
+        <p class="title-message" id="titleMessage" role="status" aria-live="polite"></p>
+      </div>
+    </dialog>
+
+    <dialog
+      class="data-reset-dialog"
+      id="dataResetDialog"
+      aria-labelledby="dataResetHeading"
+      aria-describedby="dataResetDescription"
+    >
+      <div class="data-reset-form">
+        <div class="danger-emblem" aria-hidden="true">!</div>
+        <span class="panel-kicker">DANGER ZONE</span>
+        <h2 id="dataResetHeading">データをリセットしますか？</h2>
+        <p id="dataResetDescription">保存済みのGoldと強化レベルがすべて0になります。この操作は取り消せません。</p>
+        <div class="data-reset-actions">
+          <button class="secondary-action" id="cancelDataResetButton" type="button">キャンセル</button>
+          <button class="danger-action" id="confirmDataResetButton" type="button">リセットする</button>
+        </div>
+      </div>
+    </dialog>
+
     <dialog class="settings-dialog" id="settingsDialog">
       <form method="dialog">
         <div class="dialog-heading">
@@ -169,7 +214,7 @@
           <span>簡易アニメーション</span>
           <input id="motionToggle" type="checkbox" checked />
         </label>
-        <p class="dialog-note">この試作はブラウザ内だけで動作します。セーブ機能は次の段階で追加します。</p>
+        <p class="dialog-note">Goldと強化はこのブラウザに保存されます。戦場の途中状態は保存されません。</p>
         <button class="primary-action" value="default">閉じる</button>
       </form>
     </dialog>

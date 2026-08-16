@@ -1186,6 +1186,236 @@ button:disabled {
   text-align: center;
 }
 
+.title-dialog {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  color: var(--ink);
+  border: 0;
+  background: transparent;
+}
+
+.title-dialog::backdrop {
+  background: rgba(18, 31, 55, 0.7);
+  backdrop-filter: blur(5px);
+}
+
+.title-screen {
+  display: grid;
+  width: min(480px, calc(100% - 32px));
+  min-height: min(560px, calc(100dvh - 32px));
+  margin: 16px auto;
+  align-content: center;
+  justify-items: center;
+  padding: 42px 28px 30px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(133, 184, 245, 0.36), transparent 44%),
+    linear-gradient(145deg, rgba(247, 250, 255, 0.98), rgba(220, 231, 247, 0.96));
+  box-shadow: 0 30px 100px rgba(11, 24, 48, 0.42);
+}
+
+.title-mark {
+  display: grid;
+  grid-template-columns: repeat(3, 13px);
+  align-items: end;
+  gap: 5px;
+  width: 58px;
+  height: 58px;
+  margin-bottom: 20px;
+  padding: 9px 8px;
+  border: 3px solid var(--ink);
+  border-radius: 16px 16px 8px 8px;
+  transform: skewY(-5deg);
+  background: #f4f7fb;
+  box-shadow: 5px 6px 0 rgba(23, 32, 52, 0.18);
+}
+
+.title-mark span {
+  display: block;
+  height: 23px;
+  border-radius: 5px 5px 2px 2px;
+  background: var(--blue);
+}
+
+.title-mark span:nth-child(2) {
+  height: 33px;
+  background: var(--red);
+}
+
+.title-mark span:nth-child(3) {
+  height: 17px;
+  background: var(--accent);
+}
+
+.title-screen .eyebrow {
+  color: var(--blue-deep);
+  font-size: 10px;
+}
+
+.title-screen h2 {
+  margin: 12px 0 0;
+  color: var(--ink);
+  font-size: clamp(30px, 8vw, 48px);
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+
+.title-description {
+  max-width: 290px;
+  margin: 18px 0 28px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.title-actions {
+  display: grid;
+  width: min(280px, 100%);
+  gap: 11px;
+}
+
+.title-start,
+.title-reset {
+  min-height: 48px;
+  width: 100%;
+}
+
+.title-start {
+  font-size: 14px;
+  letter-spacing: 0.08em;
+}
+
+.title-reset {
+  padding: 11px 16px;
+  color: #9b3942;
+  border: 1px solid #e5a5aa;
+  border-radius: 10px;
+  background: rgba(255, 245, 246, 0.86);
+  box-shadow: 0 3px 0 #d98991;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.title-reset:hover {
+  background: #fff0f1;
+  transform: translateY(-1px);
+}
+
+.title-reset:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #d98991;
+}
+
+.title-screen button:focus-visible {
+  outline: 4px solid rgba(41, 90, 161, 0.35);
+  outline-offset: 4px;
+}
+
+.title-reset:focus-visible {
+  outline-color: rgba(187, 63, 76, 0.35);
+}
+
+.title-message {
+  min-height: 18px;
+  margin: 18px 0 0;
+  color: #39734b;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.data-reset-dialog {
+  width: min(390px, calc(100% - 32px));
+  padding: 0;
+  color: var(--ink);
+  border: 0;
+  border-radius: 17px;
+  background: #fff;
+  box-shadow: 0 30px 90px rgba(22, 36, 63, 0.3);
+}
+
+.data-reset-dialog::backdrop {
+  background: rgba(39, 14, 18, 0.58);
+  backdrop-filter: blur(3px);
+}
+
+.data-reset-form {
+  display: grid;
+  justify-items: center;
+  padding: 25px 22px 21px;
+  text-align: center;
+}
+
+.danger-emblem {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  color: #fff;
+  border: 4px solid #ffd6d9;
+  border-radius: 50%;
+  background: #c34d59;
+  font-size: 25px;
+  font-weight: 950;
+}
+
+.data-reset-form h2 {
+  margin: 9px 0 0;
+  font-size: 20px;
+}
+
+.data-reset-form p {
+  margin: 10px 0 18px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.data-reset-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+  gap: 9px;
+}
+
+.secondary-action,
+.danger-action {
+  min-height: 40px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.secondary-action {
+  color: var(--ink);
+  border: 1px solid var(--line);
+  background: #f2f5f8;
+}
+
+.danger-action {
+  color: #fff;
+  background: #c34d59;
+  box-shadow: 0 3px 0 #913841;
+}
+
+.danger-action:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #913841;
+}
+
+.data-reset-dialog button:focus-visible {
+  outline: 4px solid rgba(187, 63, 76, 0.28);
+  outline-offset: 3px;
+}
+
 .settings-dialog {
   width: min(390px, calc(100% - 32px));
   padding: 0;
