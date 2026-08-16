@@ -22,6 +22,11 @@
 ## 設計資料
 
 - [ゲーム設計仕様](./docs/game-design.md)
+- [可変ゲーム設定ガイド](./docs/configuration/README.md)
+  - [勢力設定](./docs/configuration/factions.md)
+  - [マップ設定](./docs/configuration/map.md)
+  - [シナリオ設定](./docs/configuration/scenario.md)
+  - [バランス設定](./docs/configuration/balance.md)
 - [ドメイン用語集](./CONTEXT.md)
 - [ADR: 静的PWA](./docs/adr/0001-static-single-player-pwa.md)
 - [ADR: リアルタイム道路侵攻](./docs/adr/0002-realtime-road-conquest-without-garrisons.md)

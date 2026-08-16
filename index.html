@@ -71,7 +71,7 @@
 
         <div class="map-caption">
           <span class="caption-dot"></span>
-          <span>アジア戦線 / DAY <strong id="dayValue">01</strong></span>
+          <span><span id="mapName"></span> / DAY <strong id="dayValue">01</strong></span>
         </div>
 
         <div class="attack-guide" id="attackGuide" aria-live="polite">
@@ -130,7 +130,7 @@
           <span class="faction-emblem faction-emblem-player" aria-hidden="true">✦</span>
           <div>
             <span class="hud-label">あなたの勢力</span>
-            <strong>White Union</strong>
+            <strong id="footerPlayerFactionName"></strong>
           </div>
         </div>
 
@@ -190,7 +190,7 @@
         <div class="clear-emblem" aria-hidden="true">★</div>
         <span class="panel-kicker">MISSION COMPLETE</span>
         <h2>クリア！</h2>
-        <p>すべての領土をWhite Unionが制圧しました。</p>
+        <p>すべての領土を<span id="clearPlayerFactionName"></span>が制圧しました。</p>
         <button class="primary-action" id="clearRestartButton" type="button">もう一度プレイ</button>
       </div>
     </dialog>

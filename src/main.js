@@ -1,8 +1,11 @@
+import { GAME_CONFIG, createRuntimeScenario } from "./config/game-config.js";
+
 const canvas = document.querySelector("#mapCanvas");
 const ctx = canvas.getContext("2d");
 const stage = document.querySelector("#gameStage");
 
 const ui = {
+  mapName: document.querySelector("#mapName"),
   progress: document.querySelector("#progressValue"),
   gold: document.querySelector("#goldValue"),
   day: document.querySelector("#dayValue"),
@@ -22,6 +25,8 @@ const ui = {
   defeatDialog: document.querySelector("#defeatDialog"),
   defeatReward: document.querySelector("#defeatReward"),
   clearDialog: document.querySelector("#clearDialog"),
+  footerPlayerFactionName: document.querySelector("#footerPlayerFactionName"),
+  clearPlayerFactionName: document.querySelector("#clearPlayerFactionName"),
   shopDialog: document.querySelector("#shopDialog"),
   shopGold: document.querySelector("#shopGoldValue"),
   shopButtons: document.querySelectorAll("[data-shop-upgrade]"),
@@ -33,43 +38,33 @@ const ui = {
   invasionCountdown: document.querySelector("#invasionCountdown"),
 };
 
-const COLORS = {
-  blue: {
-    territory: "#f7f9fb",
-    territoryDark: "#d4dce7",
-    unit: "#f2f5f8",
-    accent: "#263751",
-    flag: "#d94f58",
-  },
-  red: {
-    territory: "#e15a5b",
-    territoryDark: "#b93d4b",
-    unit: "#d53646",
-    accent: "#ffe0d8",
-    flag: "#c84349",
-  },
-  neutral: {
-    territory: "#c9d1dd",
-    territoryDark: "#9eaabd",
-    unit: "#eef2f6",
-    accent: "#7b8798",
-    flag: "#8b98aa",
-  },
-  pink: {
-    territory: "#f2b6ba",
-    territoryDark: "#d78891",
-    unit: "#f3f1eb",
-    accent: "#df4754",
-    flag: "#e0737b",
-  },
-};
+const BALANCE = GAME_CONFIG.balance;
+const PLAYER_FACTION_ID = GAME_CONFIG.scenario.playerFactionId;
+const ACTIVE_AI_FACTION_ID = GAME_CONFIG.scenario.activeAiFactionId;
+const CLOCK_BALANCE = BALANCE.clock;
+const MOVEMENT_BALANCE = BALANCE.movement;
+const UNIT_BALANCE = BALANCE.units;
+const OCCUPATION_DURATION = BALANCE.occupation.durationSeconds;
+const COMBAT_BALANCE = BALANCE.combat;
+const AI_BALANCE = BALANCE.ai;
+const TARGETING_BALANCE = BALANCE.targeting;
+const ECONOMY_BALANCE = BALANCE.economy;
+const BATTLE_DISTANCE = COMBAT_BALANCE.contactDistance;
+const BATTLE_TICK_INTERVAL = COMBAT_BALANCE.tickIntervalSeconds;
+const DEFEAT_GOLD_REWARD = ECONOMY_BALANCE.defeatGoldReward;
+const COLORS = Object.fromEntries(
+  Object.entries(GAME_CONFIG.factions).map(([factionId, faction]) => [factionId, faction.palette]),
+);
+const UNIT_SPRITE_SOURCES = Object.fromEntries(
+  Object.entries(GAME_CONFIG.factions).map(([factionId, faction]) => [factionId, faction.unitSprite]),
+);
 
-const UNIT_SPRITE_SOURCES = {
-  blue: "./assets/units/player-red-circle.png",
-  red: "./assets/units/enemy-china.png",
-  neutral: "./assets/units/enemy-korea.png",
-  pink: "./assets/units/enemy-north-korea.png",
-};
+function applyConfiguredDisplayNames() {
+  const playerFactionName = GAME_CONFIG.factions[PLAYER_FACTION_ID].name;
+  ui.mapName.textContent = GAME_CONFIG.map.name;
+  ui.footerPlayerFactionName.textContent = playerFactionName;
+  ui.clearPlayerFactionName.textContent = playerFactionName;
+}
 
 const UNIT_SPRITES = Object.fromEntries(
   Object.entries(UNIT_SPRITE_SOURCES).map(([faction, source]) => {
@@ -82,18 +77,7 @@ const UNIT_SPRITES = Object.fromEntries(
 
 const GOLD_STORAGE_KEY = "countryfronts.gold";
 const UPGRADES_STORAGE_KEY = "countryfronts.upgrades";
-const DEFEAT_GOLD_REWARD = 100;
-const AI_REINFORCEMENT_LIMIT = 5;
-const AI_ACTIVE_UNIT_LIMIT = 5;
-const INVASION_WARNING_DURATION = 5;
-const OCCUPATION_DURATION = 5;
-const BATTLE_DISTANCE = 0.055;
-const BATTLE_TICK_INTERVAL = 0.72;
-const SHOP_ITEMS = {
-  logistics: { basePrice: 100, label: "兵站網" },
-  armor: { basePrice: 100, label: "強化装甲" },
-  reserve: { basePrice: 150, label: "予備部隊" },
-};
+const SHOP_ITEMS = BALANCE.economy.shopItems;
 
 function loadGold() {
   try {
@@ -112,7 +96,7 @@ function saveGold() {
 }
 
 function loadUpgrades() {
-  const empty = { logistics: 0, armor: 0, reserve: 0 };
+  const empty = Object.fromEntries(Object.keys(SHOP_ITEMS).map((key) => [key, 0]));
   try {
     const saved = JSON.parse(window.localStorage.getItem(UPGRADES_STORAGE_KEY) || "null");
     const toLevel = (value) => {
@@ -120,11 +104,7 @@ function loadUpgrades() {
       const level = Number(value);
       return Number.isFinite(level) ? Math.max(0, Math.floor(level)) : 0;
     };
-    return {
-      logistics: toLevel(saved?.logistics),
-      armor: toLevel(saved?.armor),
-      reserve: toLevel(saved?.reserve),
-    };
+    return Object.fromEntries(Object.keys(SHOP_ITEMS).map((key) => [key, toLevel(saved?.[key])]));
   } catch {
     return empty;
   }
@@ -150,10 +130,10 @@ const state = {
   elapsed: 0,
   gold: loadGold(),
   upgrades: loadUpgrades(),
-  intel: 3,
+  intel: CLOCK_BALANCE.initialIntel,
   selectedRegionId: null,
-  aiTimer: 3.2,
-  aiReinforcements: AI_REINFORCEMENT_LIMIT,
+  aiTimer: AI_BALANCE.initialDelaySeconds,
+  aiReinforcements: AI_BALANCE.reinforcementLimit,
   invasionWarning: null,
   recoveryTimer: 0,
   toastTimer: 0,
@@ -177,132 +157,6 @@ const dragState = {
   pointerId: null,
 };
 
-const regions = [
-  {
-    id: "northwest",
-    name: "Northwest Reach",
-    shortName: "北西辺境",
-    faction: "blue",
-    production: 7,
-    points: [[0.07, 0.14], [0.26, 0.08], [0.39, 0.14], [0.36, 0.28], [0.2, 0.31], [0.08, 0.26]],
-  },
-  {
-    id: "north",
-    name: "Northern Union",
-    shortName: "北方連合",
-    faction: "blue",
-    production: 9,
-    points: [[0.26, 0.08], [0.48, 0.04], [0.68, 0.08], [0.86, 0.14], [0.83, 0.27], [0.63, 0.3], [0.47, 0.27], [0.36, 0.28], [0.39, 0.14]],
-  },
-  {
-    id: "northeast",
-    name: "Eastern Crown",
-    shortName: "東方王冠",
-    faction: "blue",
-    production: 8,
-    points: [[0.86, 0.14], [0.96, 0.19], [0.94, 0.37], [0.83, 0.43], [0.7, 0.37], [0.63, 0.3], [0.83, 0.27]],
-  },
-  {
-    id: "western-steppe",
-    name: "Western Steppe",
-    shortName: "西部草原",
-    faction: "blue",
-    production: 6,
-    points: [[0.08, 0.26], [0.2, 0.31], [0.36, 0.28], [0.47, 0.4], [0.39, 0.54], [0.19, 0.52], [0.06, 0.42]],
-  },
-  {
-    id: "central",
-    name: "Central Corridor",
-    shortName: "中央回廊",
-    faction: "blue",
-    production: 12,
-    points: [[0.36, 0.28], [0.47, 0.27], [0.63, 0.3], [0.7, 0.37], [0.61, 0.51], [0.45, 0.56], [0.39, 0.54], [0.47, 0.4]],
-  },
-  {
-    id: "eastern-border",
-    name: "Eastern Borderlands",
-    shortName: "東部国境",
-    faction: "red",
-    production: 7,
-    points: [[0.7, 0.37], [0.83, 0.43], [0.9, 0.56], [0.77, 0.66], [0.62, 0.59], [0.61, 0.51]],
-  },
-  {
-    id: "heartland",
-    name: "Crimson Heartland",
-    shortName: "紅の中原",
-    faction: "red",
-    production: 11,
-    points: [[0.45, 0.56], [0.61, 0.51], [0.62, 0.59], [0.56, 0.73], [0.39, 0.7], [0.32, 0.6]],
-  },
-  {
-    id: "pink-coast",
-    name: "Rose Coast",
-    shortName: "桃色沿岸",
-    faction: "pink",
-    production: 5,
-    points: [[0.77, 0.66], [0.9, 0.56], [0.96, 0.71], [0.9, 0.86], [0.7, 0.82], [0.64, 0.72]],
-  },
-  {
-    id: "southern-plains",
-    name: "Southern Plains",
-    shortName: "南部平原",
-    faction: "red",
-    production: 8,
-    points: [[0.19, 0.52], [0.39, 0.54], [0.45, 0.56], [0.32, 0.6], [0.39, 0.7], [0.25, 0.78], [0.11, 0.67]],
-  },
-  {
-    id: "south-coast",
-    name: "Southern Coast",
-    shortName: "南岸連邦",
-    faction: "red",
-    production: 6,
-    points: [[0.39, 0.7], [0.56, 0.73], [0.64, 0.72], [0.7, 0.82], [0.55, 0.9], [0.33, 0.84], [0.25, 0.78]],
-  },
-  {
-    id: "island-chain",
-    name: "Island Chain",
-    shortName: "島嶼戦線",
-    faction: "pink",
-    production: 4,
-    points: [[0.96, 0.71], [0.98, 0.84], [0.91, 0.96], [0.78, 0.94], [0.7, 0.82], [0.9, 0.86]],
-  },
-  {
-    id: "frontier-isle",
-    name: "Frontier Isle",
-    shortName: "前線島",
-    faction: "neutral",
-    production: 3,
-    points: [[0.42, 0.78], [0.52, 0.79], [0.56, 0.9], [0.5, 0.98], [0.42, 0.92]],
-  },
-];
-
-const REGION_NEIGHBORS = {
-  northwest: ["north", "western-steppe", "central"],
-  north: ["northwest", "northeast", "central"],
-  northeast: ["north", "eastern-border"],
-  "western-steppe": ["northwest", "central", "southern-plains"],
-  central: ["north", "western-steppe", "eastern-border", "heartland", "southern-plains"],
-  "eastern-border": ["northeast", "central", "heartland", "pink-coast"],
-  heartland: ["central", "eastern-border", "southern-plains", "south-coast", "pink-coast"],
-  "pink-coast": ["eastern-border", "heartland", "island-chain"],
-  "southern-plains": ["western-steppe", "central", "heartland", "south-coast"],
-  "south-coast": ["southern-plains", "heartland", "island-chain", "frontier-isle"],
-  "island-chain": ["pink-coast", "south-coast", "frontier-isle"],
-  "frontier-isle": ["south-coast", "island-chain"],
-};
-
-const units = [
-  { id: "blue-1", faction: "blue", regionId: "western-steppe", x: 0.28, y: 0.34, strength: 18, maxStrength: 18, style: "visor", target: null, pulse: 0 },
-  { id: "blue-2", faction: "blue", regionId: "central", x: 0.39, y: 0.42, strength: 18, maxStrength: 18, style: "visor", target: null, pulse: 1.4 },
-  { id: "blue-3", faction: "blue", regionId: "north", x: 0.55, y: 0.27, strength: 18, maxStrength: 18, style: "visor", target: null, pulse: 2.1 },
-  { id: "red-1", faction: "red", regionId: "eastern-border", x: 0.62, y: 0.43, strength: 12, maxStrength: 12, style: "cap", target: null, pulse: 0.8 },
-  { id: "red-2", faction: "red", regionId: "heartland", x: 0.53, y: 0.63, strength: 12, maxStrength: 12, style: "cap", target: null, pulse: 2.5 },
-  { id: "red-3", faction: "red", regionId: "south-coast", x: 0.73, y: 0.75, strength: 12, maxStrength: 12, style: "cap", target: null, pulse: 1.2 },
-  { id: "neutral-1", faction: "neutral", regionId: "pink-coast", x: 0.78, y: 0.55, strength: 12, maxStrength: 12, style: "plain", target: null, pulse: 2.8 },
-  { id: "neutral-2", faction: "neutral", regionId: "frontier-isle", x: 0.84, y: 0.68, strength: 12, maxStrength: 12, style: "plain", target: null, pulse: 0.2 },
-  { id: "pink-1", faction: "pink", regionId: "island-chain", x: 0.84, y: 0.84, strength: 12, maxStrength: 12, style: "plain", target: null, pulse: 1.7 },
-];
-
 function cloneRegion(region) {
   return { ...region, occupation: null, points: region.points.map(([x, y]) => [x, y]) };
 }
@@ -313,10 +167,13 @@ function cloneUnit(unit) {
     target: unit.target ? { ...unit.target } : null,
     route: unit.route ? unit.route.map((point) => ({ ...point })) : null,
     routeIndex: unit.routeIndex || 0,
-    patrolCenter: unit.patrolCenter ? { ...unit.patrolCenter } : null,
+    stationCenter: unit.stationCenter ? { ...unit.stationCenter } : null,
   };
 }
 
+const runtimeScenario = createRuntimeScenario(GAME_CONFIG);
+const regions = runtimeScenario.regions;
+const units = runtimeScenario.units;
 const initialRegions = regions.map(cloneRegion);
 const initialUnits = units.map(cloneUnit);
 
@@ -346,7 +203,7 @@ function getRegion(id) {
 }
 
 function roadNeighbors(regionId) {
-  return REGION_NEIGHBORS[regionId] || [];
+  return GAME_CONFIG.map.roadNeighbors[regionId] || [];
 }
 
 function findRoadPath(startId, targetId) {
@@ -385,17 +242,16 @@ function hasRoadPath(sourceRegion, targetRegion) {
 }
 
 function getAttackCandidates() {
-  const owned = regions.filter((region) => region.faction === "blue");
+  const owned = regions.filter((region) => region.faction === PLAYER_FACTION_ID);
   return regions
-    .filter((region) => region.faction !== "blue")
-    .filter((region) => !region.occupation || region.occupation.faction !== "blue")
-    .filter((region) => owned.some((source) => REGION_NEIGHBORS[source.id]?.includes(region.id)))
+    .filter((region) => region.faction !== PLAYER_FACTION_ID)
+    .filter((region) => !region.occupation || region.occupation.faction !== PLAYER_FACTION_ID)
+    .filter((region) => owned.some((source) => roadNeighbors(source.id).includes(region.id)))
     .sort((left, right) => attackScore(left) - attackScore(right));
 }
 
 function attackScore(region) {
-  const factionPenalty = region.faction === "neutral" ? 0 : region.faction === "pink" ? 2 : 4;
-  return region.production * 0.35 + factionPenalty;
+  return region.production * TARGETING_BALANCE.productionWeight + TARGETING_BALANCE.factionPenalty[region.faction];
 }
 
 function recommendedAttack() {
@@ -458,14 +314,16 @@ function drawBackground() {
   ctx.restore();
 }
 
-function drawSeaDetails() {
+function drawDecorationLabels(labels = []) {
+  if (labels.length === 0) return;
   ctx.save();
   ctx.globalAlpha = 0.26;
   ctx.fillStyle = "#9eacbf";
   ctx.font = "800 10px Inter, sans-serif";
   ctx.letterSpacing = "0.2em";
-  ctx.fillText("EASTERN OCEAN", view.width * 0.77, view.height * 0.18);
-  ctx.fillText("SOUTHERN SEA", view.width * 0.56, view.height * 0.95);
+  labels.forEach(({ text, position: [x, y] }) => {
+    ctx.fillText(text, view.width * x, view.height * y);
+  });
   ctx.restore();
 }
 
@@ -478,7 +336,7 @@ function drawRegions() {
 
     const selected = region.id === state.selectedRegionId;
     ctx.lineWidth = selected ? 4 : 2;
-    ctx.strokeStyle = selected ? "#fff" : region.faction === "blue" ? "#aebdce" : "rgba(255, 255, 255, 0.9)";
+    ctx.strokeStyle = selected ? "#fff" : palette.territoryBorder;
     ctx.shadowColor = selected ? "rgba(36, 76, 134, 0.35)" : "transparent";
     ctx.shadowBlur = selected ? 12 : 0;
     ctx.stroke();
@@ -495,7 +353,7 @@ function drawRegions() {
 
     if (state.zoom > 0.94) {
       ctx.save();
-      ctx.fillStyle = region.faction === "blue" || region.faction === "neutral" ? "#6e7c91" : "rgba(255,255,255,0.7)";
+      ctx.fillStyle = palette.territoryLabel;
       ctx.font = `800 ${clamp(view.width * 0.009, 8, 12)}px Inter, sans-serif`;
       ctx.textAlign = "center";
       ctx.fillText(region.shortName, center.x, center.y + view.height * 0.046);
@@ -544,20 +402,15 @@ function drawRoadNetwork() {
   ctx.restore();
 }
 
-function drawFrontLines() {
-  const lines = [
-    [[0.53, 0.35], [0.62, 0.59]],
-    [[0.39, 0.54], [0.56, 0.73]],
-    [[0.62, 0.59], [0.77, 0.66]],
-    [[0.65, 0.18], [0.83, 0.43]],
-  ];
+function drawDecorationLines(lines = []) {
+  if (lines.length === 0) return;
   ctx.save();
   ctx.setLineDash([7, 7]);
   ctx.lineWidth = 1.5;
   ctx.strokeStyle = "rgba(114, 79, 85, 0.27)";
-  lines.forEach(([start, end]) => {
-    const a = screenPoint(start);
-    const b = screenPoint(end);
+  lines.forEach(({ from, to }) => {
+    const a = screenPoint(from);
+    const b = screenPoint(to);
     ctx.beginPath();
     ctx.moveTo(a.x, a.y);
     ctx.lineTo(b.x, b.y);
@@ -676,7 +529,7 @@ function drawOccupationIndicators() {
     const radius = clamp(view.width * 0.024, 21, 32);
     const progress = clamp(occupation.progress / occupation.duration, 0, 1);
     const remaining = Math.max(0, Math.ceil(occupation.duration - occupation.progress));
-    const color = occupation.faction === "blue" ? "#2c5a9f" : "#c34e58";
+    const color = COLORS[occupation.faction].occupation;
 
     ctx.save();
     ctx.globalAlpha = 0.14;
@@ -762,7 +615,7 @@ function drawUnit(unit, time) {
     ctx.strokeStyle = "#222b3d";
     ctx.stroke();
 
-    if (unit.faction === "blue") {
+    if (unit.style === "visor") {
       ctx.fillStyle = "#d94f58";
       ctx.beginPath();
       ctx.arc(point.x, y, scale * 0.62, 0, Math.PI * 2);
@@ -770,7 +623,7 @@ function drawUnit(unit, time) {
       ctx.strokeStyle = "#fff";
       ctx.lineWidth = Math.max(1, scale * 0.05);
       ctx.stroke();
-    } else if (unit.faction === "red") {
+    } else if (unit.style === "cap") {
       ctx.fillStyle = "#ffd75d";
       ctx.beginPath();
       ctx.moveTo(point.x - scale * 0.86, y - scale * 0.54);
@@ -834,7 +687,7 @@ function drawOrderLine(unit, target, active = false) {
   const start = screenPoint([unit.x, unit.y]);
   const end = screenPoint([target.x, target.y]);
   const angle = Math.atan2(end.y - start.y, end.x - start.x);
-  const color = unit.faction === "blue" ? "rgba(79, 96, 121, 0.66)" : "rgba(178, 61, 75, 0.66)";
+  const color = COLORS[unit.faction].occupation;
 
   ctx.save();
   ctx.globalAlpha = active ? 0.95 : 0.55;
@@ -864,7 +717,7 @@ function drawRoadOrderPreview(unit, targetRegion) {
 
   const points = [{ x: unit.x, y: unit.y }];
   const sourceCenter = regionCenter(sourceRegion);
-  if (distance(unit, sourceCenter) > 0.008) points.push(sourceCenter);
+  if (distance(unit, sourceCenter) > MOVEMENT_BALANCE.routeSnapDistance) points.push(sourceCenter);
   pathIds.slice(1).forEach((regionId) => points.push(regionCenter(getRegion(regionId))));
 
   const screenPoints = points.map((point) => screenPoint([point.x, point.y]));
@@ -999,13 +852,13 @@ function render() {
   ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
   ctx.clearRect(0, 0, view.width, view.height);
   drawBackground();
-  drawSeaDetails();
+  drawDecorationLabels(GAME_CONFIG.map.decorations?.labels);
   drawRegions();
   drawRoadNetwork();
   drawAttackMarkers();
   drawInvasionWarning();
   drawOccupationIndicators();
-  drawFrontLines();
+  drawDecorationLines(GAME_CONFIG.map.decorations?.lines);
   drawOrders();
   drawBattleEffects();
   units.forEach((unit) => drawUnit(unit, state.elapsed));
@@ -1022,7 +875,7 @@ function setUnitRoute(unit, sourceRegionId, targetRegionId) {
 
   const points = [];
   const sourceCenter = regionCenter(getRegion(sourceRegionId));
-  if (distance(unit, sourceCenter) > 0.008) points.push(sourceCenter);
+  if (distance(unit, sourceCenter) > MOVEMENT_BALANCE.routeSnapDistance) points.push(sourceCenter);
   pathIds.slice(1).forEach((regionId) => points.push(regionCenter(getRegion(regionId))));
   if (points.length === 0) return false;
 
@@ -1035,9 +888,9 @@ function setUnitRoute(unit, sourceRegionId, targetRegionId) {
 function moveUnit(unit, dt) {
   if (unit.inBattle) return;
 
-  if (unit.arrived && unit.patrolCenter) {
-    unit.x = unit.patrolCenter.x;
-    unit.y = unit.patrolCenter.y;
+  if (unit.arrived && unit.stationCenter) {
+    unit.x = unit.stationCenter.x;
+    unit.y = unit.stationCenter.y;
     return;
   }
 
@@ -1046,7 +899,7 @@ function moveUnit(unit, dt) {
   const dx = target.x - unit.x;
   const dy = target.y - unit.y;
   const distanceToTarget = Math.hypot(dx, dy);
-  const speed = unit.faction === "blue" ? 0.045 : 0.035;
+  const speed = MOVEMENT_BALANCE.speedByFaction[unit.faction];
   if (distanceToTarget < speed * dt) {
     unit.x = target.x;
     unit.y = target.y;
@@ -1062,8 +915,8 @@ function moveUnit(unit, dt) {
     unit.target = null;
     unit.arrived = true;
     if (unit.targetRegionId) unit.regionId = unit.targetRegionId;
-    unit.patrolCenter = { x: target.x, y: target.y };
-    unit.orbitAngle = 0;
+    const stationRegion = getRegion(unit.targetRegionId) || regionForUnit(unit);
+    if (stationRegion) unit.stationCenter = regionCenter(stationRegion);
     onUnitArrived(unit);
     return;
   }
@@ -1104,10 +957,11 @@ function completeOccupation(unit, region) {
   region.occupation = null;
   unit.regionId = region.id;
   unit.arrived = true;
-  unit.patrolCenter = regionCenter(region);
+  unit.stationCenter = regionCenter(region);
   unit.arrivalResolved = true;
   showToast(`${region.name}を占領しました`);
-  addEvent(`${region.shortName}が${unit.faction === "blue" ? "White Union" : "敵勢力"}の支配下に入りました`);
+  const factionName = GAME_CONFIG.factions[unit.faction]?.name || unit.faction;
+  addEvent(`${region.shortName}が${factionName}の支配下に入りました`);
 }
 
 function updateOccupationProgress(dt) {
@@ -1139,7 +993,7 @@ function onUnitArrived(unit) {
 
   unit.arrivalResolved = true;
   if (region.faction !== unit.faction) startOccupation(unit, region);
-  unit.strength = Math.min(unit.maxStrength, Math.max(1, unit.strength));
+  unit.strength = Math.min(unit.maxStrength, Math.max(UNIT_BALANCE.minimumSurvivorStrength, unit.strength));
 }
 
 function resolveBattleWinner(winner, loser) {
@@ -1155,7 +1009,7 @@ function resolveBattleWinner(winner, loser) {
   if (battleRegion && battleRegion.faction === winner.faction) {
     addEvent(`${battleRegion.shortName}の防衛に成功しました`);
   } else if (winner.targetRegionId) {
-    addEvent(winner.faction === "blue" ? "道路上の迎撃に成功しました" : "道路上の交戦に勝利。侵攻を再開します");
+    addEvent(winner.faction === PLAYER_FACTION_ID ? "道路上の迎撃に成功しました" : "道路上の交戦に勝利。侵攻を再開します");
   }
 }
 
@@ -1173,47 +1027,47 @@ function groupCombatDamage(members) {
 
   // A group deals one shared hit per tick. Strength makes the hit stronger,
   // while production keeps the existing recovery-focused balance relevant.
-  const damage = Math.ceil(totalStrength * 0.1 + groupProduction(members) * 0.6);
-  return Math.min(totalStrength, Math.max(2, damage));
+  const damage = Math.ceil(totalStrength * COMBAT_BALANCE.strengthDamageFactor + groupProduction(members) * COMBAT_BALANCE.productionDamageFactor);
+  return Math.min(totalStrength, Math.max(COMBAT_BALANCE.minimumDamage, damage));
 }
 
 function redistributeGroupStrength(members, totalStrength) {
   if (members.length === 0) return;
-  const maxStrengthTotal = members.reduce((total, unit) => total + Math.max(1, unit.maxStrength || 12), 0);
+  const maxStrengthTotal = members.reduce((total, unit) => total + Math.max(UNIT_BALANCE.minimumSurvivorStrength, unit.maxStrength || getMaxUnitStrength(unit.faction)), 0);
   const targetStrength = Math.min(maxStrengthTotal, Math.max(0, Math.round(totalStrength)));
+  const minimumStrength = UNIT_BALANCE.minimumSurvivorStrength;
+  const survivorCount = Math.min(members.length, Math.floor(targetStrength / minimumStrength));
 
-  if (targetStrength === 0) {
+  if (survivorCount === 0) {
     members.forEach((unit) => { unit.strength = 0; });
     return;
   }
 
-  if (targetStrength < members.length) {
-    const priority = members.slice().sort((left, right) => right.strength - left.strength);
-    members.forEach((unit) => { unit.strength = 0; });
-    priority.slice(0, targetStrength).forEach((unit) => { unit.strength = 1; });
-    return;
-  }
-
-  const minimumStrength = 1;
-  const distributable = targetStrength - minimumStrength * members.length;
+  const priority = members.slice().sort((left, right) => right.strength - left.strength);
+  const survivors = priority.slice(0, survivorCount);
+  members.forEach((unit) => { unit.strength = 0; });
+  const distributable = targetStrength - minimumStrength * survivorCount;
   const allocations = [];
   let allocated = 0;
-  members.forEach((unit) => {
-    const weight = Math.max(1, unit.maxStrength || 12) / maxStrengthTotal;
+  const survivorCapacity = survivors.reduce((total, unit) => total + Math.max(0, (unit.maxStrength || getMaxUnitStrength(unit.faction)) - minimumStrength), 0);
+  survivors.forEach((unit) => {
+    const maxStrength = Math.max(minimumStrength, unit.maxStrength || getMaxUnitStrength(unit.faction));
+    const capacity = Math.max(0, maxStrength - minimumStrength);
+    const weight = survivorCapacity > 0 ? capacity / survivorCapacity : 0;
     const raw = distributable * weight;
     const whole = Math.floor(raw);
     unit.strength = minimumStrength + whole;
     allocated += unit.strength;
-    allocations.push({ unit, remainder: raw - whole });
+    allocations.push({ unit, maxStrength, remainder: raw - whole });
   });
 
   allocations.sort((left, right) => right.remainder - left.remainder);
   let leftover = targetStrength - allocated;
-  let index = 0;
-  while (leftover > 0 && allocations.length > 0) {
-    allocations[index % allocations.length].unit.strength += 1;
+  while (leftover > 0) {
+    const allocation = allocations.find(({ unit, maxStrength }) => unit.strength < maxStrength);
+    if (!allocation) break;
+    allocation.unit.strength += 1;
     leftover -= 1;
-    index += 1;
   }
 }
 
@@ -1293,7 +1147,7 @@ function updateBattles(dt) {
 
     let battle = state.battles.get(group.id);
     if (!battle) {
-      battle = { unitIds: group.unitIds, sides: group.sides, cooldown: 0.2, phase: Math.random() * 6, notified: false };
+      battle = { unitIds: group.unitIds, sides: group.sides, cooldown: COMBAT_BALANCE.initialTickDelaySeconds, phase: Math.random() * 6, notified: false };
       state.battles.set(group.id, battle);
     } else {
       battle.unitIds = group.unitIds;
@@ -1342,7 +1196,7 @@ function updateUnits(dt) {
   }
 
   updateOccupationProgress(dt);
-  if (!state.defeated && !state.cleared && !units.some((unit) => unit.faction === "blue")) triggerDefeat();
+  if (!state.defeated && !state.cleared && !units.some((unit) => unit.faction === PLAYER_FACTION_ID)) triggerDefeat();
 }
 
 function nearestUnit(faction, target) {
@@ -1363,15 +1217,14 @@ function createUnit(faction, regionId, targetRegionId = null) {
     y: center.y,
     strength: maxStrength,
     maxStrength,
-    style: faction === "blue" ? "visor" : faction === "red" ? "cap" : "plain",
+    style: GAME_CONFIG.factions[faction]?.unitStyle || "plain",
     target: null,
     route: null,
     routeIndex: 0,
     regionId: region.id,
     targetRegionId,
     arrived: !targetRegionId,
-    patrolCenter: targetRegionId ? null : { ...center },
-    orbitAngle: 0,
+    stationCenter: targetRegionId ? null : { ...center },
     arrivalResolved: false,
     inBattle: false,
     pulse: Math.random() * 4,
@@ -1386,22 +1239,22 @@ function createUnit(faction, regionId, targetRegionId = null) {
 function runAi(dt) {
   state.aiTimer -= dt;
   if (state.aiTimer > 0 || state.aiReinforcements <= 0 || state.invasionWarning) return;
-  state.aiTimer = 3.8 + Math.random() * 2.6;
+  state.aiTimer = AI_BALANCE.actionDelaySeconds + Math.random() * AI_BALANCE.actionDelayJitterSeconds;
 
-  if (units.filter((unit) => unit.faction === "red").length >= AI_ACTIVE_UNIT_LIMIT) return;
+  if (units.filter((unit) => unit.faction === ACTIVE_AI_FACTION_ID).length >= AI_BALANCE.activeUnitLimit) return;
 
-  const redRegions = regions.filter((region) => region.faction === "red");
-  const source = redRegions[Math.floor(Math.random() * redRegions.length)] || regions.find((region) => region.faction === "red");
-  const targets = source ? regions.filter((region) => region.faction === "blue" && areRoadNeighbors(source, region)) : [];
+  const aiRegions = regions.filter((region) => region.faction === ACTIVE_AI_FACTION_ID);
+  const source = aiRegions[Math.floor(Math.random() * aiRegions.length)] || regions.find((region) => region.faction === ACTIVE_AI_FACTION_ID);
+  const targets = source ? regions.filter((region) => region.faction === PLAYER_FACTION_ID && areRoadNeighbors(source, region)) : [];
   const target = targets[Math.floor(Math.random() * targets.length)];
   if (!source || !target) return;
 
-  const existing = units.find((unit) => unit.faction === "red" && unit.targetRegionId === target.id);
+  const existing = units.find((unit) => unit.faction === ACTIVE_AI_FACTION_ID && unit.targetRegionId === target.id);
   if (!existing) {
     state.invasionWarning = {
       sourceRegionId: source.id,
       targetRegionId: target.id,
-      remaining: INVASION_WARNING_DURATION,
+      remaining: AI_BALANCE.invasionWarningSeconds,
     };
     addEvent("侵攻予告あり！");
     showToast("侵攻予告あり！");
@@ -1415,7 +1268,7 @@ function updateInvasionWarning(dt) {
 
   const source = getRegion(warning.sourceRegionId);
   const target = getRegion(warning.targetRegionId);
-  if (!source || !target || source.faction !== "red" || target.faction !== "blue") {
+  if (!source || !target || source.faction !== ACTIVE_AI_FACTION_ID || target.faction !== PLAYER_FACTION_ID) {
     state.invasionWarning = null;
     return;
   }
@@ -1423,9 +1276,9 @@ function updateInvasionWarning(dt) {
   warning.remaining -= dt;
   if (warning.remaining > 0) return;
   state.invasionWarning = null;
-  if (units.filter((unit) => unit.faction === "red").length >= AI_ACTIVE_UNIT_LIMIT) return;
+  if (units.filter((unit) => unit.faction === ACTIVE_AI_FACTION_ID).length >= AI_BALANCE.activeUnitLimit) return;
 
-  const created = createUnit("red", source.id, target.id);
+  const created = createUnit(ACTIVE_AI_FACTION_ID, source.id, target.id);
   if (!created) return;
   state.aiReinforcements -= 1;
   addEvent(`${source.shortName}から敵部隊が出撃しました`);
@@ -1447,14 +1300,14 @@ function snapUnitToRoadNode(unit, regionId = null) {
   unit.route = null;
   unit.routeIndex = 0;
   unit.arrived = true;
-  unit.patrolCenter = { ...center };
-  unit.orbitAngle = 0;
+  unit.stationCenter = { ...center };
   return region;
 }
 
 function getRegionProduction(region) {
   if (!region) return 1;
-  return region.production + (region.faction === "blue" ? state.upgrades.logistics : 0);
+  const logistics = SHOP_ITEMS.logistics?.productionPerLevel || 0;
+  return region.production + (region.faction === PLAYER_FACTION_ID ? state.upgrades.logistics * logistics : 0);
 }
 
 function getUnitProduction(unit) {
@@ -1462,25 +1315,26 @@ function getUnitProduction(unit) {
 }
 
 function getMaxUnitStrength(faction) {
-  const baseStrength = faction === "blue" ? 18 : 12;
-  return baseStrength + (faction === "blue" ? state.upgrades.armor * 3 : 0);
+  const baseStrength = UNIT_BALANCE.baseMaxStrengthByFaction[faction] || UNIT_BALANCE.minimumSurvivorStrength;
+  const armor = SHOP_ITEMS.armor?.maxStrengthPerLevel || 0;
+  return baseStrength + (faction === PLAYER_FACTION_ID ? state.upgrades.armor * armor : 0);
 }
 
 function applyArmorUpgrade() {
-  const maxStrength = getMaxUnitStrength("blue");
-  units.filter((unit) => unit.faction === "blue").forEach((unit) => {
-    unit.maxStrength = Math.max(unit.maxStrength || 12, maxStrength);
+  const maxStrength = getMaxUnitStrength(PLAYER_FACTION_ID);
+  units.filter((unit) => unit.faction === PLAYER_FACTION_ID).forEach((unit) => {
+    unit.maxStrength = Math.max(unit.maxStrength || UNIT_BALANCE.minimumSurvivorStrength, maxStrength);
   });
 }
 
 function updateStrength(dt) {
   state.recoveryTimer += dt;
-  while (state.recoveryTimer >= 1) {
+  while (state.recoveryTimer >= CLOCK_BALANCE.recoveryTickSeconds) {
     units.forEach((unit) => {
-      const maxStrength = unit.maxStrength || 12;
+      const maxStrength = unit.maxStrength || getMaxUnitStrength(unit.faction);
       unit.strength = Math.min(maxStrength, unit.strength + getUnitProduction(unit));
     });
-    state.recoveryTimer -= 1;
+    state.recoveryTimer -= CLOCK_BALANCE.recoveryTickSeconds;
   }
 }
 
@@ -1538,14 +1392,15 @@ function updateSelectedPanel() {
   }
 
   ui.panel.classList.add("has-selection");
-  ui.factionDot.className = `faction-dot ${region.faction === "pink" ? "neutral" : region.faction}`;
+  const factionConfig = GAME_CONFIG.factions[region.faction];
+  ui.factionDot.className = `faction-dot ${factionConfig.panelClass}`;
   ui.regionName.textContent = region.name;
   const battleActive = regionHasBattle(region);
   const occupationActive = Boolean(region.occupation);
-  ui.regionStatus.textContent = battleActive ? "⚔ 交戦中 — 侵攻が停止しています" : occupationActive ? "占領進行中 — タイマーが動いています" : region.faction === "blue" ? "White Unionの支配領域" : region.faction === "red" ? "敵対勢力が展開中" : "勢力未確定の中立地域";
+  ui.regionStatus.textContent = battleActive ? "⚔ 交戦中 — 侵攻が停止しています" : occupationActive ? "占領進行中 — タイマーが動いています" : factionConfig.statusText;
   ui.occupation.textContent = occupationActive ? `${Math.ceil(region.occupation.progress)}/${region.occupation.duration}秒` : "—";
   ui.production.textContent = `+${getRegionProduction(region)}/秒`;
-  ui.threat.textContent = battleActive ? "交戦中" : occupationActive ? "占領中" : region.faction === "blue" ? "安定" : region.faction === "red" ? "高" : "警戒";
+  ui.threat.textContent = battleActive ? "交戦中" : occupationActive ? "占領中" : factionConfig.threatText;
 }
 
 function showToast(message) {
@@ -1566,18 +1421,18 @@ function addEvent(message) {
 
 function formatTime() {
   const totalSeconds = Math.max(0, Math.floor(state.elapsed));
-  const day = Math.floor(totalSeconds / 90) + 1;
-  const daySeconds = totalSeconds % 90;
+  const day = Math.floor(totalSeconds / CLOCK_BALANCE.dayDurationSeconds) + 1;
+  const daySeconds = totalSeconds % CLOCK_BALANCE.dayDurationSeconds;
   const minutes = String(Math.floor(daySeconds / 60)).padStart(2, "0");
   const seconds = String(daySeconds % 60).padStart(2, "0");
   return { day, text: `DAY ${String(day).padStart(2, "0")} · ${minutes}:${seconds}` };
 }
 
 function updateHud() {
-  const blueRegions = regions.filter((region) => region.faction === "blue").length;
-  const progress = Math.round((blueRegions / regions.length) * 100);
+  const playerRegions = regions.filter((region) => region.faction === PLAYER_FACTION_ID).length;
+  const progress = Math.round((playerRegions / regions.length) * 100);
   const time = formatTime();
-  if (!state.cleared && !state.defeated && blueRegions === regions.length) triggerClear();
+  if (!state.cleared && !state.defeated && playerRegions === regions.length) triggerClear();
   ui.progress.textContent = `${Math.max(1, progress)}%`;
   ui.gold.textContent = String(state.gold);
   ui.day.textContent = String(time.day).padStart(2, "0");
@@ -1617,11 +1472,12 @@ function setupInitialUnits() {
   units.forEach((unit) => snapUnitToRoadNode(unit, unit.regionId));
   const reserveCount = state.upgrades.reserve;
   if (reserveCount > 0) {
-    const source = initialUnits.find((unit) => unit.faction === "blue");
-    for (let index = 0; index < reserveCount; index += 1) {
+    const source = initialUnits.find((unit) => unit.faction === PLAYER_FACTION_ID);
+    const reserveUnitsPerLevel = SHOP_ITEMS.reserve?.unitsPerLevel || 1;
+    for (let index = 0; index < reserveCount * reserveUnitsPerLevel; index += 1) {
       const reserve = {
         ...cloneUnit(source),
-        id: `blue-reserve-${index + 1}`,
+        id: `${PLAYER_FACTION_ID}-reserve-${index + 1}`,
       };
       snapUnitToRoadNode(reserve, reserve.regionId);
       units.push(reserve);
@@ -1657,10 +1513,10 @@ function restartGame() {
   state.paused = false;
   state.speed = 1;
   state.elapsed = 0;
-  state.intel = 3;
+  state.intel = CLOCK_BALANCE.initialIntel;
   state.selectedRegionId = null;
-  state.aiTimer = 3.2;
-  state.aiReinforcements = AI_REINFORCEMENT_LIMIT;
+  state.aiTimer = AI_BALANCE.initialDelaySeconds;
+  state.aiReinforcements = AI_BALANCE.reinforcementLimit;
   state.invasionWarning = null;
   state.recoveryTimer = 0;
   state.toastTimer = 0;
@@ -1690,7 +1546,7 @@ function getUpgradePrice(key) {
   const item = SHOP_ITEMS[key];
   const level = Number(state.upgrades[key]) || 0;
   if (!item) return Number.MAX_SAFE_INTEGER;
-  return Math.min(999999, Math.ceil((item.basePrice * 1.45 ** level) / 10) * 10);
+  return Math.min(ECONOMY_BALANCE.upgradePriceCap, Math.ceil((item.basePrice * ECONOMY_BALANCE.upgradePriceGrowth ** level) / ECONOMY_BALANCE.upgradePriceStep) * ECONOMY_BALANCE.upgradePriceStep);
 }
 
 function updateShopDialog() {
@@ -1753,9 +1609,9 @@ function finishShop() {
 function unitAtScreenPoint(x, y) {
   const point = worldPointFromScreen(x, y);
   return units
-    .filter((unit) => unit.faction === "blue")
+    .filter((unit) => unit.faction === PLAYER_FACTION_ID)
     .map((unit) => ({ unit, distance: distance(unit, { x: point[0], y: point[1] }) }))
-    .filter((entry) => entry.distance < 0.055)
+    .filter((entry) => entry.distance < MOVEMENT_BALANCE.unitSelectionRadius)
     .sort((left, right) => left.distance - right.distance)[0]?.unit || null;
 }
 
@@ -1792,7 +1648,7 @@ function updateDispatch(event) {
   if (!dragState.active || event.pointerId !== dragState.pointerId) return;
   const point = mapPointFromPointer(event);
   dragState.currentPoint = { x: point.x, y: point.y };
-  dragState.moved = dragState.moved || distance(dragState.sourceUnit, point) > 0.012;
+  dragState.moved = dragState.moved || distance(dragState.sourceUnit, point) > MOVEMENT_BALANCE.dispatchDragDistance;
   const candidate = [...regions].reverse().find((region) => pointInPolygon([point.x, point.y], region.points)) || null;
   dragState.targetRegion = candidate && canDispatchToRegion(dragState.sourceUnit, candidate) ? candidate : null;
   dragState.invalidTarget = Boolean(candidate && !dragState.targetRegion);
@@ -1819,9 +1675,8 @@ function dispatchUnitToRegion(unit, region) {
   cancelOccupationForUnit(unit);
   unit.targetRegionId = region.id;
   unit.arrived = false;
-  unit.patrolCenter = null;
+  unit.stationCenter = null;
   unit.arrivalResolved = false;
-  unit.orbitAngle = 0;
   ui.dispatchHint.classList.add("is-hidden");
   addEvent(`白い部隊が${region.shortName}へ移動を開始しました`);
   showToast(`${region.name}へ部隊を派遣しました`);
@@ -1881,7 +1736,7 @@ function resetMap() {
 
 function loop(now) {
   const rawDt = Math.max(0, (now - lastTime) / 1000);
-  const dt = Math.min(rawDt, 0.06);
+  const dt = Math.min(rawDt, CLOCK_BALANCE.maxFrameDeltaSeconds);
   lastTime = now;
   if (!state.paused) update(dt);
   render();
@@ -1929,7 +1784,7 @@ document.querySelector("#intelButton").addEventListener("click", () => {
     return;
   }
   state.intel -= 1;
-  const hostile = regions.find((region) => region.faction === "red" || region.faction === "pink");
+  const hostile = regions.find((region) => region.faction !== PLAYER_FACTION_ID);
   if (hostile) showToast(`偵察結果：${hostile.shortName}の生産力は+${getRegionProduction(hostile)}/秒`);
 });
 
@@ -1951,6 +1806,7 @@ function registerServiceWorker() {
   }, { once: true });
 }
 
+applyConfiguredDisplayNames();
 setupInitialUnits();
 updateShopDialog();
 resizeCanvas();

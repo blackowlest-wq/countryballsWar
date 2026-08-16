@@ -1,0 +1,81 @@
+export const BALANCE = {
+  clock: {
+    dayDurationSeconds: 90,
+    recoveryTickSeconds: 1,
+    maxFrameDeltaSeconds: 0.06,
+    initialIntel: 3,
+  },
+  movement: {
+    speedByFaction: {
+      blue: 0.045,
+      red: 0.035,
+      neutral: 0.035,
+      pink: 0.035,
+    },
+    routeSnapDistance: 0.008,
+    unitSelectionRadius: 0.055,
+    dispatchDragDistance: 0.012,
+  },
+  units: {
+    baseMaxStrengthByFaction: {
+      blue: 18,
+      red: 12,
+      neutral: 12,
+      pink: 12,
+    },
+    minimumSurvivorStrength: 1,
+  },
+  territoryProduction: {
+    northwest: 7,
+    north: 9,
+    northeast: 8,
+    "western-steppe": 6,
+    central: 12,
+    "eastern-border": 7,
+    heartland: 11,
+    "pink-coast": 5,
+    "southern-plains": 8,
+    "south-coast": 6,
+    "island-chain": 4,
+    "frontier-isle": 3,
+  },
+  occupation: {
+    durationSeconds: 5,
+  },
+  combat: {
+    contactDistance: 0.055,
+    tickIntervalSeconds: 0.72,
+    initialTickDelaySeconds: 0.2,
+    strengthDamageFactor: 0.1,
+    productionDamageFactor: 0.6,
+    minimumDamage: 2,
+  },
+  ai: {
+    initialDelaySeconds: 3.2,
+    actionDelaySeconds: 3.8,
+    actionDelayJitterSeconds: 2.6,
+    invasionWarningSeconds: 5,
+    activeUnitLimit: 5,
+    reinforcementLimit: 5,
+  },
+  targeting: {
+    productionWeight: 0.35,
+    factionPenalty: {
+      blue: 0,
+      neutral: 0,
+      pink: 2,
+      red: 4,
+    },
+  },
+  economy: {
+    defeatGoldReward: 100,
+    upgradePriceGrowth: 1.45,
+    upgradePriceStep: 10,
+    upgradePriceCap: 999999,
+    shopItems: {
+      logistics: { basePrice: 100, label: "兵站網", productionPerLevel: 1 },
+      armor: { basePrice: 100, label: "強化装甲", maxStrengthPerLevel: 3 },
+      reserve: { basePrice: 150, label: "予備部隊", unitsPerLevel: 1 },
+    },
+  },
+};
