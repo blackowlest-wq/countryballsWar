@@ -224,8 +224,8 @@
         <div class="defeat-emblem" aria-hidden="true">×</div>
         <span class="panel-kicker">BATTLE LOST</span>
         <h2>敗北しました</h2>
-        <p>すべての白い部隊が失われました。救済措置としてGoldを受け取れます。</p>
-        <strong class="defeat-reward" id="defeatReward">+100 GOLD</strong>
+        <p>作戦中の占領・戦闘成果に応じた救済Goldを受け取れます。短時間で成果なく敗北した場合は付与されません。</p>
+        <strong class="defeat-reward" id="defeatReward">今回の救済Goldはありません</strong>
         <button class="primary-action" id="restartButton" type="button">最初から始める</button>
       </div>
     </dialog>
@@ -236,6 +236,7 @@
         <span class="panel-kicker">MISSION COMPLETE</span>
         <h2>クリア！</h2>
         <p>すべての領土を<span id="clearPlayerFactionName"></span>が制圧しました。</p>
+        <strong class="clear-reward" id="clearReward">+0 GOLD</strong>
         <button class="primary-action" id="clearRestartButton" type="button">もう一度プレイ</button>
       </div>
     </dialog>

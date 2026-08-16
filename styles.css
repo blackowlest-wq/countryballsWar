@@ -1052,10 +1052,17 @@ button:disabled {
 }
 
 .clear-form p {
-  margin: 10px 0 18px;
+  margin: 10px 0 10px;
   color: var(--muted);
   font-size: 11px;
   line-height: 1.6;
+}
+
+.clear-reward {
+  margin-bottom: 18px;
+  color: #9a6516;
+  font-size: 18px;
+  letter-spacing: 0.08em;
 }
 
 .clear-form .primary-action {

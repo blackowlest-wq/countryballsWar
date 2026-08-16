@@ -141,7 +141,13 @@ function validateBalance(balance, factionIds, regionIds) {
 
   assertConfig(Number.isFinite(balance.ai?.actionDelayJitterSeconds) && balance.ai.actionDelayJitterSeconds >= 0, "AI行動間隔の揺らぎが不正です");
   assertConfig(Number.isInteger(balance.clock?.initialIntel) && balance.clock.initialIntel >= 0, "初期INTELが0以上の整数ではありません");
-  assertConfig(Number.isFinite(balance.economy?.defeatGoldReward) && balance.economy.defeatGoldReward >= 0, "敗北Goldが不正です");
+  assertConfig(isPositiveNumber(balance.economy?.rewards?.captureGold), "占領報酬Goldが正の数ではありません");
+  assertConfig(Number.isFinite(balance.economy?.rewards?.battleWinGold) && balance.economy.rewards.battleWinGold >= 0, "戦闘勝利報酬Goldが不正です");
+  assertConfig(Number.isFinite(balance.economy?.rewards?.defeatConversionRate) && balance.economy.rewards.defeatConversionRate > 0 && balance.economy.rewards.defeatConversionRate <= 1, "敗北報酬の換算率が不正です");
+  assertConfig(Number.isFinite(balance.economy?.rewards?.defeatRewardCap) && balance.economy.rewards.defeatRewardCap >= 0, "敗北報酬の上限が不正です");
+  assertConfig(Number.isFinite(balance.economy?.rewards?.minimumDefeatElapsedSeconds) && balance.economy.rewards.minimumDefeatElapsedSeconds >= 0, "敗北報酬の最低経過時間が不正です");
+  assertConfig(Number.isInteger(balance.economy?.rewards?.minimumDefeatCaptures) && balance.economy.rewards.minimumDefeatCaptures >= 0, "敗北報酬の最低占領数が不正です");
+  assertConfig(isPositiveNumber(balance.economy?.rewards?.clearBonus), "クリアボーナスGoldが正の数ではありません");
   assertConfig(Object.keys(balance.economy?.shopItems || {}).length > 0, "ショップ商品がありません");
   Object.entries(balance.economy.shopItems).forEach(([key, item]) => {
     assertConfig(isPositiveNumber(item.basePrice), `ショップ商品 ${key} の価格がありません`);

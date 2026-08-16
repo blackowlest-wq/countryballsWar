@@ -68,7 +68,15 @@ export const BALANCE = {
     },
   },
   economy: {
-    defeatGoldReward: 100,
+    rewards: {
+      captureGold: 25,
+      battleWinGold: 5,
+      defeatConversionRate: 0.25,
+      defeatRewardCap: 30,
+      minimumDefeatElapsedSeconds: 30,
+      minimumDefeatCaptures: 1,
+      clearBonus: 150,
+    },
     upgradePriceGrowth: 1.45,
     upgradePriceStep: 10,
     upgradePriceCap: 999999,

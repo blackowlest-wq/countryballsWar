@@ -4,6 +4,11 @@ import {
   resetPersistentState,
   savePersistentState,
 } from "./storage/persistent-state.js";
+import {
+  calculateClearGold,
+  calculateDefeatGold,
+  createRunProgress,
+} from "./economy/rewards.js";
 
 const canvas = document.querySelector("#mapCanvas");
 const ctx = canvas.getContext("2d");
@@ -30,6 +35,7 @@ const ui = {
   defeatDialog: document.querySelector("#defeatDialog"),
   defeatReward: document.querySelector("#defeatReward"),
   clearDialog: document.querySelector("#clearDialog"),
+  clearReward: document.querySelector("#clearReward"),
   footerPlayerFactionName: document.querySelector("#footerPlayerFactionName"),
   clearPlayerFactionName: document.querySelector("#clearPlayerFactionName"),
   shopDialog: document.querySelector("#shopDialog"),
@@ -63,7 +69,6 @@ const TARGETING_BALANCE = BALANCE.targeting;
 const ECONOMY_BALANCE = BALANCE.economy;
 const BATTLE_DISTANCE = COMBAT_BALANCE.contactDistance;
 const BATTLE_TICK_INTERVAL = COMBAT_BALANCE.tickIntervalSeconds;
-const DEFEAT_GOLD_REWARD = ECONOMY_BALANCE.defeatGoldReward;
 const COLORS = Object.fromEntries(
   Object.entries(GAME_CONFIG.factions).map(([factionId, faction]) => [factionId, faction.palette]),
 );
@@ -112,6 +117,7 @@ const state = {
   aiTimer: AI_BALANCE.initialDelaySeconds,
   aiReinforcements: AI_BALANCE.reinforcementLimit,
   invasionWarning: null,
+  runProgress: createRunProgress(),
   recoveryTimer: 0,
   toastTimer: 0,
   eventNotice: true,
@@ -932,6 +938,15 @@ function completeOccupation(unit, region) {
   if (!region.occupation || region.occupation.unitId !== unit.id) return;
 
   region.faction = unit.faction;
+  const wasInitiallyPlayerOwned = GAME_CONFIG.scenario.territoryOwners[region.id] === PLAYER_FACTION_ID;
+  if (
+    unit.faction === PLAYER_FACTION_ID
+    && !wasInitiallyPlayerOwned
+    && !state.runProgress.capturedRegionIds.has(region.id)
+  ) {
+    state.runProgress.capturedRegionIds.add(region.id);
+    state.runProgress.capturedRegions += 1;
+  }
   region.occupation = null;
   unit.regionId = region.id;
   unit.arrived = true;
@@ -975,6 +990,10 @@ function onUnitArrived(unit) {
 }
 
 function resolveBattleWinner(winner, loser) {
+  if (winner.faction === PLAYER_FACTION_ID && loser?.faction && loser.faction !== PLAYER_FACTION_ID) {
+    state.runProgress.battleWins += 1;
+  }
+
   const battleRegion = winner.targetRegionId ? getRegion(winner.targetRegionId) : loser?.targetRegionId ? getRegion(loser.targetRegionId) : null;
   if (battleRegion && winner.arrived && winner.targetRegionId === battleRegion.id && battleRegion.faction !== winner.faction) {
     const region = battleRegion;
@@ -1464,14 +1483,27 @@ function setupInitialUnits() {
   applyArmorUpgrade();
 }
 
+function currentRewardProgress() {
+  return { ...state.runProgress, elapsedSeconds: state.elapsed };
+}
+
+function grantGold(amount) {
+  const reward = Math.max(0, Math.floor(Number(amount) || 0));
+  if (reward === 0) return 0;
+
+  state.gold += reward;
+  savePersistentProgress();
+  ui.gold.textContent = String(state.gold);
+  updateShopDialog();
+  return reward;
+}
+
 function triggerDefeat() {
   if (state.defeated || state.cleared) return;
   state.defeated = true;
   state.paused = true;
-  state.gold += DEFEAT_GOLD_REWARD;
-  savePersistentProgress();
-  ui.gold.textContent = String(state.gold);
-  ui.defeatReward.textContent = `+${DEFEAT_GOLD_REWARD} GOLD`;
+  const reward = grantGold(calculateDefeatGold(currentRewardProgress(), ECONOMY_BALANCE.rewards));
+  ui.defeatReward.textContent = reward > 0 ? `+${reward} GOLD` : "今回の救済Goldはありません";
   ui.defeatDialog?.showModal();
 }
 
@@ -1479,6 +1511,8 @@ function triggerClear() {
   if (state.cleared || state.defeated) return;
   state.cleared = true;
   state.paused = true;
+  const reward = grantGold(calculateClearGold(currentRewardProgress(), ECONOMY_BALANCE.rewards));
+  ui.clearReward.textContent = `+${reward} GOLD`;
   ui.clearDialog?.showModal();
 }
 
@@ -1496,6 +1530,7 @@ function restartGame({ announce = true } = {}) {
   state.aiTimer = AI_BALANCE.initialDelaySeconds;
   state.aiReinforcements = AI_BALANCE.reinforcementLimit;
   state.invasionWarning = null;
+  state.runProgress = createRunProgress();
   state.recoveryTimer = 0;
   state.toastTimer = 0;
   state.defeated = false;
