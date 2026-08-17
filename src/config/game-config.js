@@ -180,7 +180,6 @@ function validateBalance(balance, factionIds, regionIds) {
   ].forEach(([value, label]) => assertConfig(isPositiveNumber(value), `${label}が正の数ではありません`));
 
   assertConfig(Number.isFinite(balance.ai?.actionDelayJitterSeconds) && balance.ai.actionDelayJitterSeconds >= 0, "AI行動間隔の揺らぎが不正です");
-  assertConfig(Number.isInteger(balance.clock?.initialIntel) && balance.clock.initialIntel >= 0, "初期INTELが0以上の整数ではありません");
   assertConfig(isPositiveNumber(balance.economy?.rewards?.captureGold), "占領報酬Goldが正の数ではありません");
   assertConfig(Number.isFinite(balance.economy?.rewards?.battleWinGold) && balance.economy.rewards.battleWinGold >= 0, "戦闘勝利報酬Goldが不正です");
   assertConfig(Number.isFinite(balance.economy?.rewards?.defeatConversionRate) && balance.economy.rewards.defeatConversionRate > 0 && balance.economy.rewards.defeatConversionRate <= 1, "敗北報酬の換算率が不正です");

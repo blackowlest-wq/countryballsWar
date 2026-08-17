@@ -23,7 +23,6 @@ const stage = document.querySelector("#gameStage");
 
 const ui = {
   mapName: document.querySelector("#mapName"),
-  progress: document.querySelector("#progressValue"),
   gold: document.querySelector("#goldValue"),
   day: document.querySelector("#dayValue"),
   time: document.querySelector("#timeValue"),
@@ -38,18 +37,14 @@ const ui = {
   regionStatus: document.querySelector("#selectedRegionStatus"),
   production: document.querySelector("#selectedProduction"),
   threat: document.querySelector("#selectedThreat"),
-  intel: document.querySelector("#intelValue"),
   defeatDialog: document.querySelector("#defeatDialog"),
   defeatReward: document.querySelector("#defeatReward"),
   clearDialog: document.querySelector("#clearDialog"),
   clearReward: document.querySelector("#clearReward"),
-  footerPlayerFactionName: document.querySelector("#footerPlayerFactionName"),
   clearPlayerFactionName: document.querySelector("#clearPlayerFactionName"),
   shopDialog: document.querySelector("#shopDialog"),
   shopGold: document.querySelector("#shopGoldValue"),
   shopButtons: document.querySelectorAll("[data-shop-upgrade]"),
-  attackGuide: document.querySelector("#attackGuide"),
-  attackTarget: document.querySelector("#attackTarget"),
   occupation: document.querySelector("#selectedOccupation"),
   invasionAlert: document.querySelector("#invasionAlert"),
   invasionTarget: document.querySelector("#invasionTarget"),
@@ -95,7 +90,6 @@ const UNIT_SPRITE_SOURCES = Object.fromEntries(
 function applyConfiguredDisplayNames() {
   const playerFactionName = GAME_CONFIG.factions[PLAYER_FACTION_ID].name;
   ui.mapName.textContent = GAME_CONFIG.map.name;
-  ui.footerPlayerFactionName.textContent = playerFactionName;
   ui.clearPlayerFactionName.textContent = playerFactionName;
 }
 
@@ -132,7 +126,6 @@ const state = {
   specialMove: savedSpecialMove,
   specialMoveUsesRemaining: 0,
   invincibilityRemaining: 0,
-  intel: CLOCK_BALANCE.initialIntel,
   selectedRegionId: null,
   aiTimer: AI_BALANCE.initialDelaySeconds,
   aiReinforcements: AI_BALANCE.reinforcementLimit,
@@ -256,10 +249,6 @@ function getAttackCandidates() {
 
 function attackScore(region) {
   return region.production * TARGETING_BALANCE.productionWeight + TARGETING_BALANCE.factionPenalty[region.faction];
-}
-
-function recommendedAttack() {
-  return getAttackCandidates()[0] || null;
 }
 
 function regionCenter(region) {
@@ -1482,19 +1471,15 @@ function formatTime() {
 
 function updateHud() {
   const playerRegions = regions.filter((region) => region.faction === PLAYER_FACTION_ID).length;
-  const progress = Math.round((playerRegions / regions.length) * 100);
   const time = formatTime();
   if (!state.cleared && !state.defeated && playerRegions === regions.length) triggerClear();
-  ui.progress.textContent = `${Math.max(1, progress)}%`;
   ui.gold.textContent = String(state.gold);
   ui.day.textContent = String(time.day).padStart(2, "0");
   ui.time.textContent = time.text;
-  ui.intel.textContent = String(state.intel);
   updateSpecialMoveHud();
   ui.pause.classList.toggle("is-paused", state.paused);
   ui.pause.textContent = state.paused ? "▶" : "Ⅱ";
   updateInvasionAlert();
-  updateAttackGuide();
   updateSelectedPanel();
 }
 
@@ -1506,13 +1491,6 @@ function updateSpecialMoveHud() {
   ui.specialMoveButton.disabled = !state.started || state.defeated || state.cleared || state.specialMoveUsesRemaining <= 0 || !specialMove;
   ui.specialMovePanel.classList.toggle("is-inactive", !state.started || !specialMove);
   ui.specialMoveButton.setAttribute("aria-label", specialMove ? `${specialMove.name}を使う` : "必殺技未設定");
-}
-
-function updateAttackGuide() {
-  const target = recommendedAttack();
-  if (!ui.attackGuide || !ui.attackTarget) return;
-  ui.attackGuide.classList.toggle("is-hidden", !target);
-  if (target) ui.attackTarget.textContent = target.name;
 }
 
 function updateInvasionAlert() {
@@ -1591,7 +1569,6 @@ function restartGame({ announce = true } = {}) {
   state.paused = !state.specialMove;
   state.speed = 1;
   state.elapsed = 0;
-  state.intel = CLOCK_BALANCE.initialIntel;
   state.selectedRegionId = null;
   state.aiTimer = AI_BALANCE.initialDelaySeconds;
   state.aiReinforcements = AI_BALANCE.reinforcementLimit;
@@ -1950,15 +1927,6 @@ ui.shopButtons.forEach((button) => {
 });
 document.querySelector("#shopCloseButton").addEventListener("click", () => ui.shopDialog.close());
 ui.shopDialog?.addEventListener("close", finishShop);
-document.querySelector("#intelButton").addEventListener("click", () => {
-  if (state.intel <= 0) {
-    showToast("情報ポイントがありません");
-    return;
-  }
-  state.intel -= 1;
-  const hostile = regions.find((region) => region.faction !== PLAYER_FACTION_ID);
-  if (hostile) showToast(`偵察結果：${hostile.shortName}の生産力は+${getRegionProduction(hostile)}/秒`);
-});
 
 const settingsDialog = document.querySelector("#settingsDialog");
 document.querySelector("#settingsButton").addEventListener("click", () => settingsDialog.showModal());

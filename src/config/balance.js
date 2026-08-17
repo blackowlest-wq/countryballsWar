@@ -3,7 +3,6 @@ export const BALANCE = {
     dayDurationSeconds: 90,
     recoveryTickSeconds: 1,
     maxFrameDeltaSeconds: 0.06,
-    initialIntel: 3,
   },
   movement: {
     speedByFaction: {

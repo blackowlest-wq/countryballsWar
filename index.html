@@ -20,22 +20,7 @@
   <body>
     <main class="game-shell" id="gameShell">
       <header class="topbar">
-        <div class="brand-block">
-          <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
-          <div>
-            <p class="eyebrow">REAL-TIME WORLD STRATEGY</p>
-            <h1>COUNTRYFRONTS</h1>
-          </div>
-        </div>
-
         <div class="topbar-center">
-          <div class="world-progress" title="現在の世界支配度">
-            <span class="globe-mark" aria-hidden="true">◉</span>
-            <div>
-              <span class="hud-label">世界支配度</span>
-              <strong id="progressValue">1%</strong>
-            </div>
-          </div>
           <div class="mission-meter" aria-label="作戦進行度">
             <span class="meter-segment is-filled"></span>
             <span class="meter-segment is-filled"></span>
@@ -50,16 +35,19 @@
         </div>
 
         <div class="topbar-actions">
+          <div class="simulation-controls topbar-simulation-controls" aria-label="シミュレーション操作">
+            <button class="pause-button" id="pauseButton" type="button" aria-label="一時停止">Ⅱ</button>
+            <div class="speed-buttons" aria-label="ゲーム速度">
+              <button type="button" data-speed="1" class="is-active">×1</button>
+              <button type="button" data-speed="2">×2</button>
+              <button type="button" data-speed="4">×4</button>
+            </div>
+          </div>
           <span class="connection-badge"><i></i>LOCAL SIM</span>
           <div class="header-tools">
             <button class="header-tool header-tool-shop shop-card" id="shopButton" type="button" aria-label="ショップを開く">
               <span class="header-tool-icon" aria-hidden="true">▤</span>
               <span class="header-tool-label">SHOP</span>
-            </button>
-            <button class="header-tool header-tool-intel intel-card" id="intelButton" type="button" aria-label="情報を確認する">
-              <span class="header-tool-icon" aria-hidden="true">⌁</span>
-              <span class="header-tool-label">INTEL</span>
-              <small id="intelValue">3</small>
             </button>
           </div>
           <button class="icon-button" id="settingsButton" type="button" aria-label="設定を開く">⚙</button>
@@ -73,20 +61,6 @@
           <span class="caption-dot"></span>
           <span><span id="mapName"></span> / DAY <strong id="dayValue">01</strong></span>
         </div>
-
-        <div class="attack-guide" id="attackGuide" aria-live="polite">
-          <span class="attack-guide-icon" aria-hidden="true">⌖</span>
-          <span><strong>ATTACK</strong><small id="attackTarget">—</small></span>
-        </div>
-
-        <aside class="special-move-panel" id="specialMovePanel" aria-label="必殺技">
-          <div class="special-move-heading">
-            <span class="special-move-icon" aria-hidden="true">✦</span>
-            <span><strong id="specialMoveName">未設定</strong><small>必殺技</small></span>
-          </div>
-          <div class="special-move-count"><strong id="specialMoveUses">0</strong><small>残り</small></div>
-          <button class="special-move-button" id="specialMoveButton" type="button" disabled>発動</button>
-        </aside>
 
         <div class="invasion-alert" id="invasionAlert" aria-live="assertive" aria-atomic="true">
           <span class="invasion-alert-icon" aria-hidden="true">!</span>
@@ -135,23 +109,16 @@
       </section>
 
       <footer class="control-bar">
-        <div class="faction-summary">
-          <span class="faction-emblem faction-emblem-player" aria-hidden="true">✦</span>
-          <div>
-            <span class="hud-label">あなたの勢力</span>
-            <strong id="footerPlayerFactionName"></strong>
-          </div>
-        </div>
+        <span class="simulation-time" id="timeValue">DAY 01 · 00:00</span>
 
-        <div class="simulation-controls">
-          <button class="pause-button" id="pauseButton" type="button" aria-label="一時停止">Ⅱ</button>
-          <span class="simulation-time" id="timeValue">DAY 01 · 00:00</span>
-          <div class="speed-buttons" aria-label="ゲーム速度">
-            <button type="button" data-speed="1" class="is-active">×1</button>
-            <button type="button" data-speed="2">×2</button>
-            <button type="button" data-speed="4">×4</button>
+        <aside class="special-move-panel" id="specialMovePanel" aria-label="必殺技">
+          <div class="special-move-heading">
+            <span class="special-move-icon" aria-hidden="true">✦</span>
+            <span><strong id="specialMoveName">未設定</strong><small>必殺技</small></span>
           </div>
-        </div>
+          <div class="special-move-count"><strong id="specialMoveUses">0</strong><small>残り</small></div>
+          <button class="special-move-button" id="specialMoveButton" type="button" disabled>発動</button>
+        </aside>
 
         <div class="legend">
           <span><i class="legend-dot player"></i>自軍（白）</span>
