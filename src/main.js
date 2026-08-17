@@ -1828,7 +1828,6 @@ function dispatchUnitToRegion(unit, region) {
   unit.arrivalResolved = false;
   ui.dispatchHint.classList.add("is-hidden");
   addEvent(`白い部隊が${region.shortName}へ移動を開始しました`);
-  showToast(`${region.name}へ部隊を派遣しました`);
   return true;
 }
 
@@ -1875,14 +1874,6 @@ function setZoom(nextZoom) {
   render();
 }
 
-function resetMap() {
-  state.zoom = 1;
-  state.panX = 0;
-  state.panY = 0;
-  render();
-  showToast("マップを初期位置に戻しました");
-}
-
 function loop(now) {
   const rawDt = Math.max(0, (now - lastTime) / 1000);
   const dt = Math.min(rawDt, CLOCK_BALANCE.maxFrameDeltaSeconds);
@@ -1918,7 +1909,6 @@ window.addEventListener("resize", () => {
 
 document.querySelector("#zoomInButton").addEventListener("click", () => setZoom(state.zoom + 0.12));
 document.querySelector("#zoomOutButton").addEventListener("click", () => setZoom(state.zoom - 0.12));
-document.querySelector("#homeButton").addEventListener("click", resetMap);
 ui.territoryClose?.addEventListener("click", () => selectRegion(null));
 
 document.querySelector("#shopButton").addEventListener("click", openShop);

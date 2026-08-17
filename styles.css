@@ -435,7 +435,7 @@ button:disabled {
 
 .invasion-alert {
   position: absolute;
-  top: 118px;
+  top: 58px;
   left: 26px;
   display: flex;
   align-items: center;
@@ -1661,7 +1661,7 @@ button:disabled {
   }
 
   .invasion-alert {
-    top: 91px;
+    top: 48px;
     left: 13px;
     max-width: 190px;
     padding: 6px 8px;
