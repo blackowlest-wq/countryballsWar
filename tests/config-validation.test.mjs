@@ -54,6 +54,28 @@ test("実行用シナリオは初期所有・生産力・拠点中心の部隊�
   });
 });
 
+test("拠点生産力は基本1で、主要ハブだけ2である", () => {
+  const production = GAME_CONFIG.balance.territoryProduction;
+  const expectedProduction = {
+    northwest: 1,
+    north: 1,
+    northeast: 1,
+    "western-steppe": 1,
+    central: 2,
+    "eastern-border": 1,
+    heartland: 2,
+    "pink-coast": 1,
+    "southern-plains": 1,
+    "south-coast": 1,
+    "island-chain": 1,
+    "frontier-isle": 1,
+  };
+
+  assert.deepEqual(production, expectedProduction);
+  assert.equal(Object.values(production).filter((value) => value === 1).length, 10);
+  assert.equal(Object.values(production).filter((value) => value === 2).length, 2);
+});
+
 test("未知の拠点を結ぶ道路は設定時に拒否する", () => {
   const config = editableConfig();
   config.map.roads.push(["north", "missing-region"]);
