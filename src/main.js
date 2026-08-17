@@ -69,6 +69,10 @@ const ui = {
 const BALANCE = GAME_CONFIG.balance;
 const PLAYER_FACTION_ID = GAME_CONFIG.scenario.playerFactionId;
 const ACTIVE_AI_FACTION_ID = GAME_CONFIG.scenario.activeAiFactionId;
+const AI_FACTION_IDS = [
+  ACTIVE_AI_FACTION_ID,
+  ...Object.keys(GAME_CONFIG.factions).filter((factionId) => factionId !== PLAYER_FACTION_ID && factionId !== ACTIVE_AI_FACTION_ID),
+];
 const CLOCK_BALANCE = BALANCE.clock;
 const MOVEMENT_BALANCE = BALANCE.movement;
 const UNIT_BALANCE = BALANCE.units;
@@ -80,6 +84,11 @@ const ECONOMY_BALANCE = BALANCE.economy;
 const SPECIAL_MOVE_BALANCE = BALANCE.specialMove;
 const BATTLE_DISTANCE = COMBAT_BALANCE.contactDistance;
 const BATTLE_TICK_INTERVAL = COMBAT_BALANCE.tickIntervalSeconds;
+
+function createAiFactionState(value) {
+  return Object.fromEntries(AI_FACTION_IDS.map((factionId) => [factionId, value]));
+}
+
 const COLORS = Object.fromEntries(
   Object.entries(GAME_CONFIG.factions).map(([factionId, faction]) => [factionId, faction.palette]),
 );
@@ -127,8 +136,8 @@ const state = {
   specialMoveUsesRemaining: 0,
   invincibilityRemaining: 0,
   selectedRegionId: null,
-  aiTimer: AI_BALANCE.initialDelaySeconds,
-  aiReinforcements: AI_BALANCE.reinforcementLimit,
+  aiTimers: createAiFactionState(AI_BALANCE.initialDelaySeconds),
+  aiReinforcements: createAiFactionState(AI_BALANCE.reinforcementLimit),
   invasionWarning: null,
   runProgress: createRunProgress(),
   recoveryTimer: 0,
@@ -232,6 +241,20 @@ function findRoadPath(startId, targetId) {
 
 function areRoadNeighbors(sourceRegion, targetRegion) {
   return Boolean(sourceRegion && targetRegion && sourceRegion.id !== targetRegion.id && roadNeighbors(sourceRegion.id).includes(targetRegion.id));
+}
+
+function getAiAttackCandidates(factionId) {
+  const candidates = [];
+  const aiRegions = regions.filter((region) => region.faction === factionId && (!region.occupation || region.occupation.faction !== PLAYER_FACTION_ID));
+
+  aiRegions.forEach((source) => {
+    regions
+      .filter((region) => region.faction === PLAYER_FACTION_ID && areRoadNeighbors(source, region))
+      .filter((target) => !units.some((unit) => unit.faction === factionId && unit.targetRegionId === target.id))
+      .forEach((target) => candidates.push({ factionId, source, target }));
+  });
+
+  return candidates;
 }
 
 function hasRoadPath(sourceRegion, targetRegion) {
@@ -1255,29 +1278,32 @@ function createUnit(faction, regionId, targetRegionId = null) {
 }
 
 function runAi(dt) {
-  state.aiTimer -= dt;
-  if (state.aiTimer > 0 || state.aiReinforcements <= 0 || state.invasionWarning) return;
-  state.aiTimer = AI_BALANCE.actionDelaySeconds + Math.random() * AI_BALANCE.actionDelayJitterSeconds;
+  AI_FACTION_IDS.forEach((factionId) => {
+    state.aiTimers[factionId] -= dt;
+  });
+  if (state.invasionWarning) return;
 
-  if (units.filter((unit) => unit.faction === ACTIVE_AI_FACTION_ID).length >= AI_BALANCE.activeUnitLimit) return;
+  const candidates = [];
+  AI_FACTION_IDS.forEach((factionId) => {
+    if (state.aiTimers[factionId] > 0 || state.aiReinforcements[factionId] <= 0) return;
 
-  const aiRegions = regions.filter((region) => region.faction === ACTIVE_AI_FACTION_ID);
-  const source = aiRegions[Math.floor(Math.random() * aiRegions.length)] || regions.find((region) => region.faction === ACTIVE_AI_FACTION_ID);
-  const targets = source ? regions.filter((region) => region.faction === PLAYER_FACTION_ID && areRoadNeighbors(source, region)) : [];
-  const target = targets[Math.floor(Math.random() * targets.length)];
-  if (!source || !target) return;
+    state.aiTimers[factionId] = AI_BALANCE.actionDelaySeconds + Math.random() * AI_BALANCE.actionDelayJitterSeconds;
+    if (units.filter((unit) => unit.faction === factionId).length >= AI_BALANCE.activeUnitLimit) return;
+    candidates.push(...getAiAttackCandidates(factionId));
+  });
 
-  const existing = units.find((unit) => unit.faction === ACTIVE_AI_FACTION_ID && unit.targetRegionId === target.id);
-  if (!existing) {
-    state.invasionWarning = {
-      sourceRegionId: source.id,
-      targetRegionId: target.id,
-      remaining: AI_BALANCE.invasionWarningSeconds,
-    };
-    addEvent("侵攻予告あり！");
-    showToast("侵攻予告あり！");
-    updateInvasionAlert();
-  }
+  const candidate = candidates[Math.floor(Math.random() * candidates.length)];
+  if (!candidate) return;
+
+  state.invasionWarning = {
+    factionId: candidate.factionId,
+    sourceRegionId: candidate.source.id,
+    targetRegionId: candidate.target.id,
+    remaining: AI_BALANCE.invasionWarningSeconds,
+  };
+  addEvent("侵攻予告あり！");
+  showToast("侵攻予告あり！");
+  updateInvasionAlert();
 }
 
 function updateInvasionWarning(dt) {
@@ -1286,7 +1312,7 @@ function updateInvasionWarning(dt) {
 
   const source = getRegion(warning.sourceRegionId);
   const target = getRegion(warning.targetRegionId);
-  if (!source || !target || source.faction !== ACTIVE_AI_FACTION_ID || target.faction !== PLAYER_FACTION_ID) {
+  if (!source || !target || !AI_FACTION_IDS.includes(warning.factionId) || source.faction !== warning.factionId || target.faction !== PLAYER_FACTION_ID) {
     state.invasionWarning = null;
     return;
   }
@@ -1294,12 +1320,13 @@ function updateInvasionWarning(dt) {
   warning.remaining -= dt;
   if (warning.remaining > 0) return;
   state.invasionWarning = null;
-  if (units.filter((unit) => unit.faction === ACTIVE_AI_FACTION_ID).length >= AI_BALANCE.activeUnitLimit) return;
+  if (units.filter((unit) => unit.faction === warning.factionId).length >= AI_BALANCE.activeUnitLimit) return;
 
-  const created = createUnit(ACTIVE_AI_FACTION_ID, source.id, target.id);
+  const created = createUnit(warning.factionId, source.id, target.id);
   if (!created) return;
-  state.aiReinforcements -= 1;
-  addEvent(`${source.shortName}から敵部隊が出撃しました`);
+  state.aiReinforcements[warning.factionId] -= 1;
+  const factionName = GAME_CONFIG.factions[warning.factionId]?.name || "敵勢力";
+  addEvent(`${source.shortName}から${factionName}の部隊が出撃しました`);
 }
 
 function regionForUnit(unit) {
@@ -1570,8 +1597,8 @@ function restartGame({ announce = true } = {}) {
   state.speed = 1;
   state.elapsed = 0;
   state.selectedRegionId = null;
-  state.aiTimer = AI_BALANCE.initialDelaySeconds;
-  state.aiReinforcements = AI_BALANCE.reinforcementLimit;
+  state.aiTimers = createAiFactionState(AI_BALANCE.initialDelaySeconds);
+  state.aiReinforcements = createAiFactionState(AI_BALANCE.reinforcementLimit);
   state.invasionWarning = null;
   state.runProgress = createRunProgress();
   state.recoveryTimer = 0;
