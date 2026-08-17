@@ -12,12 +12,18 @@ import {
 } from "../src/campaign/phase-runtime.js";
 import { selectUnitSpriteKey } from "../src/render/unit-sprite.js";
 
-test("player units keep the controllable player sprite", () => {
+test("player units show their country character while remaining controllable", () => {
   assert.equal(selectUnitSpriteKey({
     playerFactionId: "blue",
     faction: "blue",
     characterId: "south-korea",
     characters: { "south-korea": { sprite: "./assets/units/enemy-korea.png" } },
+  }), "south-korea");
+  assert.equal(selectUnitSpriteKey({
+    playerFactionId: "blue",
+    faction: "blue",
+    characterId: "unknown",
+    characters: {},
   }), "blue");
 });
 
@@ -54,7 +60,7 @@ test("phase transition carries player units and occupation but resets enemies", 
   carriedUnit.x = 0.123;
   carriedUnit.y = 0.456;
   carriedUnit.strength = 7;
-  const carriedRegion = current.regions.find((region) => region.id === "south-korea");
+  const carriedRegion = current.regions.find((region) => region.id === "kr-11");
   carriedRegion.faction = "blue";
   carriedRegion.occupation = { faction: "blue", remaining: 2.5 };
 
@@ -68,8 +74,8 @@ test("phase transition carries player units and occupation but resets enemies", 
   assert.equal(resultUnit.x, 0.123);
   assert.equal(resultUnit.y, 0.456);
   assert.equal(resultUnit.strength, 7);
-  assert.equal(result.regions.find((region) => region.id === "south-korea").faction, "blue");
-  assert.deepEqual(result.regions.find((region) => region.id === "south-korea").occupation, { faction: "blue", remaining: 2.5 });
+  assert.equal(result.regions.find((region) => region.id === "kr-11").faction, "blue");
+  assert.deepEqual(result.regions.find((region) => region.id === "kr-11").occupation, { faction: "blue", remaining: 2.5 });
   assert.deepEqual(
     result.units.filter((unit) => unit.faction !== "blue").map((unit) => unit.id).sort(),
     next.units.filter((unit) => unit.faction !== "blue").map((unit) => unit.id).sort(),

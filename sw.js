@@ -1,4 +1,4 @@
-const CACHE_NAME = "countryfronts-shell-v21";
+const CACHE_NAME = "countryfronts-shell-v22";
 
 const APP_SHELL = [
   "./",
@@ -15,6 +15,7 @@ const APP_SHELL = [
   "./src/config/map.js",
   "./src/config/map-compiler.js",
   "./src/config/geodata/natural-earth-korea.js",
+  "./src/config/geodata/natural-earth-korea-admin-1.js",
   "./src/config/scenario.js",
   "./src/config/world-map.js",
   "./src/config/game-config.js",

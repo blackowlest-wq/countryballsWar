@@ -1,14 +1,22 @@
 # Map geometry source
 
-The checked-in `ne_110m_admin_0_countries.geojson` is the Natural Earth Admin 0
-– Countries dataset at 1:110m, pinned to v5.1.1 (commit `9380cca`). Natural
-Earth publishes this data in the public domain.
+The active Korea Front uses Natural Earth Admin 1 - States, Provinces at
+1:10m, pinned to v5.1.1 (commit `9380cca`). The checked-in
+`ne_10m_admin_1_korea.geojson` is the extracted Korea subset containing 28
+first-order administrative features with their original Polygon/MultiPolygon
+geometry and source properties.
 
-`natural-earth-korea.js` is the small runtime subset used by the current Korea
-front. Its coordinates are copied from the `PRK` and `KOR` features in the
-GeoJSON file; it preserves the source Polygon/MultiPolygon structure and only
-keeps the label point and fields needed by the map compiler.
+`natural-earth-korea-admin-1.js` is the compact runtime subset used by
+`src/config/world-map.js`. It keeps the source feature ID, country mapping,
+English region name, label point, ISO codes, and geometry needed by the map
+compiler.
 
-Source: <https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.1/geojson/ne_110m_admin_0_countries.geojson>
+The previous country-level source remains available as
+`ne_110m_admin_0_countries.geojson` with its runtime subset
+`natural-earth-korea.js` for future country-level fronts.
 
-License: <https://www.naturalearthdata.com/about/terms-of-use/>
+Admin 1 source:
+<https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.1/geojson/ne_10m_admin_1_states_provinces.geojson>
+
+License:
+<https://www.naturalearthdata.com/about/terms-of-use/>

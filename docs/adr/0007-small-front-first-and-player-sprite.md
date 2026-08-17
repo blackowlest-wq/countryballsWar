@@ -1,4 +1,4 @@
-# ADR 0007: Small front first and player sprite priority
+# ADR 0007: Small front first and country-character sprites
 
 ## Status
 
@@ -7,21 +7,24 @@ Accepted
 ## Decision
 
 The first active campaign front is the Korea Front. It uses one close-up
-geographic map and one phase. South Korea is the player starting territory;
-North Korea is the only target country. Geographic polygons are sourced from
-Natural Earth Admin 0 – Countries 1:110m, pinned to v5.1.1 (`9380cca`), and the
-full source file is retained for future fronts while only Korea is loaded into
-the active runtime subset.
+geographic map and one phase. The map contains 28 Natural Earth Admin 1
+fragments: 17 South Korean player fragments and 11 North Korean target
+fragments. Geographic polygons are pinned to Natural Earth v5.1.1 (`9380cca`)
+and the source subset is retained for reproducible map builds.
 
-Player units always use the player faction sprite so they remain visually and
-operationally identifiable. Enemy units may use a country-specific character
-sprite; missing enemy assets fall back to the clipped flag renderer.
+Units use the country-specific character sprite whenever one is available,
+including player-controlled units. If a character sprite is unavailable, a
+player unit falls back to the player faction sprite and an enemy unit falls
+back to its faction/flag renderer. Controllability is determined by faction,
+not by the selected sprite.
 
 ## Consequences
 
-- Initial scope is two regions and one land road.
-- Small-country fronts can be completed without a phase transition.
-- Campaign ID changes reset old world-seed campaign completion while preserving
-  economy and upgrades.
+- The initial scope is one small front with 28 geographic regions and 47
+  passable adjacency links.
+- South Korea and North Korea are completed only after all of their map
+  fragments are controlled.
+- Player-controlled South Korean units visibly use the South Korean character
+  asset while remaining controllable by the blue faction.
 - Future fronts must explicitly select their own map fragments, projection
   bounds, production, initial deployment, and enemy profile.

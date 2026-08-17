@@ -26,12 +26,15 @@ test("the compiled geographic front map is connected", () => {
   }
 
   assert.equal(visited.size, regionIds.length);
-  assert.deepEqual(regionIds, ["south-korea", "north-korea"]);
-  assert.equal(GAME_CONFIG.map.sourceWorldMapId, "natural-earth-korea-front-v1");
-  assert.equal(GAME_CONFIG.map.source.id, "natural-earth-110m-admin-0-countries");
+  assert.equal(regionIds.length, 28);
+  assert.equal(GAME_CONFIG.countries["south-korea"].fragmentIds.length, 17);
+  assert.equal(GAME_CONFIG.countries["north-korea"].fragmentIds.length, 11);
+  assert.equal(GAME_CONFIG.map.sourceWorldMapId, "natural-earth-korea-admin-1-v1");
+  assert.equal(GAME_CONFIG.map.source.id, "natural-earth-admin-1-korea");
   assert.equal(GAME_CONFIG.map.source.version, "5.1.1");
+  assert.equal(GAME_CONFIG.map.source.scale, "1:10m");
   assert.equal(GAME_CONFIG.map.source.license, "Public domain");
-  assert.equal(GAME_CONFIG.map.regions.find((region) => region.id === "north-korea").sourceGeometry.type, "MultiPolygon");
+  assert.equal(GAME_CONFIG.map.regions.find((region) => region.id === "kr-41").sourceGeometry.type, "MultiPolygon");
   assert.ok(GAME_CONFIG.map.regions.every((region) => region.polygons.length > 0));
 });
 
@@ -46,7 +49,8 @@ test("roads remain the source of the runtime adjacency table and every road is p
     assert.deepEqual([...GAME_CONFIG.map.roadNeighbors[regionId]].sort(), neighbors.sort());
   });
   assert.ok(GAME_CONFIG.map.roadDefinitions.every((road) => road.passable !== false));
-  assert.ok(GAME_CONFIG.map.roadDefinitions.every((road) => road.kind === "land"));
+  assert.equal(GAME_CONFIG.map.roadDefinitions.filter((road) => road.kind === "land").length, 46);
+  assert.equal(GAME_CONFIG.map.roadDefinitions.filter((road) => road.kind === "sea").length, 1);
   assert.equal(Object.hasOwn(MAP, "roadNeighbors"), false);
 });
 
@@ -88,9 +92,9 @@ test("runtime scenario uses phase production and rounds front-start enemy streng
 test("production values are defined for every geographic fragment", () => {
   const production = GAME_CONFIG.balance.territoryProduction;
   assert.deepEqual(Object.keys(production).sort(), GAME_CONFIG.map.regions.map((region) => region.id).sort());
-  assert.equal(production["south-korea"], 2);
-  assert.equal(production["north-korea"], 1);
-  assert.equal(Object.values(production).filter((value) => value === 1).length, 1);
+  assert.equal(production["kr-11"], 3);
+  assert.equal(production["kp-01"], 2);
+  assert.equal(Object.values(production).filter((value) => value === 1).length, 10);
 });
 
 test("unknown and duplicate roads are rejected during configuration", () => {
