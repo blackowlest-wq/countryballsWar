@@ -25,19 +25,8 @@ export const BALANCE = {
     minimumSurvivorStrength: 1,
   },
   territoryProduction: {
-    "russia-east": 2,
-    "russia-far-east": 2,
-    kazakhstan: 2,
-    mongolia: 1,
-    "china-north": 3,
-    "china-central": 3,
-    "china-south": 2,
     "north-korea": 1,
     "south-korea": 2,
-    japan: 2,
-    vietnam: 1,
-    philippines: 1,
-    indonesia: 2,
   },
   occupation: {
     durationSeconds: 5,
@@ -78,7 +67,7 @@ export const BALANCE = {
   },
   campaign: {
     frontTypes: {
-      regionalSmall: { targetDurationSeconds: 330, phaseCount: 2 },
+      regionalSmall: { targetDurationSeconds: 330, phaseCount: 1 },
       regionalLarge: { targetDurationSeconds: 540, phaseCount: 2 },
       major: { targetDurationSeconds: 420, phaseCount: 2 },
       worldCoalition: { targetDurationSeconds: 540, phaseCount: 3 },

@@ -3,31 +3,27 @@
 The source is `src/config/balance.js`. Campaign-specific production and
 deployment are stored per phase in `src/config/campaign.js`.
 
-## Geographic fragment production
+## First front
 
-The East Asia seed currently uses the following production values:
+The Korea Front uses the `regionalSmall` type and has one phase. Its enemy
+profile is `regionalIntro`:
 
-| Production | Fragments |
-|---:|---|
-| 1 | `mongolia`, `north-korea`, `vietnam`, `philippines` |
-| 2 | `russia-east`, `russia-far-east`, `kazakhstan`, `china-south`, `south-korea`, `japan`, `indonesia` |
-| 3 | `china-north`, `china-central` |
+- strength multiplier: `0.85`
+- active enemy unit limit: `3`
+- reinforcement limit: `2`
+- action delay: `4.8s`
 
-## Enemy profile application
-
-At front start, the selected front profile is resolved for every enemy initial
-unit. The runtime value is:
+At front start, enemy strength is resolved once:
 
 ```text
 enemyMaxStrength = round(baseMaxStrengthByFaction * strengthMultiplier)
 ```
 
-The authored strength in a map or deployment is not used. The current East
-Asia front uses `regionalEarly` (`0.95`, active limit `4`, reinforcement limit
-`3`, action delay `4.4s`).
+Authored map strength is not read. The active production values are `2` for
+South Korea and `1` for North Korea.
 
-## Other balance domains
+## Future data
 
-Clock, movement, occupation, combat, AI, economy, shop, and special-move values
-remain in `src/config/balance.js`. Configuration validation checks every faction
-and every geographic fragment has a required value.
+The world source already contains additional East Asia fragments, but they are
+not active in the first front. Their production and enemy profiles should be
+added when the next front is selected.

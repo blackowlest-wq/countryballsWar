@@ -9,6 +9,7 @@ function editableConfig() {
 }
 
 test("the compiled geographic front map is connected", () => {
+  assert.equal(GAME_CONFIG.map.id, "korea-front");
   const regionIds = GAME_CONFIG.map.regions.map((region) => region.id);
   const visited = new Set([regionIds[0]]);
   const queue = [regionIds[0]];
@@ -25,6 +26,7 @@ test("the compiled geographic front map is connected", () => {
   }
 
   assert.equal(visited.size, regionIds.length);
+  assert.deepEqual(regionIds, ["south-korea", "north-korea"]);
   assert.equal(GAME_CONFIG.map.sourceWorldMapId, "world-equirectangular-v1");
 });
 
@@ -39,7 +41,7 @@ test("roads remain the source of the runtime adjacency table and every road is p
     assert.deepEqual([...GAME_CONFIG.map.roadNeighbors[regionId]].sort(), neighbors.sort());
   });
   assert.ok(GAME_CONFIG.map.roadDefinitions.every((road) => road.passable !== false));
-  assert.ok(GAME_CONFIG.map.roadDefinitions.some((road) => road.kind === "sea"));
+  assert.ok(GAME_CONFIG.map.roadDefinitions.every((road) => road.kind === "land"));
   assert.equal(Object.hasOwn(MAP, "roadNeighbors"), false);
 });
 
@@ -70,7 +72,7 @@ test("runtime scenario uses phase production and rounds front-start enemy streng
   runtime.units.forEach((unit) => {
     const base = GAME_CONFIG.balance.units.baseMaxStrengthByFaction[unit.faction];
     const expected = GAME_CONFIG.factions[unit.faction].isEnemy
-      ? Math.round(base * GAME_CONFIG.balance.campaign.enemyProfiles.regionalEarly.strengthMultiplier)
+      ? Math.round(base * GAME_CONFIG.balance.campaign.enemyProfiles.regionalIntro.strengthMultiplier)
       : base;
     assert.equal(unit.maxStrength, expected);
     assert.equal(unit.strength, expected);
@@ -81,9 +83,9 @@ test("runtime scenario uses phase production and rounds front-start enemy streng
 test("production values are defined for every geographic fragment", () => {
   const production = GAME_CONFIG.balance.territoryProduction;
   assert.deepEqual(Object.keys(production).sort(), GAME_CONFIG.map.regions.map((region) => region.id).sort());
-  assert.equal(production["china-north"], 3);
-  assert.equal(production["china-central"], 3);
-  assert.equal(Object.values(production).filter((value) => value === 1).length, 4);
+  assert.equal(production["south-korea"], 2);
+  assert.equal(production["north-korea"], 1);
+  assert.equal(Object.values(production).filter((value) => value === 1).length, 1);
 });
 
 test("unknown and duplicate roads are rejected during configuration", () => {
@@ -111,7 +113,8 @@ test("all non-player factions are active enemies and no neutral faction remains"
 
 test("campaign phases cover the map and carry explicit objectives", () => {
   const front = GAME_CONFIG.campaign.fronts[GAME_CONFIG.scenario.frontId];
-  assert.deepEqual(front.phaseIds, ["asia-front-early", "asia-front-late"]);
+  assert.deepEqual(front.phaseIds, ["korea-front-opening"]);
+  assert.deepEqual(front.targetCountryIds, ["north-korea"]);
   front.phaseIds.forEach((phaseId, index) => {
     const phase = GAME_CONFIG.campaign.phases[phaseId];
     assert.equal(phase.index, index);
@@ -140,9 +143,10 @@ test("special move and campaign balance keep their fixed constraints", () => {
   assert.equal(specialMove.types.enemyWeakness.strengthReductionRate, 0.2);
   assert.equal(specialMove.types.allyBoost.strengthIncreaseRate, 0.2);
   assert.equal(specialMove.types.invincibility.durationSeconds, 3);
-  Object.values(campaign.frontTypes).forEach((frontType) => {
+  Object.entries(campaign.frontTypes).forEach(([frontTypeId, frontType]) => {
     assert.ok(frontType.targetDurationSeconds >= 300 && frontType.targetDurationSeconds <= 600);
-    assert.ok(frontType.phaseCount >= 2 && frontType.phaseCount <= 6);
+    const minimumPhaseCount = frontTypeId === "regionalSmall" ? 1 : 2;
+    assert.ok(frontType.phaseCount >= minimumPhaseCount && frontType.phaseCount <= 6);
   });
 });
 
@@ -156,6 +160,6 @@ test("invalid map geometry and decoration data are rejected", () => {
   assert.throws(() => createGameConfig(invalidLabel), /decorations\.labels/);
 
   const invalidLine = editableConfig();
-  invalidLine.map.decorations.lines[0].to = [0.62, Number.NaN];
+  invalidLine.map.decorations.lines.push({ from: [0.2, 0.2], to: [0.62, Number.NaN] });
   assert.throws(() => createGameConfig(invalidLine), /decorations\.lines/);
 });

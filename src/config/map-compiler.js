@@ -27,7 +27,7 @@ function compileDecorations(decorations, bounds) {
 }
 
 export function compileWorldFrontMap(worldMap, frontMap, countries) {
-  const bounds = worldMap.projection.bounds;
+  const bounds = frontMap.bounds || worldMap.projection.bounds;
   const regions = frontMap.fragmentIds.map((fragmentId) => {
     const fragment = worldMap.fragments[fragmentId];
     const country = countries[fragment?.countryId];
@@ -50,7 +50,7 @@ export function compileWorldFrontMap(worldMap, frontMap, countries) {
     id: frontMap.id,
     name: frontMap.name,
     sourceWorldMapId: worldMap.id,
-    projection: cloneData(worldMap.projection),
+    projection: { ...cloneData(worldMap.projection), bounds: cloneData(bounds) },
     interactionMinDistance: frontMap.interactionMinDistance,
     interactionHitRadius: frontMap.interactionHitRadius,
     decorations: compileDecorations(frontMap.decorations, bounds),

@@ -115,6 +115,23 @@ export const WORLD_MAP = {
     },
   },
   frontMaps: {
+    "korea-front": {
+      id: "korea-front",
+      name: "Korean Peninsula Front",
+      bounds: { west: 124, east: 132, south: 32, north: 44 },
+      interactionMinDistance: 0.18,
+      interactionHitRadius: 0.08,
+      fragmentIds: ["south-korea", "north-korea"],
+      roads: [
+        { from: "south-korea", to: "north-korea", kind: "land" },
+      ],
+      decorations: {
+        labels: [
+          { text: "KOREAN PENINSULA", coordinates: [130.4, 42.4] },
+        ],
+        lines: [],
+      },
+    },
     "asia-front": {
       id: "asia-front",
       name: "East Asia Front",

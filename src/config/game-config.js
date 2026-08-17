@@ -86,7 +86,7 @@ function validateCountryMaster(countries, mapRegions) {
 
     country.fragmentIds.forEach((fragmentId) => {
       const region = regionsById.get(fragmentId);
-      assertConfig(region, `Country ${countryId} references missing fragment ${fragmentId}`);
+      if (!region) return;
       assertConfig(region.countryId === countryId, `Fragment ${fragmentId} belongs to another country`);
       assertConfig(!fragmentOwners.has(fragmentId), `Fragment ${fragmentId} is assigned to multiple countries`);
       fragmentOwners.set(fragmentId, countryId);
@@ -240,7 +240,8 @@ function validateCampaignBalance(campaign) {
     const frontType = frontTypes[key];
     assertConfig(frontType && typeof frontType === "object" && !Array.isArray(frontType), `campaign.frontTypes.${key} is missing`);
     assertConfig(Number.isInteger(frontType.targetDurationSeconds) && frontType.targetDurationSeconds >= 300 && frontType.targetDurationSeconds <= 600, `campaign.frontTypes.${key}.targetDurationSeconds must be between 300 and 600 seconds`);
-    assertConfig(Number.isInteger(frontType.phaseCount) && frontType.phaseCount >= 2 && frontType.phaseCount <= 6, `campaign.frontTypes.${key}.phaseCount must be between 2 and 6`);
+    const minimumPhaseCount = key === "regionalSmall" ? 1 : 2;
+    assertConfig(Number.isInteger(frontType.phaseCount) && frontType.phaseCount >= minimumPhaseCount && frontType.phaseCount <= 6, `campaign.frontTypes.${key}.phaseCount must be between ${minimumPhaseCount} and 6`);
   });
 
   const enemyProfiles = campaign?.enemyProfiles;

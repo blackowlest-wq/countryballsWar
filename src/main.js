@@ -24,6 +24,7 @@ import {
   createSpecialMoveSettings,
   getSpecialMoveConfig,
 } from "./special-move.js";
+import { selectUnitSpriteKey } from "./render/unit-sprite.js";
 
 const canvas = document.querySelector("#mapCanvas");
 const ctx = canvas.getContext("2d");
@@ -720,7 +721,13 @@ function drawUnit(unit, time) {
   ctx.fill();
   ctx.restore();
 
-  const sprite = character?.sprite ? UNIT_SPRITES[unit.characterId] : null;
+  const spriteKey = selectUnitSpriteKey({
+    playerFactionId: PLAYER_FACTION_ID,
+    faction: unit.faction,
+    characterId: unit.characterId,
+    characters: GAME_CONFIG.characters,
+  });
+  const sprite = spriteKey ? UNIT_SPRITES[spriteKey] : null;
   const spriteReady = Boolean(sprite?.complete && sprite.naturalWidth > 0);
   if (spriteReady) {
     const spriteSize = scale * 2.42;

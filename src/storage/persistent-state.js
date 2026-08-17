@@ -5,6 +5,7 @@ export const UPGRADES_STORAGE_KEY = "countryfronts.upgrades";
 export const SPECIAL_MOVE_STORAGE_KEY = "countryfronts.specialMove";
 export const CAMPAIGN_STORAGE_KEY = "countryfronts.campaign";
 export const CAMPAIGN_STATE_VERSION = 1;
+export const DEFAULT_CAMPAIGN_ID = "regional-fronts-v1";
 
 function getStorage(storage) {
   if (storage) return storage;
@@ -31,7 +32,7 @@ function normalizeStringList(value) {
   return [...new Set(value.filter((entry) => typeof entry === "string" && entry.trim().length > 0))].sort();
 }
 
-export function createDefaultCampaignState({ campaignId = "world-conquest-v1", difficultyId = "normal" } = {}) {
+export function createDefaultCampaignState({ campaignId = DEFAULT_CAMPAIGN_ID, difficultyId = "normal" } = {}) {
   return {
     version: CAMPAIGN_STATE_VERSION,
     campaignId,
@@ -44,6 +45,7 @@ export function createDefaultCampaignState({ campaignId = "world-conquest-v1", d
 export function normalizeCampaignState(value, defaults = {}) {
   const fallback = createDefaultCampaignState(defaults);
   if (!value || typeof value !== "object" || Array.isArray(value)) return fallback;
+  if (defaults.campaignId && value.campaignId && value.campaignId !== defaults.campaignId) return fallback;
   return {
     version: CAMPAIGN_STATE_VERSION,
     campaignId: typeof value.campaignId === "string" && value.campaignId.trim().length > 0 ? value.campaignId : fallback.campaignId,

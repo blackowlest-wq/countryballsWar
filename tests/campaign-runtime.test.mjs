@@ -10,6 +10,16 @@ import {
   resolveEnemyStrength,
   transitionPhase,
 } from "../src/campaign/phase-runtime.js";
+import { selectUnitSpriteKey } from "../src/render/unit-sprite.js";
+
+test("player units keep the controllable player sprite", () => {
+  assert.equal(selectUnitSpriteKey({
+    playerFactionId: "blue",
+    faction: "blue",
+    characterId: "south-korea",
+    characters: { "south-korea": { sprite: "./assets/units/enemy-korea.png" } },
+  }), "blue");
+});
 
 test("enemy strength is rounded once from the front profile", () => {
   assert.equal(resolveEnemyStrength(12, 0.95), 11);
@@ -32,13 +42,19 @@ test("split-country completion requires every fragment", () => {
 });
 
 test("phase transition carries player units and occupation but resets enemies", () => {
-  const current = createRuntimeScenario(GAME_CONFIG, "asia-front-early");
-  const next = createRuntimeScenario(GAME_CONFIG, "asia-front-late");
+  const current = createRuntimeScenario(GAME_CONFIG, "korea-front-opening");
+  const next = {
+    ...createRuntimeScenario(GAME_CONFIG, "korea-front-opening"),
+    phaseId: "korea-front-next",
+    units: createRuntimeScenario(GAME_CONFIG, "korea-front-opening").units
+      .filter((unit) => unit.faction !== "blue")
+      .map((unit) => ({ ...unit, id: "next-red" })),
+  };
   const carriedUnit = current.units.find((unit) => unit.faction === "blue");
   carriedUnit.x = 0.123;
   carriedUnit.y = 0.456;
   carriedUnit.strength = 7;
-  const carriedRegion = current.regions.find((region) => region.id === "china-north");
+  const carriedRegion = current.regions.find((region) => region.id === "south-korea");
   carriedRegion.faction = "blue";
   carriedRegion.occupation = { faction: "blue", remaining: 2.5 };
 
@@ -52,25 +68,24 @@ test("phase transition carries player units and occupation but resets enemies", 
   assert.equal(resultUnit.x, 0.123);
   assert.equal(resultUnit.y, 0.456);
   assert.equal(resultUnit.strength, 7);
-  assert.equal(result.regions.find((region) => region.id === "china-north").faction, "blue");
-  assert.deepEqual(result.regions.find((region) => region.id === "china-north").occupation, { faction: "blue", remaining: 2.5 });
+  assert.equal(result.regions.find((region) => region.id === "south-korea").faction, "blue");
+  assert.deepEqual(result.regions.find((region) => region.id === "south-korea").occupation, { faction: "blue", remaining: 2.5 });
   assert.deepEqual(
     result.units.filter((unit) => unit.faction !== "blue").map((unit) => unit.id).sort(),
     next.units.filter((unit) => unit.faction !== "blue").map((unit) => unit.id).sort(),
   );
-  assert.equal(result.units.some((unit) => unit.id === "red-2" && unit.regionId === "china-central"), false);
+  assert.equal(result.units.some((unit) => unit.id === "red-1"), false);
+  assert.equal(result.units.some((unit) => unit.id === "next-red"), true);
 });
 
 test("phase objectives and next-phase lookup are explicit", () => {
-  const early = GAME_CONFIG.campaign.phases["asia-front-early"];
-  const late = GAME_CONFIG.campaign.phases["asia-front-late"];
-  const runtime = createRuntimeScenario(GAME_CONFIG, early.id);
+  const phase = GAME_CONFIG.campaign.phases["korea-front-opening"];
+  const runtime = createRuntimeScenario(GAME_CONFIG, phase.id);
 
-  assert.equal(isPhaseObjectiveComplete(runtime.regions, early, "blue"), false);
-  early.objectiveRegionIds.forEach((regionId) => {
+  assert.equal(isPhaseObjectiveComplete(runtime.regions, phase, "blue"), false);
+  phase.objectiveRegionIds.forEach((regionId) => {
     runtime.regions.find((region) => region.id === regionId).faction = "blue";
   });
-  assert.equal(isPhaseObjectiveComplete(runtime.regions, early, "blue"), true);
-  assert.equal(getNextPhaseId(GAME_CONFIG.campaign, "asia-front", early.id), late.id);
-  assert.equal(getNextPhaseId(GAME_CONFIG.campaign, "asia-front", late.id), null);
+  assert.equal(isPhaseObjectiveComplete(runtime.regions, phase, "blue"), true);
+  assert.equal(getNextPhaseId(GAME_CONFIG.campaign, "korea-front", phase.id), null);
 });

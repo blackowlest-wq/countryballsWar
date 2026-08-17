@@ -42,7 +42,7 @@ const SPECIAL_MOVE_BALANCE = {
 
 const EMPTY_CAMPAIGN = {
   version: 1,
-  campaignId: "world-conquest-v1",
+  campaignId: "regional-fronts-v1",
   difficultyId: "normal",
   completedCountryIds: [],
   lastCompletedFrontId: null,
@@ -95,17 +95,39 @@ test("valid values are preserved while unknown or invalid upgrade values are nor
   });
 });
 
+test("a campaign id change resets only campaign progress", () => {
+  const storage = createStorage({
+    [GOLD_STORAGE_KEY]: "200",
+    [UPGRADES_STORAGE_KEY]: JSON.stringify({ logistics: 2 }),
+    [CAMPAIGN_STORAGE_KEY]: JSON.stringify({
+      campaignId: "world-conquest-v1",
+      difficultyId: "hard",
+      completedCountryIds: ["china"],
+      lastCompletedFrontId: "asia-front",
+    }),
+  });
+
+  assert.deepEqual(loadPersistentState(storage, UPGRADE_KEYS, {
+    campaignId: "regional-fronts-v1",
+    difficultyId: "normal",
+  }), {
+    gold: 200,
+    upgrades: { logistics: 2, armor: 0, reserve: 0, speed: 0 },
+    campaign: EMPTY_CAMPAIGN,
+  });
+});
+
 test("saving and loading round trips campaign progress without phase state", () => {
   const storage = createStorage();
   savePersistentState(storage, {
     gold: 350,
     upgrades: { logistics: 1, armor: 2, reserve: 3, speed: 2 },
     campaign: {
-      campaignId: "world-conquest-v1",
+      campaignId: "regional-fronts-v1",
       difficultyId: "hard",
       completedCountryIds: ["japan", "china", "china"],
-      currentPhaseId: "asia-front-late",
-      lastCompletedFrontId: "asia-front",
+      currentPhaseId: "korea-front-opening",
+      lastCompletedFrontId: "korea-front",
     },
   });
 
@@ -114,10 +136,10 @@ test("saving and loading round trips campaign progress without phase state", () 
     upgrades: { logistics: 1, armor: 2, reserve: 3, speed: 2 },
     campaign: {
       version: 1,
-      campaignId: "world-conquest-v1",
+      campaignId: "regional-fronts-v1",
       difficultyId: "hard",
       completedCountryIds: ["china", "japan"],
-      lastCompletedFrontId: "asia-front",
+      lastCompletedFrontId: "korea-front",
     },
   });
 });
