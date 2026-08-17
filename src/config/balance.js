@@ -50,6 +50,24 @@ export const BALANCE = {
     productionDamageFactor: 0.6,
     minimumDamage: 2,
   },
+  specialMove: {
+    usesPerOperation: 3,
+    maxNameLength: 24,
+    types: {
+      enemyWeakness: {
+        defaultName: "敵弱体化",
+        strengthReductionRate: 0.2,
+      },
+      allyBoost: {
+        defaultName: "味方強化",
+        strengthIncreaseRate: 0.2,
+      },
+      invincibility: {
+        defaultName: "無敵",
+        durationSeconds: 3,
+      },
+    },
+  },
   ai: {
     initialDelaySeconds: 3.2,
     actionDelaySeconds: 3.8,
@@ -57,6 +75,25 @@ export const BALANCE = {
     invasionWarningSeconds: 5,
     activeUnitLimit: 5,
     reinforcementLimit: 5,
+  },
+  campaign: {
+    frontTypes: {
+      regionalSmall: { targetDurationSeconds: 330, phaseCount: 2 },
+      regionalLarge: { targetDurationSeconds: 540, phaseCount: 4 },
+      major: { targetDurationSeconds: 420, phaseCount: 2 },
+      worldCoalition: { targetDurationSeconds: 540, phaseCount: 3 },
+      finalForce: { targetDurationSeconds: 570, phaseCount: 3 },
+    },
+    enemyProfiles: {
+      regionalIntro: { strengthMultiplier: 0.85, activeUnitLimit: 3, reinforcementLimit: 2, actionDelaySeconds: 4.8 },
+      regionalEarly: { strengthMultiplier: 0.95, activeUnitLimit: 4, reinforcementLimit: 3, actionDelaySeconds: 4.4 },
+      regionalLate: { strengthMultiplier: 1.05, activeUnitLimit: 5, reinforcementLimit: 4, actionDelaySeconds: 4.0 },
+      majorEarly: { strengthMultiplier: 1.15, activeUnitLimit: 5, reinforcementLimit: 5, actionDelaySeconds: 3.8 },
+      majorMiddle: { strengthMultiplier: 1.25, activeUnitLimit: 6, reinforcementLimit: 6, actionDelaySeconds: 3.5 },
+      majorLate: { strengthMultiplier: 1.35, activeUnitLimit: 6, reinforcementLimit: 7, actionDelaySeconds: 3.2 },
+      worldCoalition: { strengthMultiplier: 1.5, activeUnitLimit: 7, reinforcementLimit: 8, actionDelaySeconds: 3.0 },
+      finalForce: { strengthMultiplier: 1.65, activeUnitLimit: 8, reinforcementLimit: 10, actionDelaySeconds: 2.8 },
+    },
   },
   targeting: {
     productionWeight: 0.35,
@@ -69,21 +106,24 @@ export const BALANCE = {
   },
   economy: {
     rewards: {
-      captureGold: 25,
-      battleWinGold: 5,
-      defeatConversionRate: 0.25,
-      defeatRewardCap: 30,
+      captureGold: 15,
+      battleWinGold: 10,
+      defeatConversionRate: 0.35,
+      defeatRewardCap: 60,
+      minimumDefeatGold: 20,
       minimumDefeatElapsedSeconds: 30,
       minimumDefeatCaptures: 1,
-      clearBonus: 150,
+      clearBonus: 50,
+      campaignClearBonus: 300,
     },
     upgradePriceGrowth: 1.45,
     upgradePriceStep: 10,
     upgradePriceCap: 999999,
     shopItems: {
-      logistics: { basePrice: 100, label: "兵站網", productionPerLevel: 1 },
-      armor: { basePrice: 100, label: "強化装甲", maxStrengthPerLevel: 3 },
-      reserve: { basePrice: 150, label: "予備部隊", unitsPerLevel: 1 },
+      logistics: { basePrice: 100, label: "回復力", productionPerLevel: 1 },
+      armor: { basePrice: 100, label: "戦力", maxStrengthPerLevel: 3 },
+      reserve: { basePrice: 150, label: "開始人数", unitsPerLevel: 1 },
+      speed: { basePrice: 120, label: "速度アップ", speedPerLevel: 0.003 },
     },
   },
 };

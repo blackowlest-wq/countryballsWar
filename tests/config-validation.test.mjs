@@ -74,6 +74,45 @@ test("プレイヤー役と能動AI役は定義済みで異なる勢力を参照
   assert.notEqual(GAME_CONFIG.scenario.playerFactionId, GAME_CONFIG.scenario.activeAiFactionId);
 });
 
+test("キャンペーン戦線の目標時間と敵プロファイルは定義済みである", () => {
+  const { frontTypes, enemyProfiles } = GAME_CONFIG.balance.campaign;
+  Object.values(frontTypes).forEach((frontType) => {
+    assert.ok(frontType.targetDurationSeconds >= 300 && frontType.targetDurationSeconds <= 600);
+    assert.ok(frontType.phaseCount >= 2 && frontType.phaseCount <= 6);
+  });
+  Object.values(enemyProfiles).forEach((profile) => {
+    assert.ok(profile.strengthMultiplier > 0);
+    assert.ok(profile.activeUnitLimit > 0);
+    assert.ok(profile.reinforcementLimit >= 0);
+    assert.ok(profile.actionDelaySeconds > 0);
+  });
+});
+
+test("必殺技は固定3回と初期バランス値を持つ", () => {
+  const { specialMove } = GAME_CONFIG.balance;
+  assert.equal(specialMove.usesPerOperation, 3);
+  assert.equal(specialMove.types.enemyWeakness.strengthReductionRate, 0.2);
+  assert.equal(specialMove.types.allyBoost.strengthIncreaseRate, 0.2);
+  assert.equal(specialMove.types.invincibility.durationSeconds, 3);
+});
+
+test("必殺技の使用回数や効果値が不正なら拒否する", () => {
+  const invalidUses = editableConfig();
+  invalidUses.balance.specialMove.usesPerOperation = 4;
+  assert.throws(() => createGameConfig(invalidUses), /must be 3/);
+
+  const invalidReduction = editableConfig();
+  invalidReduction.balance.specialMove.types.enemyWeakness.strengthReductionRate = 1.1;
+  assert.throws(() => createGameConfig(invalidReduction), /敵弱体化/);
+});
+
+test("戦線の目標時間が5分未満または10分超の場合は拒否する", () => {
+  const config = editableConfig();
+  config.balance.campaign.frontTypes.major.targetDurationSeconds = 601;
+
+  assert.throws(() => createGameConfig(config), /targetDurationSeconds/);
+});
+
 test("初期所有が不足している拠点は設定時に拒否する", () => {
   const config = editableConfig();
   delete config.scenario.territoryOwners.central;

@@ -1,14 +1,21 @@
 import { GAME_CONFIG, createRuntimeScenario } from "./config/game-config.js";
 import {
   loadPersistentState,
+  loadSpecialMove,
   resetPersistentState,
   savePersistentState,
+  saveSpecialMove,
 } from "./storage/persistent-state.js";
 import {
   calculateClearGold,
   calculateDefeatGold,
   createRunProgress,
 } from "./economy/rewards.js";
+import {
+  applySpecialMoveEffect,
+  createSpecialMoveSettings,
+  getSpecialMoveConfig,
+} from "./special-move.js";
 
 const canvas = document.querySelector("#mapCanvas");
 const ctx = canvas.getContext("2d");
@@ -47,6 +54,10 @@ const ui = {
   invasionAlert: document.querySelector("#invasionAlert"),
   invasionTarget: document.querySelector("#invasionTarget"),
   invasionCountdown: document.querySelector("#invasionCountdown"),
+  specialMovePanel: document.querySelector("#specialMovePanel"),
+  specialMoveName: document.querySelector("#specialMoveName"),
+  specialMoveUses: document.querySelector("#specialMoveUses"),
+  specialMoveButton: document.querySelector("#specialMoveButton"),
   titleDialog: document.querySelector("#titleDialog"),
   titleStart: document.querySelector("#titleStartButton"),
   titleReset: document.querySelector("#titleResetButton"),
@@ -54,6 +65,10 @@ const ui = {
   dataResetDialog: document.querySelector("#dataResetDialog"),
   cancelDataReset: document.querySelector("#cancelDataResetButton"),
   confirmDataReset: document.querySelector("#confirmDataResetButton"),
+  specialMoveDialog: document.querySelector("#specialMoveDialog"),
+  specialMoveForm: document.querySelector("#specialMoveForm"),
+  specialMoveNameInput: document.querySelector("#specialMoveNameInput"),
+  specialMoveError: document.querySelector("#specialMoveError"),
 };
 
 const BALANCE = GAME_CONFIG.balance;
@@ -67,6 +82,7 @@ const COMBAT_BALANCE = BALANCE.combat;
 const AI_BALANCE = BALANCE.ai;
 const TARGETING_BALANCE = BALANCE.targeting;
 const ECONOMY_BALANCE = BALANCE.economy;
+const SPECIAL_MOVE_BALANCE = BALANCE.specialMove;
 const BATTLE_DISTANCE = COMBAT_BALANCE.contactDistance;
 const BATTLE_TICK_INTERVAL = COMBAT_BALANCE.tickIntervalSeconds;
 const COLORS = Object.fromEntries(
@@ -95,6 +111,7 @@ const UNIT_SPRITES = Object.fromEntries(
 const SHOP_ITEMS = BALANCE.economy.shopItems;
 const upgradeKeys = Object.keys(SHOP_ITEMS);
 const persistentState = loadPersistentState(undefined, upgradeKeys);
+const savedSpecialMove = loadSpecialMove(undefined, SPECIAL_MOVE_BALANCE);
 
 function savePersistentProgress() {
   savePersistentState(undefined, { gold: state.gold, upgrades: state.upgrades });
@@ -112,6 +129,9 @@ const state = {
   elapsed: 0,
   gold: persistentState.gold,
   upgrades: persistentState.upgrades,
+  specialMove: savedSpecialMove,
+  specialMoveUsesRemaining: 0,
+  invincibilityRemaining: 0,
   intel: CLOCK_BALANCE.initialIntel,
   selectedRegionId: null,
   aiTimer: AI_BALANCE.initialDelaySeconds,
@@ -869,6 +889,13 @@ function setUnitRoute(unit, sourceRegionId, targetRegionId) {
   return true;
 }
 
+function getUnitMovementSpeed(unit) {
+  const baseSpeed = MOVEMENT_BALANCE.speedByFaction[unit.faction] || 0;
+  const speedPerLevel = SHOP_ITEMS.speed?.speedPerLevel || 0;
+  const speedLevel = Number(state.upgrades.speed) || 0;
+  return baseSpeed + (unit.faction === PLAYER_FACTION_ID ? speedLevel * speedPerLevel : 0);
+}
+
 function moveUnit(unit, dt) {
   if (unit.inBattle) return;
 
@@ -883,7 +910,7 @@ function moveUnit(unit, dt) {
   const dx = target.x - unit.x;
   const dy = target.y - unit.y;
   const distanceToTarget = Math.hypot(dx, dy);
-  const speed = MOVEMENT_BALANCE.speedByFaction[unit.faction];
+  const speed = getUnitMovementSpeed(unit);
   if (distanceToTarget < speed * dt) {
     unit.x = target.x;
     unit.y = target.y;
@@ -1073,6 +1100,10 @@ function applyGroupDamage(members, damage) {
   redistributeGroupStrength(members, remaining);
 }
 
+function isPlayerInvincible() {
+  return state.invincibilityRemaining > 0;
+}
+
 function collectBattleGroups() {
   const contacts = new Map(units.map((unit) => [unit.id, []]));
   const enemyContacts = new Set();
@@ -1168,6 +1199,7 @@ function updateBattles(dt) {
       const sharedDamage = groupCombatDamage(source.units) / targets.length;
       targets.forEach((target) => incomingDamage.set(target.faction, incomingDamage.get(target.faction) + sharedDamage));
     });
+    if (isPlayerInvincible()) incomingDamage.set(PLAYER_FACTION_ID, 0);
     sides.forEach((side) => applyGroupDamage(side.units, Math.round(incomingDamage.get(side.faction))));
 
     const survivors = sides.filter((side) => groupStrength(side.units) > 0);
@@ -1193,7 +1225,7 @@ function updateUnits(dt) {
   }
 
   updateOccupationProgress(dt);
-  if (!state.defeated && !state.cleared && !units.some((unit) => unit.faction === PLAYER_FACTION_ID)) triggerDefeat();
+  if (!state.defeated && !state.cleared && !isPlayerInvincible() && !units.some((unit) => unit.faction === PLAYER_FACTION_ID)) triggerDefeat();
 }
 
 function nearestUnit(faction, target) {
@@ -1338,6 +1370,7 @@ function updateStrength(dt) {
 function update(dt) {
   const scaledDt = dt * state.speed;
   state.elapsed += scaledDt;
+  state.invincibilityRemaining = Math.max(0, state.invincibilityRemaining - scaledDt);
   updateStrength(scaledDt);
   updateUnits(scaledDt);
   updateInvasionWarning(scaledDt);
@@ -1416,6 +1449,28 @@ function addEvent(message) {
   window.setTimeout(() => item.remove(), 6500);
 }
 
+function specialMoveEffectMessage(type, config) {
+  if (type === "enemyWeakness") return `敵部隊の戦力を${Math.round(config.strengthReductionRate * 100)}%減らしました`;
+  if (type === "allyBoost") return `味方部隊の現在戦力を${Math.round(config.strengthIncreaseRate * 100)}%増加（最大戦力まで）しました`;
+  return `${config.durationSeconds}秒間、味方部隊を戦闘ダメージと敗北判定から守ります`;
+}
+
+function useSpecialMove() {
+  if (!state.started || state.defeated || state.cleared || state.specialMoveUsesRemaining <= 0 || !state.specialMove) return;
+
+  const { type, name } = state.specialMove;
+  const config = getSpecialMoveConfig(type, SPECIAL_MOVE_BALANCE);
+  const result = applySpecialMoveEffect(type, units, SPECIAL_MOVE_BALANCE, PLAYER_FACTION_ID, UNIT_BALANCE.minimumSurvivorStrength);
+  if (!result || !config) return;
+
+  state.specialMoveUsesRemaining -= 1;
+  if (type === "invincibility") state.invincibilityRemaining = config.durationSeconds;
+  const message = `${name}を発動：${specialMoveEffectMessage(type, config)}`;
+  showToast(message);
+  addEvent(message);
+  updateHud();
+}
+
 function formatTime() {
   const totalSeconds = Math.max(0, Math.floor(state.elapsed));
   const day = Math.floor(totalSeconds / CLOCK_BALANCE.dayDurationSeconds) + 1;
@@ -1435,11 +1490,22 @@ function updateHud() {
   ui.day.textContent = String(time.day).padStart(2, "0");
   ui.time.textContent = time.text;
   ui.intel.textContent = String(state.intel);
+  updateSpecialMoveHud();
   ui.pause.classList.toggle("is-paused", state.paused);
   ui.pause.textContent = state.paused ? "▶" : "Ⅱ";
   updateInvasionAlert();
   updateAttackGuide();
   updateSelectedPanel();
+}
+
+function updateSpecialMoveHud() {
+  if (!ui.specialMovePanel || !ui.specialMoveName || !ui.specialMoveUses || !ui.specialMoveButton) return;
+  const specialMove = state.specialMove;
+  ui.specialMoveName.textContent = specialMove?.name || "未設定";
+  ui.specialMoveUses.textContent = String(state.specialMoveUsesRemaining);
+  ui.specialMoveButton.disabled = !state.started || state.defeated || state.cleared || state.specialMoveUsesRemaining <= 0 || !specialMove;
+  ui.specialMovePanel.classList.toggle("is-inactive", !state.started || !specialMove);
+  ui.specialMoveButton.setAttribute("aria-label", specialMove ? `${specialMove.name}を使う` : "必殺技未設定");
 }
 
 function updateAttackGuide() {
@@ -1522,7 +1588,7 @@ function restartGame({ announce = true } = {}) {
   state.zoom = 1;
   state.panX = 0;
   state.panY = 0;
-  state.paused = false;
+  state.paused = !state.specialMove;
   state.speed = 1;
   state.elapsed = 0;
   state.intel = CLOCK_BALANCE.initialIntel;
@@ -1533,9 +1599,11 @@ function restartGame({ announce = true } = {}) {
   state.runProgress = createRunProgress();
   state.recoveryTimer = 0;
   state.toastTimer = 0;
+  state.specialMoveUsesRemaining = state.specialMove ? SPECIAL_MOVE_BALANCE.usesPerOperation : 0;
+  state.invincibilityRemaining = 0;
   state.defeated = false;
   state.cleared = false;
-  state.started = true;
+  state.started = Boolean(state.specialMove);
   state.shopOpen = false;
   state.battles.clear();
   state.suppressNextClick = false;
@@ -1553,7 +1621,7 @@ function restartGame({ announce = true } = {}) {
   lastTime = performance.now();
   updateHud();
   render();
-  if (announce) showToast("新しい作戦を開始しました");
+  if (announce && state.started) showToast("新しい作戦を開始しました");
 }
 
 function getUpgradePrice(key) {
@@ -1631,7 +1699,56 @@ function closeTitleScreen() {
   ui.titleDialog?.close();
 }
 
+let specialMoveSetupDefaultName = "";
+
+function selectedSpecialMoveType() {
+  return document.querySelector('input[name="specialMoveType"]:checked')?.value || "enemyWeakness";
+}
+
+function updateSpecialMoveSetupName({ force = false } = {}) {
+  const type = selectedSpecialMoveType();
+  const config = getSpecialMoveConfig(type, SPECIAL_MOVE_BALANCE);
+  if (!config || !ui.specialMoveNameInput) return;
+  if (force || !ui.specialMoveNameInput.value.trim() || ui.specialMoveNameInput.value.trim() === specialMoveSetupDefaultName) {
+    ui.specialMoveNameInput.value = config.defaultName;
+  }
+  specialMoveSetupDefaultName = config.defaultName;
+}
+
+function openSpecialMoveSetup() {
+  if (!ui.specialMoveDialog || ui.specialMoveDialog.open) return;
+  const currentType = state.specialMove?.type || "enemyWeakness";
+  const typeInput = document.querySelector(`input[name="specialMoveType"][value="${currentType}"]`);
+  if (typeInput) typeInput.checked = true;
+  updateSpecialMoveSetupName({ force: true });
+  if (ui.specialMoveError) ui.specialMoveError.textContent = "";
+  ui.specialMoveDialog.showModal();
+  requestAnimationFrame(() => ui.specialMoveNameInput?.focus());
+}
+
+function confirmSpecialMoveSetup(event) {
+  event.preventDefault();
+  const settings = createSpecialMoveSettings(
+    selectedSpecialMoveType(),
+    ui.specialMoveNameInput?.value,
+    SPECIAL_MOVE_BALANCE,
+  );
+  if (!settings) {
+    if (ui.specialMoveError) ui.specialMoveError.textContent = "必殺技の種類を選択してください。";
+    return;
+  }
+
+  state.specialMove = saveSpecialMove(undefined, settings, SPECIAL_MOVE_BALANCE);
+  ui.specialMoveDialog?.close();
+  restartGame();
+  closeTitleScreen();
+}
+
 function startFromTitle() {
+  if (!state.specialMove) {
+    openSpecialMoveSetup();
+    return;
+  }
   restartGame();
   closeTitleScreen();
 }
@@ -1651,14 +1768,14 @@ function confirmPersistentDataReset() {
   const clean = resetPersistentState(undefined, upgradeKeys);
   state.gold = clean.gold;
   state.upgrades = clean.upgrades;
+  state.specialMove = null;
   restartGame({ announce: false });
-  state.started = false;
-  state.paused = true;
   updateShopDialog();
   updateHud();
   render();
   if (ui.titleMessage) ui.titleMessage.textContent = "データをリセットしました。";
-  closeDataResetDialog(ui.titleStart);
+  closeDataResetDialog();
+  requestAnimationFrame(() => openSpecialMoveSetup());
 }
 
 function unitAtScreenPoint(x, y) {
@@ -1849,6 +1966,11 @@ document.querySelector("#restartButton").addEventListener("click", restartGame);
 document.querySelector("#clearRestartButton").addEventListener("click", restartGame);
 ui.titleStart?.addEventListener("click", startFromTitle);
 ui.titleReset?.addEventListener("click", openDataResetDialog);
+ui.specialMoveButton?.addEventListener("click", useSpecialMove);
+ui.specialMoveForm?.addEventListener("submit", confirmSpecialMoveSetup);
+document.querySelectorAll('input[name="specialMoveType"]').forEach((input) => {
+  input.addEventListener("change", () => updateSpecialMoveSetupName());
+});
 ui.titleDialog?.addEventListener("cancel", (event) => event.preventDefault());
 ui.cancelDataReset?.addEventListener("click", () => closeDataResetDialog());
 ui.confirmDataReset?.addEventListener("click", confirmPersistentDataReset);
@@ -1863,6 +1985,7 @@ ui.dataResetDialog?.addEventListener("keydown", (event) => {
 });
 ui.defeatDialog?.addEventListener("cancel", (event) => event.preventDefault());
 ui.clearDialog?.addEventListener("cancel", (event) => event.preventDefault());
+ui.specialMoveDialog?.addEventListener("cancel", (event) => event.preventDefault());
 document.querySelector("#eventToggle").addEventListener("change", (event) => { state.eventNotice = event.target.checked; });
 document.querySelector("#motionToggle").addEventListener("change", (event) => { state.motion = event.target.checked; });
 

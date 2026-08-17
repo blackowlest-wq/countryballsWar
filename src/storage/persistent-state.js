@@ -1,5 +1,8 @@
+import { normalizeSpecialMoveSettings } from "../special-move.js";
+
 export const GOLD_STORAGE_KEY = "countryfronts.gold";
 export const UPGRADES_STORAGE_KEY = "countryfronts.upgrades";
+export const SPECIAL_MOVE_STORAGE_KEY = "countryfronts.specialMove";
 
 function getStorage(storage) {
   if (storage) return storage;
@@ -56,12 +59,38 @@ export function savePersistentState(storage, persistentState) {
   }
 }
 
+export function loadSpecialMove(storage, balance) {
+  const target = getStorage(storage);
+  if (!target) return null;
+
+  try {
+    const saved = JSON.parse(target.getItem(SPECIAL_MOVE_STORAGE_KEY) || "null");
+    return normalizeSpecialMoveSettings(saved, balance);
+  } catch {
+    return null;
+  }
+}
+
+export function saveSpecialMove(storage, specialMove, balance) {
+  const target = getStorage(storage);
+  const normalized = normalizeSpecialMoveSettings(specialMove, balance);
+  if (!target || !normalized) return normalized;
+
+  try {
+    target.setItem(SPECIAL_MOVE_STORAGE_KEY, JSON.stringify(normalized));
+  } catch {
+    // Storage may be unavailable in private browsing; the session still works.
+  }
+  return normalized;
+}
+
 export function resetPersistentState(storage, upgradeKeys) {
   const target = getStorage(storage);
   if (target) {
     try {
       target.removeItem(GOLD_STORAGE_KEY);
       target.removeItem(UPGRADES_STORAGE_KEY);
+      target.removeItem(SPECIAL_MOVE_STORAGE_KEY);
     } catch {
       // Storage may be unavailable; return a clean in-memory state regardless.
     }

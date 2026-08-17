@@ -32,10 +32,17 @@ export function calculateDefeatGold(progress, rewardBalance) {
   const progressGold = calculateProgressGold(normalized, rewardBalance);
   return Math.min(
     rewardBalance.defeatRewardCap,
-    Math.floor(progressGold * rewardBalance.defeatConversionRate),
+    Math.max(
+      rewardBalance.minimumDefeatGold || 0,
+      Math.floor(progressGold * rewardBalance.defeatConversionRate),
+    ),
   );
 }
 
 export function calculateClearGold(progress, rewardBalance) {
   return calculateProgressGold(progress, rewardBalance) + rewardBalance.clearBonus;
+}
+
+export function calculateCampaignClearGold(progress, rewardBalance) {
+  return calculateClearGold(progress, rewardBalance) + rewardBalance.campaignClearBonus;
 }

@@ -13,7 +13,7 @@
 | 勢力名、画像、色、表示文言 | [勢力設定](./factions.md) | `src/config/factions.js` |
 | マップ名、拠点形状、道路、表示装飾 | [マップ設定](./map.md) | `src/config/map.js` |
 | プレイヤー／AI役、初期所有、初期部隊 | [シナリオ設定](./scenario.md) | `src/config/scenario.js` |
-| 生産力、戦力、時間、AI、Gold、ショップ | [バランス設定](./balance.md) | `src/config/balance.js` |
+| 生産力、戦力、時間、AI、Gold、ショップ、必殺技 | [バランス設定](./balance.md) | `src/config/balance.js` |
 
 `src/config/game-config.js` は4種類の設定を検証して組み立て、ゲーム本体へ読み取り専用の設定と新規作戦データを渡します。`src/main.js` へ個別マップの数値を追加しません。
 

@@ -102,6 +102,46 @@ function buildRoadNeighbors(regionIds, roads) {
   return neighbors;
 }
 
+function validateCampaignBalance(campaign) {
+  const frontTypes = campaign?.frontTypes;
+  const frontTypeKeys = ["regionalSmall", "regionalLarge", "major", "worldCoalition", "finalForce"];
+  assertConfig(frontTypes && typeof frontTypes === "object" && !Array.isArray(frontTypes), "campaign.frontTypes must be an object");
+  frontTypeKeys.forEach((key) => {
+    const frontType = frontTypes[key];
+    assertConfig(frontType && typeof frontType === "object" && !Array.isArray(frontType), `campaign.frontTypes.${key} is missing`);
+    assertConfig(Number.isInteger(frontType.targetDurationSeconds) && frontType.targetDurationSeconds >= 300 && frontType.targetDurationSeconds <= 600, `campaign.frontTypes.${key}.targetDurationSeconds must be between 300 and 600 seconds`);
+    assertConfig(Number.isInteger(frontType.phaseCount) && frontType.phaseCount >= 2 && frontType.phaseCount <= 6, `campaign.frontTypes.${key}.phaseCount must be between 2 and 6`);
+  });
+
+  const enemyProfiles = campaign?.enemyProfiles;
+  const enemyProfileKeys = ["regionalIntro", "regionalEarly", "regionalLate", "majorEarly", "majorMiddle", "majorLate", "worldCoalition", "finalForce"];
+  assertConfig(enemyProfiles && typeof enemyProfiles === "object" && !Array.isArray(enemyProfiles), "campaign.enemyProfiles must be an object");
+  enemyProfileKeys.forEach((key) => {
+    const profile = enemyProfiles[key];
+    assertConfig(profile && typeof profile === "object" && !Array.isArray(profile), `campaign.enemyProfiles.${key} is missing`);
+    assertConfig(Number.isFinite(profile.strengthMultiplier) && profile.strengthMultiplier > 0, `campaign.enemyProfiles.${key}.strengthMultiplier must be positive`);
+    assertConfig(Number.isInteger(profile.activeUnitLimit) && profile.activeUnitLimit > 0, `campaign.enemyProfiles.${key}.activeUnitLimit must be a positive integer`);
+    assertConfig(Number.isInteger(profile.reinforcementLimit) && profile.reinforcementLimit >= 0, `campaign.enemyProfiles.${key}.reinforcementLimit must be a non-negative integer`);
+    assertConfig(isPositiveNumber(profile.actionDelaySeconds), `campaign.enemyProfiles.${key}.actionDelaySeconds must be positive`);
+  });
+}
+
+function validateSpecialMoveBalance(specialMove) {
+  const typeKeys = ["enemyWeakness", "allyBoost", "invincibility"];
+  assertConfig(specialMove?.usesPerOperation === 3, "specialMove.usesPerOperation must be 3");
+  assertConfig(Number.isInteger(specialMove?.maxNameLength) && specialMove.maxNameLength >= 1 && specialMove.maxNameLength <= 80, "specialMove.maxNameLength must be between 1 and 80");
+  assertConfig(specialMove?.types && typeof specialMove.types === "object" && !Array.isArray(specialMove.types), "specialMove.types must be an object");
+
+  typeKeys.forEach((typeKey) => {
+    const type = specialMove.types[typeKey];
+    assertConfig(type && typeof type === "object" && !Array.isArray(type), `specialMove.types.${typeKey} is missing`);
+    assertConfig(typeof type.defaultName === "string" && type.defaultName.trim().length > 0, `specialMove.types.${typeKey}.defaultName must be a non-empty string`);
+  });
+  assertConfig(Number.isFinite(specialMove.types.enemyWeakness.strengthReductionRate) && specialMove.types.enemyWeakness.strengthReductionRate > 0 && specialMove.types.enemyWeakness.strengthReductionRate <= 1, "敵弱体化の割合が不正です");
+  assertConfig(Number.isFinite(specialMove.types.allyBoost.strengthIncreaseRate) && specialMove.types.allyBoost.strengthIncreaseRate > 0, "味方強化の割合が不正です");
+  assertConfig(isPositiveNumber(specialMove.types.invincibility.durationSeconds), "無敵時間が正の数ではありません");
+}
+
 function validateBalance(balance, factionIds, regionIds) {
   regionIds.forEach((regionId) => {
     assertConfig(isPositiveNumber(balance.territoryProduction?.[regionId]), `拠点 ${regionId} の生産力が正の数ではありません`);
@@ -145,9 +185,11 @@ function validateBalance(balance, factionIds, regionIds) {
   assertConfig(Number.isFinite(balance.economy?.rewards?.battleWinGold) && balance.economy.rewards.battleWinGold >= 0, "戦闘勝利報酬Goldが不正です");
   assertConfig(Number.isFinite(balance.economy?.rewards?.defeatConversionRate) && balance.economy.rewards.defeatConversionRate > 0 && balance.economy.rewards.defeatConversionRate <= 1, "敗北報酬の換算率が不正です");
   assertConfig(Number.isFinite(balance.economy?.rewards?.defeatRewardCap) && balance.economy.rewards.defeatRewardCap >= 0, "敗北報酬の上限が不正です");
+  assertConfig(Number.isFinite(balance.economy?.rewards?.minimumDefeatGold) && balance.economy.rewards.minimumDefeatGold >= 0, "敗北報酬の最低Goldが不正です");
   assertConfig(Number.isFinite(balance.economy?.rewards?.minimumDefeatElapsedSeconds) && balance.economy.rewards.minimumDefeatElapsedSeconds >= 0, "敗北報酬の最低経過時間が不正です");
   assertConfig(Number.isInteger(balance.economy?.rewards?.minimumDefeatCaptures) && balance.economy.rewards.minimumDefeatCaptures >= 0, "敗北報酬の最低占領数が不正です");
   assertConfig(isPositiveNumber(balance.economy?.rewards?.clearBonus), "クリアボーナスGoldが正の数ではありません");
+  assertConfig(isPositiveNumber(balance.economy?.rewards?.campaignClearBonus), "キャンペーンクリアボーナスGoldが正の数ではありません");
   assertConfig(Object.keys(balance.economy?.shopItems || {}).length > 0, "ショップ商品がありません");
   Object.entries(balance.economy.shopItems).forEach(([key, item]) => {
     assertConfig(isPositiveNumber(item.basePrice), `ショップ商品 ${key} の価格がありません`);
@@ -155,15 +197,19 @@ function validateBalance(balance, factionIds, regionIds) {
     if (Object.hasOwn(item, "productionPerLevel")) assertConfig(Number.isFinite(item.productionPerLevel) && item.productionPerLevel >= 0, `Shop item ${key} has invalid productionPerLevel`);
     if (Object.hasOwn(item, "maxStrengthPerLevel")) assertConfig(Number.isFinite(item.maxStrengthPerLevel) && item.maxStrengthPerLevel > 0, `Shop item ${key} has invalid maxStrengthPerLevel`);
     if (Object.hasOwn(item, "unitsPerLevel")) assertConfig(Number.isInteger(item.unitsPerLevel) && item.unitsPerLevel > 0, `Shop item ${key} has invalid unitsPerLevel`);
+    if (Object.hasOwn(item, "speedPerLevel")) assertConfig(Number.isFinite(item.speedPerLevel) && item.speedPerLevel > 0, `Shop item ${key} has invalid speedPerLevel`);
   });
   [
     ["logistics", "productionPerLevel", (value) => Number.isFinite(value) && value >= 0],
     ["armor", "maxStrengthPerLevel", (value) => Number.isFinite(value) && value > 0],
     ["reserve", "unitsPerLevel", (value) => Number.isInteger(value) && value > 0],
+    ["speed", "speedPerLevel", (value) => Number.isFinite(value) && value > 0],
   ].forEach(([itemKey, effectKey, isValid]) => {
     const item = balance.economy.shopItems[itemKey];
     assertConfig(item && Object.hasOwn(item, effectKey) && isValid(item[effectKey]), `Shop item ${itemKey} is missing ${effectKey}`);
   });
+  validateSpecialMoveBalance(balance.specialMove);
+  validateCampaignBalance(balance.campaign);
 }
 
 export function createGameConfig(source) {

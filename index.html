@@ -79,6 +79,15 @@
           <span><strong>ATTACK</strong><small id="attackTarget">—</small></span>
         </div>
 
+        <aside class="special-move-panel" id="specialMovePanel" aria-label="必殺技">
+          <div class="special-move-heading">
+            <span class="special-move-icon" aria-hidden="true">✦</span>
+            <span><strong id="specialMoveName">未設定</strong><small>必殺技</small></span>
+          </div>
+          <div class="special-move-count"><strong id="specialMoveUses">0</strong><small>残り</small></div>
+          <button class="special-move-button" id="specialMoveButton" type="button" disabled>発動</button>
+        </aside>
+
         <div class="invasion-alert" id="invasionAlert" aria-live="assertive" aria-atomic="true">
           <span class="invasion-alert-icon" aria-hidden="true">!</span>
           <span><strong>侵攻予告あり！</strong><small id="invasionTarget">—</small></span>
@@ -189,12 +198,45 @@
         <div class="danger-emblem" aria-hidden="true">!</div>
         <span class="panel-kicker">DANGER ZONE</span>
         <h2 id="dataResetHeading">データをリセットしますか？</h2>
-        <p id="dataResetDescription">保存済みのGoldと強化レベルがすべて0になります。この操作は取り消せません。</p>
+        <p id="dataResetDescription">保存済みのGold・強化レベル・必殺技設定が消去されます。この操作は取り消せません。</p>
         <div class="data-reset-actions">
           <button class="secondary-action" id="cancelDataResetButton" type="button">キャンセル</button>
           <button class="danger-action" id="confirmDataResetButton" type="button">リセットする</button>
         </div>
       </div>
+    </dialog>
+
+    <dialog
+      class="special-move-dialog"
+      id="specialMoveDialog"
+      aria-labelledby="specialMoveHeading"
+      aria-describedby="specialMoveDescription"
+    >
+      <form class="special-move-form" id="specialMoveForm">
+        <span class="panel-kicker">TACTICAL ABILITY</span>
+        <h2 id="specialMoveHeading">必殺技を設定</h2>
+        <p id="specialMoveDescription">この作戦で使う必殺技を一つ選び、名前を決めてください。</p>
+        <fieldset class="special-move-options">
+          <legend class="sr-only">必殺技の種類</legend>
+          <label class="special-move-option">
+            <input type="radio" name="specialMoveType" value="enemyWeakness" checked />
+            <span><strong>敵弱体化</strong><small>敵部隊の現在戦力を減らす</small></span>
+          </label>
+          <label class="special-move-option">
+            <input type="radio" name="specialMoveType" value="allyBoost" />
+            <span><strong>味方強化</strong><small>味方部隊の現在戦力を強化する</small></span>
+          </label>
+          <label class="special-move-option">
+            <input type="radio" name="specialMoveType" value="invincibility" />
+            <span><strong>無敵</strong><small>一定時間、味方を守る</small></span>
+          </label>
+        </fieldset>
+        <label class="special-move-name-label" for="specialMoveNameInput">必殺技名
+          <input id="specialMoveNameInput" name="specialMoveName" type="text" maxlength="24" autocomplete="off" />
+        </label>
+        <p class="special-move-error" id="specialMoveError" role="alert"></p>
+        <button class="primary-action" type="submit">この設定で開始</button>
+      </form>
     </dialog>
 
     <dialog class="settings-dialog" id="settingsDialog">
@@ -214,7 +256,7 @@
           <span>簡易アニメーション</span>
           <input id="motionToggle" type="checkbox" checked />
         </label>
-        <p class="dialog-note">Goldと強化はこのブラウザに保存されます。戦場の途中状態は保存されません。</p>
+        <p class="dialog-note">Gold・強化・必殺技設定はこのブラウザに保存されます。戦場の途中状態は保存されません。</p>
         <button class="primary-action" value="default">閉じる</button>
       </form>
     </dialog>
@@ -255,7 +297,7 @@
           <article class="shop-item" data-shop-card>
             <div class="shop-item-icon">✚</div>
             <div class="shop-item-copy">
-              <h3>兵站網 <span class="shop-item-level" data-shop-level>Lv.0</span></h3>
+              <h3>回復力 <span class="shop-item-level" data-shop-level>Lv.0</span></h3>
               <p>自軍領土の生産力を＋1。部隊の回復量が増えます。</p>
             </div>
             <button class="shop-buy" data-shop-upgrade="logistics" type="button">100 Gold</button>
@@ -263,7 +305,7 @@
           <article class="shop-item" data-shop-card>
             <div class="shop-item-icon">◆</div>
             <div class="shop-item-copy">
-              <h3>強化装甲 <span class="shop-item-level" data-shop-level>Lv.0</span></h3>
+              <h3>戦力 <span class="shop-item-level" data-shop-level>Lv.0</span></h3>
               <p>白い部隊の最大戦力を＋3。</p>
             </div>
             <button class="shop-buy" data-shop-upgrade="armor" type="button">100 Gold</button>
@@ -271,10 +313,18 @@
           <article class="shop-item" data-shop-card>
             <div class="shop-item-icon">＋</div>
             <div class="shop-item-copy">
-              <h3>予備部隊 <span class="shop-item-level" data-shop-level>Lv.0</span></h3>
+              <h3>開始人数 <span class="shop-item-level" data-shop-level>Lv.0</span></h3>
               <p>次回の新規作戦から、白い部隊が1体増えます。</p>
             </div>
             <button class="shop-buy" data-shop-upgrade="reserve" type="button">150 Gold</button>
+          </article>
+          <article class="shop-item" data-shop-card>
+            <div class="shop-item-icon">➜</div>
+            <div class="shop-item-copy">
+              <h3>速度アップ <span class="shop-item-level" data-shop-level>Lv.0</span></h3>
+              <p>白い部隊が少し速く移動します。</p>
+            </div>
+            <button class="shop-buy" data-shop-upgrade="speed" type="button">120 Gold</button>
           </article>
         </div>
         <p class="shop-note">ショップを開いている間は戦場が一時停止します。購入するたびに次の価格が上がります。</p>
