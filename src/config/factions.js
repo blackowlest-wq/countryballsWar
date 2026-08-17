@@ -1,6 +1,7 @@
 export const FACTIONS = {
   blue: {
     id: "blue",
+    isEnemy: false,
     name: "White Union",
     unitSprite: "./assets/units/player-red-circle.png",
     unitStyle: "visor",
@@ -20,6 +21,7 @@ export const FACTIONS = {
   },
   red: {
     id: "red",
+    isEnemy: true,
     name: "赤勢力",
     unitSprite: "./assets/units/enemy-china.png",
     unitStyle: "cap",
@@ -37,13 +39,14 @@ export const FACTIONS = {
       occupation: "#c34e58",
     },
   },
-  neutral: {
-    id: "neutral",
-    name: "中立勢力",
+  gray: {
+    id: "gray",
+    isEnemy: true,
+    name: "Gray Coalition",
     unitSprite: "./assets/units/enemy-korea.png",
     unitStyle: "plain",
-    panelClass: "neutral",
-    statusText: "勢力未確定の中立地域",
+    panelClass: "gray",
+    statusText: "灰色連合の敵拠点",
     threatText: "警戒",
     palette: {
       territory: "#c9d1dd",
@@ -58,11 +61,12 @@ export const FACTIONS = {
   },
   pink: {
     id: "pink",
+    isEnemy: true,
     name: "桃勢力",
     unitSprite: "./assets/units/enemy-north-korea.png",
     unitStyle: "plain",
-    panelClass: "neutral",
-    statusText: "勢力未確定の中立地域",
+    panelClass: "pink",
+    statusText: "桃色連合の敵拠点",
     threatText: "警戒",
     palette: {
       territory: "#f2b6ba",

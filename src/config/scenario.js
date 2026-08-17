@@ -1,31 +1,17 @@
+import { CAMPAIGN, getCampaignFront, getCampaignPhase } from "./campaign.js";
+
+const frontId = CAMPAIGN.frontOrder[0];
+const front = getCampaignFront(CAMPAIGN, frontId);
+const phaseId = front.phaseIds[0];
+const phase = getCampaignPhase(CAMPAIGN, phaseId);
+
 export const SCENARIO = {
-  id: "asia-front-day-01",
-  mapId: "asia-front",
+  id: phase.id,
+  frontId,
+  phaseId,
+  mapId: phase.mapId,
   playerFactionId: "blue",
   activeAiFactionId: "red",
-  territoryOwners: {
-    northwest: "blue",
-    north: "blue",
-    northeast: "blue",
-    "western-steppe": "blue",
-    central: "blue",
-    "eastern-border": "red",
-    heartland: "red",
-    "pink-coast": "pink",
-    "southern-plains": "red",
-    "south-coast": "red",
-    "island-chain": "pink",
-    "frontier-isle": "neutral",
-  },
-  initialUnits: [
-    { id: "blue-1", faction: "blue", regionId: "western-steppe", pulse: 0 },
-    { id: "blue-2", faction: "blue", regionId: "central", pulse: 1.4 },
-    { id: "blue-3", faction: "blue", regionId: "north", pulse: 2.1 },
-    { id: "red-1", faction: "red", regionId: "eastern-border", pulse: 0.8 },
-    { id: "red-2", faction: "red", regionId: "heartland", pulse: 2.5 },
-    { id: "red-3", faction: "red", regionId: "south-coast", pulse: 1.2 },
-    { id: "neutral-1", faction: "neutral", regionId: "pink-coast", pulse: 2.8 },
-    { id: "neutral-2", faction: "neutral", regionId: "frontier-isle", pulse: 0.2 },
-    { id: "pink-1", faction: "pink", regionId: "island-chain", pulse: 1.7 },
-  ],
+  territoryOwners: phase.territoryOwners,
+  initialUnits: phase.initialUnits,
 };

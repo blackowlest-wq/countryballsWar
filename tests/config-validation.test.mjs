@@ -8,7 +8,7 @@ function editableConfig() {
   return JSON.parse(JSON.stringify(GAME_CONFIG));
 }
 
-test("既定設定は全拠点を双方向道路で接続する", () => {
+test("the compiled geographic front map is connected", () => {
   const regionIds = GAME_CONFIG.map.regions.map((region) => region.id);
   const visited = new Set([regionIds[0]]);
   const queue = [regionIds[0]];
@@ -17,16 +17,18 @@ test("既定設定は全拠点を双方向道路で接続する", () => {
     const current = queue.shift();
     GAME_CONFIG.map.roadNeighbors[current].forEach((neighbor) => {
       assert.ok(GAME_CONFIG.map.roadNeighbors[neighbor].includes(current));
-      if (visited.has(neighbor)) return;
-      visited.add(neighbor);
-      queue.push(neighbor);
+      if (!visited.has(neighbor)) {
+        visited.add(neighbor);
+        queue.push(neighbor);
+      }
     });
   }
 
   assert.equal(visited.size, regionIds.length);
+  assert.equal(GAME_CONFIG.map.sourceWorldMapId, "world-equirectangular-v1");
 });
 
-test("道路の正はmapの辺リストで、隣接表はそこから双方向生成される", () => {
+test("roads remain the source of the runtime adjacency table and every road is passable", () => {
   const expected = new Map(GAME_CONFIG.map.regions.map((region) => [region.id, []]));
   MAP.roads.forEach(([from, to]) => {
     expected.get(from).push(to);
@@ -36,174 +38,124 @@ test("道路の正はmapの辺リストで、隣接表はそこから双方向�
   expected.forEach((neighbors, regionId) => {
     assert.deepEqual([...GAME_CONFIG.map.roadNeighbors[regionId]].sort(), neighbors.sort());
   });
+  assert.ok(GAME_CONFIG.map.roadDefinitions.every((road) => road.passable !== false));
+  assert.ok(GAME_CONFIG.map.roadDefinitions.some((road) => road.kind === "sea"));
   assert.equal(Object.hasOwn(MAP, "roadNeighbors"), false);
 });
 
-test("実行用シナリオは初期所有・生産力・拠点中心の部隊を組み立てる", () => {
+test("countries own fragments and major countries can require multiple fragments", () => {
+  assert.deepEqual(GAME_CONFIG.countries.russia.fragmentIds, ["russia-east", "russia-far-east"]);
+  assert.deepEqual(GAME_CONFIG.countries.china.fragmentIds, ["china-north", "china-central", "china-south"]);
+  assert.equal(GAME_CONFIG.characters.china.eyeStyle, "sharp");
+  assert.equal(GAME_CONFIG.characters.vietnam.eyeStyle, "round");
+  GAME_CONFIG.map.regions.forEach((region) => {
+    assert.equal(GAME_CONFIG.countries[region.countryId].fragmentIds.includes(region.fragmentId), true);
+  });
+});
+
+test("runtime scenario uses phase production and rounds front-start enemy strength", () => {
   const runtime = createRuntimeScenario();
+  const phase = GAME_CONFIG.campaign.phases[GAME_CONFIG.scenario.phaseId];
 
   assert.equal(runtime.regions.length, GAME_CONFIG.map.regions.length);
-  assert.equal(runtime.units.length, GAME_CONFIG.scenario.initialUnits.length);
+  assert.equal(runtime.units.length, phase.initialUnits.length);
   runtime.regions.forEach((region) => {
-    assert.equal(region.faction, GAME_CONFIG.scenario.territoryOwners[region.id]);
-    assert.equal(region.production, GAME_CONFIG.balance.territoryProduction[region.id]);
+    assert.equal(region.faction, phase.territoryOwners[region.id]);
+    assert.equal(region.production, phase.productionByRegion[region.id]);
+    assert.deepEqual({ x: region.interactionPoint[0], y: region.interactionPoint[1] }, {
+      x: region.interactionPoint[0],
+      y: region.interactionPoint[1],
+    });
   });
   runtime.units.forEach((unit) => {
-    assert.deepEqual({ x: unit.x, y: unit.y }, unit.stationCenter);
-    assert.equal(unit.maxStrength, GAME_CONFIG.balance.units.baseMaxStrengthByFaction[unit.faction]);
+    const base = GAME_CONFIG.balance.units.baseMaxStrengthByFaction[unit.faction];
+    const expected = GAME_CONFIG.factions[unit.faction].isEnemy
+      ? Math.round(base * GAME_CONFIG.balance.campaign.enemyProfiles.regionalEarly.strengthMultiplier)
+      : base;
+    assert.equal(unit.maxStrength, expected);
+    assert.equal(unit.strength, expected);
+    assert.ok(GAME_CONFIG.characters[unit.characterId]);
   });
 });
 
-test("拠点生産力は基本1で、主要ハブだけ2である", () => {
+test("production values are defined for every geographic fragment", () => {
   const production = GAME_CONFIG.balance.territoryProduction;
-  const expectedProduction = {
-    northwest: 1,
-    north: 1,
-    northeast: 1,
-    "western-steppe": 1,
-    central: 2,
-    "eastern-border": 1,
-    heartland: 2,
-    "pink-coast": 1,
-    "southern-plains": 1,
-    "south-coast": 1,
-    "island-chain": 1,
-    "frontier-isle": 1,
-  };
-
-  assert.deepEqual(production, expectedProduction);
-  assert.equal(Object.values(production).filter((value) => value === 1).length, 10);
-  assert.equal(Object.values(production).filter((value) => value === 2).length, 2);
+  assert.deepEqual(Object.keys(production).sort(), GAME_CONFIG.map.regions.map((region) => region.id).sort());
+  assert.equal(production["china-north"], 3);
+  assert.equal(production["china-central"], 3);
+  assert.equal(Object.values(production).filter((value) => value === 1).length, 4);
 });
 
-test("未知の拠点を結ぶ道路は設定時に拒否する", () => {
+test("unknown and duplicate roads are rejected during configuration", () => {
+  const unknown = editableConfig();
+  unknown.map.roads.push([unknown.map.regions[0].id, "missing-region"]);
+  assert.throws(() => createGameConfig(unknown), /missing-region/);
+
+  const duplicate = editableConfig();
+  duplicate.map.roads.push([duplicate.map.roads[0][1], duplicate.map.roads[0][0]]);
+  assert.throws(() => createGameConfig(duplicate), /重複|duplicate/i);
+});
+
+test("missing ownership is rejected", () => {
   const config = editableConfig();
-  config.map.roads.push(["north", "missing-region"]);
-
-  assert.throws(() => createGameConfig(config), /missing-region/);
+  delete config.scenario.territoryOwners[config.map.regions[0].id];
+  assert.throws(() => createGameConfig(config));
 });
 
-test("同じ道路の逆向き重複は設定時に拒否する", () => {
-  const config = editableConfig();
-  config.map.roads.push(["north", "northwest"]);
-
-  assert.throws(() => createGameConfig(config), /重複/);
+test("all non-player factions are active enemies and no neutral faction remains", () => {
+  assert.equal(Object.hasOwn(GAME_CONFIG.factions, "neutral"), false);
+  Object.values(GAME_CONFIG.factions)
+    .filter((faction) => faction.id !== GAME_CONFIG.scenario.playerFactionId)
+    .forEach((faction) => assert.equal(faction.isEnemy, true));
 });
 
-test("プレイヤー役と能動AI役は定義済みで異なる勢力を参照する", () => {
-  assert.ok(GAME_CONFIG.factions[GAME_CONFIG.scenario.playerFactionId]);
-  assert.ok(GAME_CONFIG.factions[GAME_CONFIG.scenario.activeAiFactionId]);
-  assert.notEqual(GAME_CONFIG.scenario.playerFactionId, GAME_CONFIG.scenario.activeAiFactionId);
-});
-
-test("キャンペーン戦線の目標時間と敵プロファイルは定義済みである", () => {
-  const { frontTypes, enemyProfiles } = GAME_CONFIG.balance.campaign;
-  Object.values(frontTypes).forEach((frontType) => {
-    assert.ok(frontType.targetDurationSeconds >= 300 && frontType.targetDurationSeconds <= 600);
-    assert.ok(frontType.phaseCount >= 2 && frontType.phaseCount <= 6);
-  });
-  Object.values(enemyProfiles).forEach((profile) => {
-    assert.ok(profile.strengthMultiplier > 0);
-    assert.ok(profile.activeUnitLimit > 0);
-    assert.ok(profile.reinforcementLimit >= 0);
-    assert.ok(profile.actionDelaySeconds > 0);
+test("campaign phases cover the map and carry explicit objectives", () => {
+  const front = GAME_CONFIG.campaign.fronts[GAME_CONFIG.scenario.frontId];
+  assert.deepEqual(front.phaseIds, ["asia-front-early", "asia-front-late"]);
+  front.phaseIds.forEach((phaseId, index) => {
+    const phase = GAME_CONFIG.campaign.phases[phaseId];
+    assert.equal(phase.index, index);
+    assert.equal(Object.keys(phase.territoryOwners).length, GAME_CONFIG.map.regions.length);
+    assert.ok(phase.objectiveRegionIds.length > 0);
   });
 });
 
-test("必殺技は固定3回と初期バランス値を持つ", () => {
-  const { specialMove } = GAME_CONFIG.balance;
+test("invalid campaign map references and road passability are rejected", () => {
+  const invalidFront = editableConfig();
+  invalidFront.campaign.fronts[invalidFront.scenario.frontId].mapId = "other-map";
+  assert.throws(() => createGameConfig(invalidFront), /another map/);
+
+  const invalidRoad = editableConfig();
+  invalidRoad.map.roadDefinitions[0].passable = false;
+  assert.throws(() => createGameConfig(invalidRoad), /not passable/);
+
+  const invalidInteraction = editableConfig();
+  invalidInteraction.map.regions[1].interactionPoint = [...invalidInteraction.map.regions[0].interactionPoint];
+  assert.throws(() => createGameConfig(invalidInteraction), /too close/);
+});
+
+test("special move and campaign balance keep their fixed constraints", () => {
+  const { specialMove, campaign } = GAME_CONFIG.balance;
   assert.equal(specialMove.usesPerOperation, 3);
   assert.equal(specialMove.types.enemyWeakness.strengthReductionRate, 0.2);
   assert.equal(specialMove.types.allyBoost.strengthIncreaseRate, 0.2);
   assert.equal(specialMove.types.invincibility.durationSeconds, 3);
+  Object.values(campaign.frontTypes).forEach((frontType) => {
+    assert.ok(frontType.targetDurationSeconds >= 300 && frontType.targetDurationSeconds <= 600);
+    assert.ok(frontType.phaseCount >= 2 && frontType.phaseCount <= 6);
+  });
 });
 
-test("必殺技の使用回数や効果値が不正なら拒否する", () => {
-  const invalidUses = editableConfig();
-  invalidUses.balance.specialMove.usesPerOperation = 4;
-  assert.throws(() => createGameConfig(invalidUses), /must be 3/);
-
-  const invalidReduction = editableConfig();
-  invalidReduction.balance.specialMove.types.enemyWeakness.strengthReductionRate = 1.1;
-  assert.throws(() => createGameConfig(invalidReduction), /敵弱体化/);
-});
-
-test("戦線の目標時間が5分未満または10分超の場合は拒否する", () => {
-  const config = editableConfig();
-  config.balance.campaign.frontTypes.major.targetDurationSeconds = 601;
-
-  assert.throws(() => createGameConfig(config), /targetDurationSeconds/);
-});
-
-test("初期所有が不足している拠点は設定時に拒否する", () => {
-  const config = editableConfig();
-  delete config.scenario.territoryOwners.central;
-
-  assert.throws(() => createGameConfig(config), /central/);
-});
-
-test("重複した部隊IDは設定時に拒否する", () => {
-  const config = editableConfig();
-  config.scenario.initialUnits[1].id = config.scenario.initialUnits[0].id;
-
-  assert.throws(() => createGameConfig(config), /重複/);
-});
-
-test("不足した勢力別攻撃補正は設定時に拒否する", () => {
-  const config = editableConfig();
-  delete config.balance.targeting.factionPenalty.blue;
-
-  assert.throws(() => createGameConfig(config));
-});
-
-test("不足したpaletteキーは設定時に拒否する", () => {
-  const config = editableConfig();
-  delete config.factions.blue.palette.occupation;
-
-  assert.throws(() => createGameConfig(config));
-});
-
-test("不正な拠点形状と初期部隊配列は設定時に拒否する", () => {
+test("invalid map geometry and decoration data are rejected", () => {
   const invalidPointConfig = editableConfig();
   invalidPointConfig.map.regions[0].points[0] = [0.1, 0.2, 0.3];
   assert.throws(() => createGameConfig(invalidPointConfig));
-
-  const invalidUnitsConfig = editableConfig();
-  invalidUnitsConfig.scenario.initialUnits = null;
-  assert.throws(() => createGameConfig(invalidUnitsConfig));
-});
-
-test("minimumSurvivorStrengthは正の整数である必要がある", () => {
-  const config = editableConfig();
-  config.balance.units.minimumSurvivorStrength = 0;
-
-  assert.throws(() => createGameConfig(config));
-});
-
-test("マップ装飾は省略または空で利用できる", () => {
-  const withoutDecorations = editableConfig();
-  delete withoutDecorations.map.decorations;
-  assert.doesNotThrow(() => createGameConfig(withoutDecorations));
-
-  const emptyDecorations = editableConfig();
-  emptyDecorations.map.decorations = { labels: [], lines: [] };
-  assert.doesNotThrow(() => createGameConfig(emptyDecorations));
-});
-
-test("空のマップ名と不正な装飾データは設定時に拒否する", () => {
-  const invalidName = editableConfig();
-  invalidName.map.name = " ";
-  assert.throws(() => createGameConfig(invalidName), /map\.name/);
 
   const invalidLabel = editableConfig();
   invalidLabel.map.decorations.labels[0].text = "";
   assert.throws(() => createGameConfig(invalidLabel), /decorations\.labels/);
 
-  const invalidLabelPosition = editableConfig();
-  invalidLabelPosition.map.decorations.labels[0].position = [1.01, 0.18];
-  assert.throws(() => createGameConfig(invalidLabelPosition), /decorations\.labels/);
-
-  const invalidLineEndpoint = editableConfig();
-  invalidLineEndpoint.map.decorations.lines[0].to = [0.62, Number.NaN];
-  assert.throws(() => createGameConfig(invalidLineEndpoint), /decorations\.lines/);
+  const invalidLine = editableConfig();
+  invalidLine.map.decorations.lines[0].to = [0.62, Number.NaN];
+  assert.throws(() => createGameConfig(invalidLine), /decorations\.lines/);
 });

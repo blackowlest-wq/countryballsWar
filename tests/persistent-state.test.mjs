@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  CAMPAIGN_STORAGE_KEY,
   GOLD_STORAGE_KEY,
   SPECIAL_MOVE_STORAGE_KEY,
   UPGRADES_STORAGE_KEY,
@@ -33,17 +34,26 @@ const UPGRADE_KEYS = ["logistics", "armor", "reserve", "speed"];
 const SPECIAL_MOVE_BALANCE = {
   maxNameLength: 8,
   types: {
-    enemyWeakness: { defaultName: "敵弱体化" },
-    allyBoost: { defaultName: "味方強化" },
-    invincibility: { defaultName: "無敵" },
+    enemyWeakness: { defaultName: "weakness" },
+    allyBoost: { defaultName: "boost" },
+    invincibility: { defaultName: "guard" },
   },
 };
 
-test("resetPersistentState clears Gold and every upgrade", () => {
+const EMPTY_CAMPAIGN = {
+  version: 1,
+  campaignId: "world-conquest-v1",
+  difficultyId: "normal",
+  completedCountryIds: [],
+  lastCompletedFrontId: null,
+};
+
+test("resetPersistentState clears all persistent domains", () => {
   const storage = createStorage({
     [GOLD_STORAGE_KEY]: "1234",
     [UPGRADES_STORAGE_KEY]: JSON.stringify({ logistics: 2, armor: 4, reserve: 1 }),
-    [SPECIAL_MOVE_STORAGE_KEY]: JSON.stringify({ type: "allyBoost", name: "増強" }),
+    [SPECIAL_MOVE_STORAGE_KEY]: JSON.stringify({ type: "allyBoost", name: "boost" }),
+    [CAMPAIGN_STORAGE_KEY]: JSON.stringify({ completedCountryIds: ["china"] }),
   });
 
   const result = resetPersistentState(storage, UPGRADE_KEYS);
@@ -51,10 +61,12 @@ test("resetPersistentState clears Gold and every upgrade", () => {
   assert.deepEqual(result, {
     gold: 0,
     upgrades: { logistics: 0, armor: 0, reserve: 0, speed: 0 },
+    campaign: EMPTY_CAMPAIGN,
   });
   assert.equal(storage.has(GOLD_STORAGE_KEY), false);
   assert.equal(storage.has(UPGRADES_STORAGE_KEY), false);
   assert.equal(storage.has(SPECIAL_MOVE_STORAGE_KEY), false);
+  assert.equal(storage.has(CAMPAIGN_STORAGE_KEY), false);
 });
 
 test("corrupted saved values safely become a clean state", () => {
@@ -66,6 +78,7 @@ test("corrupted saved values safely become a clean state", () => {
   assert.deepEqual(loadPersistentState(storage, UPGRADE_KEYS), {
     gold: 0,
     upgrades: { logistics: 0, armor: 0, reserve: 0, speed: 0 },
+    campaign: EMPTY_CAMPAIGN,
   });
 });
 
@@ -78,37 +91,50 @@ test("valid values are preserved while unknown or invalid upgrade values are nor
   assert.deepEqual(loadPersistentState(storage, UPGRADE_KEYS), {
     gold: 200,
     upgrades: { logistics: 2, armor: 0, reserve: 1, speed: 0 },
+    campaign: EMPTY_CAMPAIGN,
   });
 });
 
-test("saving and loading round trips the persistent state", () => {
+test("saving and loading round trips campaign progress without phase state", () => {
   const storage = createStorage();
   savePersistentState(storage, {
     gold: 350,
     upgrades: { logistics: 1, armor: 2, reserve: 3, speed: 2 },
+    campaign: {
+      campaignId: "world-conquest-v1",
+      difficultyId: "hard",
+      completedCountryIds: ["japan", "china", "china"],
+      currentPhaseId: "asia-front-late",
+      lastCompletedFrontId: "asia-front",
+    },
   });
 
   assert.deepEqual(loadPersistentState(storage, UPGRADE_KEYS), {
     gold: 350,
     upgrades: { logistics: 1, armor: 2, reserve: 3, speed: 2 },
+    campaign: {
+      version: 1,
+      campaignId: "world-conquest-v1",
+      difficultyId: "hard",
+      completedCountryIds: ["china", "japan"],
+      lastCompletedFrontId: "asia-front",
+    },
   });
 });
 
-test("必殺技設定は名前を安全に正規化して保存・読込する", () => {
+test("special move settings remain compatible with persistent state", () => {
   const storage = createStorage();
   const saved = saveSpecialMove(storage, {
     type: "invincibility",
-    name: "  防\u0000御\n隊123456789  ",
+    name: "  guard\u0000\n123456789  ",
   }, SPECIAL_MOVE_BALANCE);
 
-  assert.deepEqual(saved, { type: "invincibility", name: "防御隊12345" });
+  assert.deepEqual(saved, { type: "invincibility", name: "guard123" });
   assert.deepEqual(loadSpecialMove(storage, SPECIAL_MOVE_BALANCE), saved);
 });
 
-test("不正な必殺技種別や壊れた保存値は未設定として扱う", () => {
-  const storage = createStorage({
-    [SPECIAL_MOVE_STORAGE_KEY]: "{broken",
-  });
+test("invalid special move values are treated as unset", () => {
+  const storage = createStorage({ [SPECIAL_MOVE_STORAGE_KEY]: "{broken" });
   assert.equal(loadSpecialMove(storage, SPECIAL_MOVE_BALANCE), null);
 
   storage.setItem(SPECIAL_MOVE_STORAGE_KEY, JSON.stringify({ type: "unknown", name: "x" }));

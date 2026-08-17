@@ -1,46 +1,37 @@
-# シナリオ設定
+# Scenario and campaign configuration
 
-- シナリオID: `asia-front-day-01`
-- 使用マップ: `asia-front`
-- 正となるコード: `src/config/scenario.js`
+The campaign master is `src/config/campaign.js`. The current playable scenario
+is derived from its first phase by `src/config/scenario.js`.
 
-シナリオ設定は「同じマップとルールを、誰がどこから始めるか」を定義します。マップ形状や数値バランスを複製しません。
+## Structure
 
-## 役割
+```text
+campaign
+  fronts
+    asia-front
+      phaseIds: asia-front-early, asia-front-late
+  phases
+    asia-front-early
+    asia-front-late
+```
 
-| 役割 | 勢力ID |
-|---|---|
-| プレイヤー | `blue` |
-| 初期侵攻AI | `red` |
+Each phase defines the same geographic map, its objective fragments, initial
+owners, production per fragment, and initial deployments. A large-country
+operation can therefore use one map while changing the active situation.
 
-プレイヤー役と初期侵攻AI役は異なる既存勢力を指定します。初期侵攻AIは作戦開始時から侵攻し、その他のプレイヤー以外の勢力はプレイヤー拠点と道路で隣接した後に侵攻を開始します。ゲームロジックは色名ではなく、この役割設定を参照します。
+`faction` is the side that owns a unit or fragment. `countryId` and
+`characterId` identify the country character displayed by that unit. There is
+no neutral faction; every non-player faction is an enemy.
 
-## 初期所有
+## Phase transition
 
-| 勢力 | 拠点 |
-|---|---|
-| `blue` | 北西辺境、北方連合、東方王冠、西部草原、中央回廊 |
-| `red` | 東部国境、紅の中原、南部平原、南岸連邦 |
-| `pink` | 桃色沿岸、島嶼戦線 |
-| `neutral` | 前線島 |
+When the phase objective is complete:
 
-## 初期部隊
+1. Player units keep position and strength.
+2. Fragment occupation state is carried over.
+3. All enemy units are removed.
+4. Enemy units are created from the next phase's initial deployment.
+5. The same map and road graph remain active.
 
-| 勢力 | 配置拠点 | 部隊数 |
-|---|---|---:|
-| `blue` | 西部草原、中央回廊、北方連合 | 3 |
-| `red` | 東部国境、紅の中原、南岸連邦 | 3 |
-| `neutral` | 桃色沿岸、前線島 | 2 |
-| `pink` | 島嶼戦線 | 1 |
-
-初期部隊にはID、勢力、配置拠点、アニメーション位相だけを指定します。座標、最大戦力、画像様式、実行時状態は設定組み立て時に拠点中心・勢力設定・バランス設定から生成します。このため、配置座標と道路ノードがずれる状態を作りません。
-
-## シナリオ変更チェック
-
-1. すべての拠点に初期所有勢力を一つ指定する。
-2. 部隊IDを重複させず、存在する勢力と拠点だけを参照する。
-3. プレイヤー初期部隊を最低1体配置する。
-4. 開始直後に意図しない接敵が起きないか確認する。
-5. プレイヤーとAIの侵攻候補が道路で接続されているか確認する。
-
-将来、同じ地図で別の初期配置や難易度を作る場合は、新しいシナリオ設定として分けます。
+On defeat, the current operation is restarted from the front's first phase.
+Only completed front country IDs are persistent campaign progress.

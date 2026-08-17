@@ -1,64 +1,54 @@
-# マップ設定
+# Map configuration
 
-- マップID: `asia-front`
-- 正となるコード: `src/config/map.js`
+## Canonical files
 
-マップ設定はマップ名、拠点の識別情報と表示形状、道路グラフ、表示装飾を定義します。初期所有と部隊配置はシナリオ、生産力はバランスへ分離します。
+- Geographic source: `src/config/world-map.js`
+- Country master: `src/config/countries.js`
+- Compiler: `src/config/map-compiler.js`
+- Runtime map: `src/config/map.js`
 
-## 現在の拠点
+`map.js` is compiled from geographic source data. Do not author gameplay
+coordinates directly in `main.js`.
 
-| ID | 表示名 | 英語名 |
+## Current front fragments
+
+| Fragment | Country | Role |
 |---|---|---|
-| `northwest` | 北西辺境 | Northwest Reach |
-| `north` | 北方連合 | Northern Union |
-| `northeast` | 東方王冠 | Eastern Crown |
-| `western-steppe` | 西部草原 | Western Steppe |
-| `central` | 中央回廊 | Central Corridor |
-| `eastern-border` | 東部国境 | Eastern Borderlands |
-| `heartland` | 紅の中原 | Crimson Heartland |
-| `pink-coast` | 桃色沿岸 | Rose Coast |
-| `southern-plains` | 南部平原 | Southern Plains |
-| `south-coast` | 南岸連邦 | Southern Coast |
-| `island-chain` | 島嶼戦線 | Island Chain |
-| `frontier-isle` | 前線島 | Frontier Isle |
+| `russia-east` | Russia | Major-country fragment |
+| `russia-far-east` | Russia | Major-country fragment |
+| `kazakhstan` | Kazakhstan | Western entry |
+| `mongolia` | Mongolia | Central land corridor |
+| `china-north` | China | Major-country fragment |
+| `china-central` | China | Major-country fragment |
+| `china-south` | China | Major-country fragment |
+| `north-korea` | North Korea | Land bridge |
+| `south-korea` | South Korea | Peninsula |
+| `japan` | Japan | Major island country |
+| `vietnam` | Vietnam | Southern mainland |
+| `philippines` | Philippines | Sea-route island country |
+| `indonesia` | Indonesia | Southern island group |
 
-各拠点の `points` はCanvasに対する0〜1の正規化座標で、3点以上の多角形として指定します。隣接拠点はタップ先がずれないように、中心と境界に十分な間隔を持たせます。特に前線島は南岸連邦から離して配置します。
+The points are longitude/latitude polygons projected to normalized Canvas
+coordinates. The current source is a compact geographic seed; a higher
+resolution licensed GeoJSON source can replace the fragment points without
+changing runtime behavior.
 
-## 現在の道路
+## Roads
 
-道路は重複のない辺リストとして一度だけ記述し、設定組み立て時に双方向の隣接表へ変換します。
+Roads are authored once in `WORLD_MAP.frontMaps[*].roads` and compiled to the
+runtime `roads` array plus `roadDefinitions` metadata.
 
-| 拠点 | 接続先 |
-|---|---|
-| 北西辺境 | 北方連合、西部草原、中央回廊 |
-| 北方連合 | 北西辺境、東方王冠、中央回廊 |
-| 東方王冠 | 北方連合、東部国境 |
-| 西部草原 | 北西辺境、中央回廊、南部平原 |
-| 中央回廊 | 北西辺境、北方連合、西部草原、東部国境、紅の中原、南部平原 |
-| 東部国境 | 東方王冠、中央回廊、紅の中原、桃色沿岸 |
-| 紅の中原 | 中央回廊、東部国境、南部平原、南岸連邦、桃色沿岸 |
-| 桃色沿岸 | 東部国境、紅の中原、島嶼戦線 |
-| 南部平原 | 西部草原、中央回廊、紅の中原、南岸連邦 |
-| 南岸連邦 | 南部平原、紅の中原、島嶼戦線、前線島 |
-| 島嶼戦線 | 桃色沿岸、南岸連邦、前線島 |
-| 前線島 | 南岸連邦、島嶼戦線 |
+- `land`: ordinary land route
+- `sea`: explicit sea/ferry route
+- `passable: false`: invalid for this game and rejected during configuration
 
-## 拠点追加チェック
+Validation checks unknown endpoints, self-links, duplicate reverse links,
+non-passable edges, invalid kinds, and graph connectivity.
 
-1. `map.js` の `regions` にID、名称、多角形を追加する。
-2. `roads` に既存拠点へつながる辺を追加し、孤立させない。
-3. `scenario.js` の `territoryOwners` に初期所有勢力を追加する。
-4. `balance.js` の `territoryProduction` に生産力を追加する。
-5. 初期部隊を置く場合は `scenario.js` の `initialUnits` に追加する。
-6. 設定検証テストと、画面上の道路・ドラッグ経路を確認する。
+## Interaction safety
 
-道路の片側だけを記述する必要はありません。存在しない拠点、自己接続、同じ道路の重複、道路網から孤立した拠点は設定エラーになります。
-
-## 表示装飾
-
-`decorations` はゲーム判定に影響しないマップ固有表示です。
-
-- `labels`: 海域名などの文字列と0〜1の正規化位置
-- `lines`: 装飾線の始点と終点。道路や移動可能経路には影響しない
-
-現在は `EASTERN OCEAN`、`SOUTHERN SEA` のラベルと4本の装飾線を定義しています。装飾全体、ラベル、線はいずれも省略または空配列にできます。新しいマップでは、旧マップの座標を `main.js` に残さず、この設定だけを差し替えます。
+Each fragment has an `interactionPoint`. `interactionMinDistance` rejects
+overlapping target centers, while `interactionHitRadius` allows selection near
+small country shapes. A target is selected by polygon first and then by the
+nearest interaction point, so visual geometry and touch affordance remain
+separate.

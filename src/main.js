@@ -1,4 +1,12 @@
 import { GAME_CONFIG, createRuntimeScenario } from "./config/game-config.js";
+import { getFirstPhaseId } from "./config/campaign.js";
+import {
+  getCompletedCountryIds,
+  getNextPhaseId,
+  isPhaseObjectiveComplete,
+  resolveEnemyStrength,
+  transitionPhase,
+} from "./campaign/phase-runtime.js";
 import {
   loadPersistentState,
   loadSpecialMove,
@@ -78,7 +86,14 @@ const MOVEMENT_BALANCE = BALANCE.movement;
 const UNIT_BALANCE = BALANCE.units;
 const OCCUPATION_DURATION = BALANCE.occupation.durationSeconds;
 const COMBAT_BALANCE = BALANCE.combat;
-const AI_BALANCE = BALANCE.ai;
+const ACTIVE_FRONT = GAME_CONFIG.campaign.fronts[GAME_CONFIG.scenario.frontId];
+const ACTIVE_ENEMY_PROFILE = BALANCE.campaign.enemyProfiles[ACTIVE_FRONT.enemyProfileId];
+const AI_BALANCE = {
+  ...BALANCE.ai,
+  activeUnitLimit: ACTIVE_ENEMY_PROFILE.activeUnitLimit,
+  reinforcementLimit: ACTIVE_ENEMY_PROFILE.reinforcementLimit,
+  actionDelaySeconds: ACTIVE_ENEMY_PROFILE.actionDelaySeconds,
+};
 const TARGETING_BALANCE = BALANCE.targeting;
 const ECONOMY_BALANCE = BALANCE.economy;
 const SPECIAL_MOVE_BALANCE = BALANCE.specialMove;
@@ -102,22 +117,35 @@ function applyConfiguredDisplayNames() {
   ui.clearPlayerFactionName.textContent = playerFactionName;
 }
 
+const CHARACTER_SPRITE_SOURCES = Object.fromEntries(
+  Object.entries(GAME_CONFIG.characters)
+    .filter(([, character]) => character.sprite)
+    .map(([characterId, character]) => [characterId, character.sprite]),
+);
+
 const UNIT_SPRITES = Object.fromEntries(
-  Object.entries(UNIT_SPRITE_SOURCES).map(([faction, source]) => {
+  [...Object.entries(UNIT_SPRITE_SOURCES), ...Object.entries(CHARACTER_SPRITE_SOURCES)].map(([key, source]) => {
     const image = new Image();
     image.decoding = "async";
     image.src = source;
-    return [faction, image];
+    return [key, image];
   }),
 );
 
 const SHOP_ITEMS = BALANCE.economy.shopItems;
 const upgradeKeys = Object.keys(SHOP_ITEMS);
-const persistentState = loadPersistentState(undefined, upgradeKeys);
+const persistentState = loadPersistentState(undefined, upgradeKeys, {
+  campaignId: GAME_CONFIG.campaign.id,
+  difficultyId: GAME_CONFIG.campaign.defaultDifficultyId,
+});
 const savedSpecialMove = loadSpecialMove(undefined, SPECIAL_MOVE_BALANCE);
 
 function savePersistentProgress() {
-  savePersistentState(undefined, { gold: state.gold, upgrades: state.upgrades });
+  savePersistentState(undefined, {
+    gold: state.gold,
+    upgrades: state.upgrades,
+    campaign: state.campaign,
+  });
 }
 
 const state = {
@@ -132,6 +160,7 @@ const state = {
   elapsed: 0,
   gold: persistentState.gold,
   upgrades: persistentState.upgrades,
+  campaign: persistentState.campaign,
   specialMove: savedSpecialMove,
   specialMoveUsesRemaining: 0,
   invincibilityRemaining: 0,
@@ -147,6 +176,7 @@ const state = {
   defeated: false,
   cleared: false,
   started: false,
+  phaseId: GAME_CONFIG.scenario.phaseId,
   shopOpen: false,
   shopWasPaused: false,
   battles: new Map(),
@@ -167,6 +197,15 @@ function cloneRegion(region) {
   return { ...region, occupation: null, points: region.points.map(([x, y]) => [x, y]) };
 }
 
+function cloneRegionState(region) {
+  return {
+    ...region,
+    occupation: region.occupation ? { ...region.occupation } : null,
+    points: region.points.map(([x, y]) => [x, y]),
+    interactionPoint: region.interactionPoint ? [...region.interactionPoint] : region.interactionPoint,
+  };
+}
+
 function cloneUnit(unit) {
   return {
     ...unit,
@@ -177,11 +216,44 @@ function cloneUnit(unit) {
   };
 }
 
-const runtimeScenario = createRuntimeScenario(GAME_CONFIG);
+let activePhaseId = GAME_CONFIG.scenario.phaseId;
+const runtimeScenario = createRuntimeScenario(GAME_CONFIG, activePhaseId);
 const regions = runtimeScenario.regions;
 const units = runtimeScenario.units;
-const initialRegions = regions.map(cloneRegion);
-const initialUnits = units.map(cloneUnit);
+let initialRegions = regions.map(cloneRegion);
+let initialUnits = units.map(cloneUnit);
+
+function replaceRuntime(nextRuntime) {
+  regions.splice(0, regions.length, ...nextRuntime.regions.map(cloneRegion));
+  units.splice(0, units.length, ...nextRuntime.units.map(cloneUnit));
+  initialRegions = nextRuntime.regions.map(cloneRegion);
+  initialUnits = nextRuntime.units.map(cloneUnit);
+  activePhaseId = nextRuntime.phaseId;
+  state.phaseId = nextRuntime.phaseId;
+}
+
+function resetRuntimeToPhase(phaseId) {
+  replaceRuntime(createRuntimeScenario(GAME_CONFIG, phaseId));
+}
+
+function transitionToPhase(phaseId) {
+  const nextRuntime = createRuntimeScenario(GAME_CONFIG, phaseId);
+  const transitioned = transitionPhase({
+    currentRuntime: { frontId: GAME_CONFIG.scenario.frontId, phaseId: activePhaseId, regions, units },
+    nextRuntime,
+    playerFactionId: PLAYER_FACTION_ID,
+  });
+
+  regions.splice(0, regions.length, ...transitioned.regions.map(cloneRegionState));
+  units.splice(0, units.length, ...transitioned.units.map(cloneUnit));
+  activePhaseId = phaseId;
+  state.phaseId = phaseId;
+  state.selectedRegionId = null;
+  state.aiTimers = createAiFactionState(AI_BALANCE.initialDelaySeconds);
+  state.aiReinforcements = createAiFactionState(AI_BALANCE.reinforcementLimit);
+  state.invasionWarning = null;
+  state.battles.clear();
+}
 
 const view = { width: 0, height: 0 };
 let lastTime = performance.now();
@@ -275,6 +347,9 @@ function attackScore(region) {
 }
 
 function regionCenter(region) {
+  if (Array.isArray(region.interactionPoint)) {
+    return { x: region.interactionPoint[0], y: region.interactionPoint[1] };
+  }
   const points = region.points;
   const total = points.reduce((result, point) => ({ x: result.x + point[0], y: result.y + point[1] }), { x: 0, y: 0 });
   return { x: total.x / points.length, y: total.y / points.length };
@@ -594,10 +669,42 @@ function drawFlag(x, y, color, scale) {
   ctx.restore();
 }
 
+function drawCharacterFlag(character, x, y, radius) {
+  const flag = character?.flag;
+  if (!flag?.colors?.length) return;
+  const colors = flag.colors;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.clip();
+  if (flag.type === "vertical") {
+    const width = (radius * 2) / colors.length;
+    colors.forEach((color, index) => {
+      ctx.fillStyle = color;
+      ctx.fillRect(x - radius + index * width, y - radius, width + 1, radius * 2);
+    });
+  } else if (flag.type === "field") {
+    ctx.fillStyle = colors[0];
+    ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+    ctx.fillStyle = colors[1];
+    ctx.beginPath();
+    ctx.arc(x, y, radius * 0.28, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    const height = (radius * 2) / colors.length;
+    colors.forEach((color, index) => {
+      ctx.fillStyle = color;
+      ctx.fillRect(x - radius, y - radius + index * height, radius * 2, height + 1);
+    });
+  }
+  ctx.restore();
+}
+
 function drawUnit(unit, time) {
   const point = screenPoint([unit.x, unit.y]);
   const scale = clamp(view.width * 0.021, 15, 25) * (state.zoom > 1 ? 1.07 : 1);
   const palette = COLORS[unit.faction];
+  const character = GAME_CONFIG.characters[unit.characterId];
   const bob = state.motion ? Math.sin(time * 2.6 + unit.pulse) * 1.8 : 0;
   const y = point.y + bob;
   const battleJitter = unit.inBattle && state.motion ? Math.sin(time * 24 + unit.pulse) * 2.2 : 0;
@@ -613,25 +720,26 @@ function drawUnit(unit, time) {
   ctx.fill();
   ctx.restore();
 
-  const sprite = UNIT_SPRITES[unit.faction];
+  const sprite = character?.sprite ? UNIT_SPRITES[unit.characterId] : null;
   const spriteReady = Boolean(sprite?.complete && sprite.naturalWidth > 0);
   if (spriteReady) {
     const spriteSize = scale * 2.42;
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(sprite, point.x - spriteSize / 2, y - spriteSize / 2, spriteSize, spriteSize);
   } else {
-    drawFlag(point.x + scale * 0.72, y - scale * 0.2, palette.flag, scale * 0.75);
+    if (!character) drawFlag(point.x + scale * 0.72, y - scale * 0.2, palette.flag, scale * 0.75);
 
     ctx.save();
     ctx.beginPath();
     ctx.arc(point.x, y, scale, 0, Math.PI * 2);
     ctx.fillStyle = palette.unit;
     ctx.fill();
+    drawCharacterFlag(GAME_CONFIG.characters[unit.characterId], point.x, y, scale * 0.94);
     ctx.lineWidth = Math.max(1.5, scale * 0.1);
     ctx.strokeStyle = "#222b3d";
     ctx.stroke();
 
-    if (unit.style === "visor") {
+    if (!character && unit.style === "visor") {
       ctx.fillStyle = "#d94f58";
       ctx.beginPath();
       ctx.arc(point.x, y, scale * 0.62, 0, Math.PI * 2);
@@ -639,7 +747,7 @@ function drawUnit(unit, time) {
       ctx.strokeStyle = "#fff";
       ctx.lineWidth = Math.max(1, scale * 0.05);
       ctx.stroke();
-    } else if (unit.style === "cap") {
+    } else if (!character && unit.style === "cap") {
       ctx.fillStyle = "#ffd75d";
       ctx.beginPath();
       ctx.moveTo(point.x - scale * 0.86, y - scale * 0.54);
@@ -648,7 +756,7 @@ function drawUnit(unit, time) {
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
-    } else if (unit.faction === "pink") {
+    } else if (!character && unit.faction === "pink") {
       ctx.fillStyle = "#ec5461";
       ctx.fillRect(point.x - scale * 0.83, y - scale * 0.12, scale * 1.66, scale * 0.28);
     }
@@ -656,10 +764,24 @@ function drawUnit(unit, time) {
     const eyeY = y - scale * 0.13;
     const eyeOffset = scale * 0.39;
     ctx.fillStyle = "#fff";
-    ctx.beginPath();
-    ctx.arc(point.x - eyeOffset, eyeY, scale * 0.21, 0, Math.PI * 2);
-    ctx.arc(point.x + eyeOffset, eyeY, scale * 0.21, 0, Math.PI * 2);
-    ctx.fill();
+    if (unit.eyeStyle === "sharp") {
+      const eyeWidth = scale * 0.3;
+      const eyeHeight = scale * 0.19;
+      [point.x - eyeOffset, point.x + eyeOffset].forEach((eyeX) => {
+        ctx.beginPath();
+        ctx.moveTo(eyeX - eyeWidth, eyeY);
+        ctx.lineTo(eyeX, eyeY - eyeHeight);
+        ctx.lineTo(eyeX + eyeWidth, eyeY);
+        ctx.lineTo(eyeX, eyeY + eyeHeight);
+        ctx.closePath();
+        ctx.fill();
+      });
+    } else {
+      ctx.beginPath();
+      ctx.arc(point.x - eyeOffset, eyeY, scale * 0.21, 0, Math.PI * 2);
+      ctx.arc(point.x + eyeOffset, eyeY, scale * 0.21, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.fillStyle = "#1c2334";
     ctx.beginPath();
     ctx.arc(point.x - eyeOffset, eyeY, scale * 0.1, 0, Math.PI * 2);
@@ -1254,6 +1376,8 @@ function createUnit(faction, regionId, targetRegionId = null) {
   const unit = {
     id: `${faction}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     faction,
+    characterId: region.countryId,
+    eyeStyle: GAME_CONFIG.characters[region.countryId].eyeStyle,
     x: center.x,
     y: center.y,
     strength: maxStrength,
@@ -1362,7 +1486,10 @@ function getUnitProduction(unit) {
 function getMaxUnitStrength(faction) {
   const baseStrength = UNIT_BALANCE.baseMaxStrengthByFaction[faction] || UNIT_BALANCE.minimumSurvivorStrength;
   const armor = SHOP_ITEMS.armor?.maxStrengthPerLevel || 0;
-  return baseStrength + (faction === PLAYER_FACTION_ID ? state.upgrades.armor * armor : 0);
+  const resolvedStrength = GAME_CONFIG.factions[faction]?.isEnemy
+    ? resolveEnemyStrength(baseStrength, ACTIVE_ENEMY_PROFILE.strengthMultiplier, UNIT_BALANCE.minimumSurvivorStrength)
+    : baseStrength;
+  return resolvedStrength + (faction === PLAYER_FACTION_ID ? state.upgrades.armor * armor : 0);
 }
 
 function applyArmorUpgrade() {
@@ -1407,6 +1534,18 @@ function pointInPolygon(point, polygon) {
     if (intersect) inside = !inside;
   }
   return inside;
+}
+
+function regionAtWorldPoint(point) {
+  const containingRegion = [...regions].reverse().find((region) => pointInPolygon(point, region.points));
+  if (containingRegion) return containingRegion;
+
+  const radius = (GAME_CONFIG.map.interactionHitRadius || 0.02) / state.zoom;
+  return regions
+    .map((region) => ({ region, center: regionCenter(region) }))
+    .map(({ region, center }) => ({ region, distance: Math.hypot(center.x - point[0], center.y - point[1]) }))
+    .filter(({ distance }) => distance <= radius)
+    .sort((left, right) => left.distance - right.distance)[0]?.region || null;
 }
 
 function selectRegion(region) {
@@ -1497,9 +1636,9 @@ function formatTime() {
 }
 
 function updateHud() {
-  const playerRegions = regions.filter((region) => region.faction === PLAYER_FACTION_ID).length;
   const time = formatTime();
-  if (!state.cleared && !state.defeated && playerRegions === regions.length) triggerClear();
+  const phase = GAME_CONFIG.campaign.phases[state.phaseId];
+  if (!state.cleared && !state.defeated && isPhaseObjectiveComplete(regions, phase, PLAYER_FACTION_ID)) triggerClear();
   ui.gold.textContent = String(state.gold);
   ui.day.textContent = String(time.day).padStart(2, "0");
   ui.time.textContent = time.text;
@@ -1580,15 +1719,34 @@ function triggerDefeat() {
 
 function triggerClear() {
   if (state.cleared || state.defeated) return;
+
+  const nextPhaseId = getNextPhaseId(GAME_CONFIG.campaign, GAME_CONFIG.scenario.frontId, state.phaseId);
+  if (nextPhaseId) {
+    transitionToPhase(nextPhaseId);
+    showToast("PHASE COMPLETE — NEXT LINE ENGAGED");
+    addEvent("The enemy front was reset and the next phase began.");
+    updateHud();
+    render();
+    return;
+  }
+
   state.cleared = true;
   state.paused = true;
+  const front = GAME_CONFIG.campaign.fronts[GAME_CONFIG.scenario.frontId];
+  const completedCountryIds = getCompletedCountryIds(regions, GAME_CONFIG.countries, PLAYER_FACTION_ID);
+  state.campaign = {
+    ...state.campaign,
+    completedCountryIds: [...new Set([...state.campaign.completedCountryIds, ...completedCountryIds, ...front.targetCountryIds])].sort(),
+    lastCompletedFrontId: front.id,
+  };
+  savePersistentProgress();
   const reward = grantGold(calculateClearGold(currentRewardProgress(), ECONOMY_BALANCE.rewards));
   ui.clearReward.textContent = `+${reward} GOLD`;
   ui.clearDialog?.showModal();
 }
 
 function restartGame({ announce = true } = {}) {
-  regions.splice(0, regions.length, ...initialRegions.map(cloneRegion));
+  resetRuntimeToPhase(getFirstPhaseId(GAME_CONFIG.campaign, GAME_CONFIG.scenario.frontId));
   setupInitialUnits();
   state.zoom = 1;
   state.panX = 0;
@@ -1772,6 +1930,7 @@ function confirmPersistentDataReset() {
   const clean = resetPersistentState(undefined, upgradeKeys);
   state.gold = clean.gold;
   state.upgrades = clean.upgrades;
+  state.campaign = clean.campaign;
   state.specialMove = null;
   restartGame({ announce: false });
   updateShopDialog();
@@ -1825,7 +1984,7 @@ function updateDispatch(event) {
   const point = mapPointFromPointer(event);
   dragState.currentPoint = { x: point.x, y: point.y };
   dragState.moved = dragState.moved || distance(dragState.sourceUnit, point) > MOVEMENT_BALANCE.dispatchDragDistance;
-  const candidate = [...regions].reverse().find((region) => pointInPolygon([point.x, point.y], region.points)) || null;
+  const candidate = regionAtWorldPoint([point.x, point.y]);
   dragState.targetRegion = candidate && canDispatchToRegion(dragState.sourceUnit, candidate) ? candidate : null;
   dragState.invalidTarget = Boolean(candidate && !dragState.targetRegion);
   render();
@@ -1891,7 +2050,7 @@ function handleMapClick(event) {
   const x = event.clientX - rect.left;
   const y = event.clientY - rect.top;
   const point = worldPointFromScreen(x, y);
-  const clicked = [...regions].reverse().find((region) => pointInPolygon(point, region.points));
+  const clicked = regionAtWorldPoint(point);
   selectRegion(clicked || null);
   if (clicked) showToast(`${clicked.name}を選択しました`);
 }
