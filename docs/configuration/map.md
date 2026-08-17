@@ -7,9 +7,14 @@
 - Compiler: `src/config/map-compiler.js`
 - Active runtime map: `src/config/map.js`
 
-`map.js` is compiled from geographic longitude/latitude data. The active map
-is a close-up projection of the Korean Peninsula, while the remaining East
-Asia source fragments stay available for later fronts.
+`map.js` is compiled from Natural Earth geographic longitude/latitude data. The
+active map is a close-up projection of the Korean Peninsula. The original
+GeoJSON and the extraction used by the runtime are stored in
+`src/config/geodata/`.
+
+The current source is Natural Earth Admin 0 – Countries, 1:110m, v5.1.1
+(commit `9380cca`, public domain). The map source metadata is exposed as
+`GAME_CONFIG.map.source` so a future data update must be explicit.
 
 ## Active front fragments
 

@@ -26,21 +26,44 @@ function compileDecorations(decorations, bounds) {
   };
 }
 
+function projectRing(ring, bounds) {
+  return ring.map((point) => projectGeoPoint(point, bounds));
+}
+
+function projectGeometry(geometry, bounds) {
+  if (!geometry || !["Polygon", "MultiPolygon"].includes(geometry.type)) {
+    throw new Error(`Map compiler: unsupported geometry type ${geometry?.type || "missing"}`);
+  }
+
+  const polygons = geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates;
+  return polygons.map((polygon) => polygon.map((ring) => projectRing(ring, bounds)));
+}
+
+function fragmentPolygons(fragment, bounds) {
+  if (fragment.geometry) return projectGeometry(fragment.geometry, bounds);
+  if (Array.isArray(fragment.points)) return [[projectRing(fragment.points, bounds)]];
+  throw new Error(`Map compiler: fragment ${fragment.id} has no geometry`);
+}
+
 export function compileWorldFrontMap(worldMap, frontMap, countries) {
   const bounds = frontMap.bounds || worldMap.projection.bounds;
   const regions = frontMap.fragmentIds.map((fragmentId) => {
     const fragment = worldMap.fragments[fragmentId];
     const country = countries[fragment?.countryId];
     if (!fragment || !country) throw new Error(`Map compiler: missing fragment or country for ${fragmentId}`);
+    const polygons = fragmentPolygons(fragment, bounds);
+    const points = polygons[0][0];
     return {
       id: fragment.id,
       countryId: fragment.countryId,
       fragmentId: fragment.id,
       name: fragment.name || country.name,
       shortName: fragment.shortName || country.shortName,
-      points: fragment.points.map((point) => projectGeoPoint(point, bounds)),
+      points,
+      polygons,
       interactionPoint: projectGeoPoint(fragment.interactionPoint || fragment.centroid, bounds),
-      sourceCoordinates: cloneData(fragment.points),
+      sourceCoordinates: cloneData(fragment.geometry?.coordinates || fragment.points),
+      sourceGeometry: cloneData(fragment.geometry),
       sourceCentroid: cloneData(fragment.centroid),
       isMajor: country.isMajor,
     };
@@ -50,6 +73,7 @@ export function compileWorldFrontMap(worldMap, frontMap, countries) {
     id: frontMap.id,
     name: frontMap.name,
     sourceWorldMapId: worldMap.id,
+    source: cloneData(worldMap.source),
     projection: { ...cloneData(worldMap.projection), bounds: cloneData(bounds) },
     interactionMinDistance: frontMap.interactionMinDistance,
     interactionHitRadius: frontMap.interactionHitRadius,

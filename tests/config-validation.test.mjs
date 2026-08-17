@@ -27,7 +27,12 @@ test("the compiled geographic front map is connected", () => {
 
   assert.equal(visited.size, regionIds.length);
   assert.deepEqual(regionIds, ["south-korea", "north-korea"]);
-  assert.equal(GAME_CONFIG.map.sourceWorldMapId, "world-equirectangular-v1");
+  assert.equal(GAME_CONFIG.map.sourceWorldMapId, "natural-earth-korea-front-v1");
+  assert.equal(GAME_CONFIG.map.source.id, "natural-earth-110m-admin-0-countries");
+  assert.equal(GAME_CONFIG.map.source.version, "5.1.1");
+  assert.equal(GAME_CONFIG.map.source.license, "Public domain");
+  assert.equal(GAME_CONFIG.map.regions.find((region) => region.id === "north-korea").sourceGeometry.type, "MultiPolygon");
+  assert.ok(GAME_CONFIG.map.regions.every((region) => region.polygons.length > 0));
 });
 
 test("roads remain the source of the runtime adjacency table and every road is passable", () => {

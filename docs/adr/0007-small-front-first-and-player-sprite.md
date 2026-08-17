@@ -8,8 +8,10 @@ Accepted
 
 The first active campaign front is the Korea Front. It uses one close-up
 geographic map and one phase. South Korea is the player starting territory;
-North Korea is the only target country. The remaining geographic source data is
-kept for future fronts but is not loaded into the active runtime map.
+North Korea is the only target country. Geographic polygons are sourced from
+Natural Earth Admin 0 – Countries 1:110m, pinned to v5.1.1 (`9380cca`), and the
+full source file is retained for future fronts while only Korea is loaded into
+the active runtime subset.
 
 Player units always use the player faction sprite so they remain visually and
 operationally identifiable. Enemy units may use a country-specific character

@@ -34,6 +34,34 @@ function isNormalizedPoint(point) {
     && point.every((coordinate) => Number.isFinite(coordinate) && coordinate >= 0 && coordinate <= 1);
 }
 
+function validateMapSource(source) {
+  assertConfig(source && typeof source === "object" && !Array.isArray(source), "map.source must be an object");
+  ["id", "name", "version", "scale", "license", "sourceUrl", "licenseUrl"].forEach((key) => {
+    assertConfig(typeof source[key] === "string" && source[key].trim().length > 0, `map.source.${key} must be a non-empty string`);
+  });
+  assertConfig(/^https?:\/\//.test(source.sourceUrl), "map.source.sourceUrl must be an http(s) URL");
+  assertConfig(/^https?:\/\//.test(source.licenseUrl), "map.source.licenseUrl must be an http(s) URL");
+}
+
+function validateRegionGeometry(region) {
+  const validateRing = (ring, label) => {
+    assertConfig(Array.isArray(ring) && ring.length >= 3, `${label} must contain at least three points`);
+    ring.forEach((point, pointIndex) => {
+      assertConfig(isNormalizedPoint(point), `${label} point #${pointIndex + 1} must contain two coordinates from 0 to 1`);
+    });
+  };
+
+  assertConfig(Array.isArray(region.points) && region.points.length >= 3, `拠点 ${region.id} の形状は3点以上必要です`);
+  validateRing(region.points, `Region ${region.id}.points`);
+  if (region.polygons === undefined) return;
+
+  assertConfig(Array.isArray(region.polygons) && region.polygons.length > 0, `Region ${region.id}.polygons must not be empty`);
+  region.polygons.forEach((polygon, polygonIndex) => {
+    assertConfig(Array.isArray(polygon) && polygon.length > 0, `Region ${region.id}.polygons #${polygonIndex + 1} must contain a ring`);
+    polygon.forEach((ring, ringIndex) => validateRing(ring, `Region ${region.id}.polygons #${polygonIndex + 1} ring #${ringIndex + 1}`));
+  });
+}
+
 function validateMapDecorations(decorations) {
   if (decorations === undefined) return;
   assertConfig(decorations && typeof decorations === "object" && !Array.isArray(decorations), "map.decorations must be an object");
@@ -351,6 +379,7 @@ export function createGameConfig(source) {
 
   assertConfig(config.map?.id === config.scenario?.mapId, "シナリオが別のマップを参照しています");
   assertConfig(typeof config.map?.name === "string" && config.map.name.trim().length > 0, "map.name must be a non-empty string");
+  validateMapSource(config.map.source);
   validateMapDecorations(config.map.decorations);
   assertConfig(Array.isArray(config.map?.regions) && config.map.regions.length > 0, "拠点がありません");
   const regionIds = config.map.regions.map((region) => region.id);
@@ -362,12 +391,7 @@ export function createGameConfig(source) {
   config.map.regions.forEach((region) => {
     assertConfig(typeof region.name === "string" && region.name.length > 0, `拠点 ${region.id} に表示名がありません`);
     assertConfig(typeof region.shortName === "string" && region.shortName.length > 0, `拠点 ${region.id} に短縮名がありません`);
-    assertConfig(Array.isArray(region.points) && region.points.length >= 3, `拠点 ${region.id} の形状は3点以上必要です`);
-    region.points.forEach((point, pointIndex) => {
-      assertConfig(Array.isArray(point) && point.length === 2, `Region ${region.id} point #${pointIndex + 1} must contain exactly two coordinates`);
-      const [x, y] = point;
-      assertConfig(Number.isFinite(x) && Number.isFinite(y) && x >= 0 && x <= 1 && y >= 0 && y <= 1, `拠点 ${region.id} の座標は0〜1で指定してください`);
-    });
+    validateRegionGeometry(region);
   });
 
   assertConfig(Array.isArray(config.map?.roads), "マップに道路の配列がありません");

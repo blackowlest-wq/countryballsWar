@@ -1,118 +1,46 @@
-// Geographic source data for campaign maps.
-// Coordinates are longitude/latitude pairs. Runtime rendering uses the
-// compiler in map-compiler.js, so this file is independent from Canvas size.
+import { NATURAL_EARTH_KOREA_FEATURES } from "./geodata/natural-earth-korea.js";
+
+// Map geometry is sourced from Natural Earth rather than hand-authored
+// rectangles. Coordinates are longitude/latitude pairs and are projected by
+// map-compiler.js at runtime.
+const MAP_SOURCE = {
+  id: "natural-earth-110m-admin-0-countries",
+  name: "Natural Earth Admin 0 – Countries",
+  version: "5.1.1",
+  sourceCommit: "9380cca",
+  scale: "1:110m",
+  license: "Public domain",
+  attribution: "Made with Natural Earth.",
+  sourceUrl: "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.1/geojson/ne_110m_admin_0_countries.geojson",
+  licenseUrl: "https://www.naturalearthdata.com/about/terms-of-use/",
+};
+
+function countryFragment(id, countryId, name, shortName) {
+  const feature = NATURAL_EARTH_KOREA_FEATURES[id];
+  return {
+    id,
+    countryId,
+    name,
+    shortName,
+    centroid: feature.labelPoint,
+    geometry: feature.geometry,
+    sourceFeature: {
+      isoA3: feature.isoA3,
+      name: feature.name,
+    },
+  };
+}
 
 export const WORLD_MAP = {
-  id: "world-equirectangular-v1",
+  id: "natural-earth-korea-front-v1",
+  source: MAP_SOURCE,
   projection: {
     type: "equirectangular",
-    bounds: { west: 55, east: 155, south: -15, north: 70 },
+    bounds: { west: 124, east: 132, south: 32, north: 44 },
   },
   fragments: {
-    "russia-east": {
-      id: "russia-east",
-      countryId: "russia",
-      name: "Eastern Russia",
-      shortName: "RUSSIA EAST",
-      centroid: [104, 57],
-      points: [[87, 65], [120, 65], [120, 50], [87, 50]],
-    },
-    "russia-far-east": {
-      id: "russia-far-east",
-      countryId: "russia",
-      name: "Russian Far East",
-      shortName: "RUSSIA FAR EAST",
-      centroid: [135, 57],
-      points: [[120, 65], [150, 65], [150, 48], [120, 50]],
-    },
-    kazakhstan: {
-      id: "kazakhstan",
-      countryId: "kazakhstan",
-      name: "Kazakhstan",
-      shortName: "KAZAKHSTAN",
-      centroid: [73, 47],
-      points: [[60, 55], [87, 55], [87, 40], [60, 40]],
-    },
-    mongolia: {
-      id: "mongolia",
-      countryId: "mongolia",
-      name: "Mongolia",
-      shortName: "MONGOLIA",
-      centroid: [103, 46],
-      points: [[87, 50], [120, 50], [120, 42], [87, 42]],
-    },
-    "china-north": {
-      id: "china-north",
-      countryId: "china",
-      name: "Northern China",
-      shortName: "CHINA NORTH",
-      centroid: [103, 37],
-      points: [[87, 42], [120, 42], [124, 35], [116, 32], [97, 32], [87, 35]],
-    },
-    "china-central": {
-      id: "china-central",
-      countryId: "china",
-      name: "Central China",
-      shortName: "CHINA CENTRAL",
-      centroid: [110, 29],
-      points: [[97, 32], [116, 32], [125, 28], [123, 23], [105, 23], [97, 26]],
-    },
-    "china-south": {
-      id: "china-south",
-      countryId: "china",
-      name: "Southern China",
-      shortName: "CHINA SOUTH",
-      centroid: [114, 21],
-      points: [[105, 23], [123, 23], [123, 18], [109, 18], [102, 20]],
-    },
-    "north-korea": {
-      id: "north-korea",
-      countryId: "north-korea",
-      name: "North Korea",
-      shortName: "NORTH KOREA",
-      centroid: [127, 40],
-      points: [[124, 43], [131, 43], [131, 37], [124, 37]],
-    },
-    "south-korea": {
-      id: "south-korea",
-      countryId: "south-korea",
-      name: "South Korea",
-      shortName: "SOUTH KOREA",
-      centroid: [128, 35],
-      points: [[126, 37], [130, 37], [130, 33], [126, 33]],
-    },
-    japan: {
-      id: "japan",
-      countryId: "japan",
-      name: "Japan",
-      shortName: "JAPAN",
-      centroid: [138, 36],
-      points: [[132, 45], [137, 43], [143, 42], [146, 37], [143, 32], [137, 30], [133, 34]],
-    },
-    vietnam: {
-      id: "vietnam",
-      countryId: "vietnam",
-      name: "Vietnam",
-      shortName: "VIETNAM",
-      centroid: [106, 16],
-      points: [[102, 23], [110, 23], [109, 17], [107, 12], [104, 8], [102, 12]],
-    },
-    philippines: {
-      id: "philippines",
-      countryId: "philippines",
-      name: "Philippines",
-      shortName: "PHILIPPINES",
-      centroid: [122, 12],
-      points: [[119, 19], [124, 20], [127, 15], [125, 8], [121, 5], [118, 11]],
-    },
-    indonesia: {
-      id: "indonesia",
-      countryId: "indonesia",
-      name: "Indonesia",
-      shortName: "INDONESIA",
-      centroid: [116, -2],
-      points: [[95, 6], [108, 7], [120, 4], [133, 5], [140, 0], [135, -8], [117, -10], [102, -8]],
-    },
+    "north-korea": countryFragment("north-korea", "north-korea", "North Korea", "NORTH KOREA"),
+    "south-korea": countryFragment("south-korea", "south-korea", "South Korea", "SOUTH KOREA"),
   },
   frontMaps: {
     "korea-front": {
@@ -130,59 +58,6 @@ export const WORLD_MAP = {
           { text: "KOREAN PENINSULA", coordinates: [130.4, 42.4] },
         ],
         lines: [],
-      },
-    },
-    "asia-front": {
-      id: "asia-front",
-      name: "East Asia Front",
-      interactionMinDistance: 0.04,
-      interactionHitRadius: 0.02,
-      fragmentIds: [
-        "russia-east",
-        "russia-far-east",
-        "kazakhstan",
-        "mongolia",
-        "china-north",
-        "china-central",
-        "china-south",
-        "north-korea",
-        "south-korea",
-        "japan",
-        "vietnam",
-        "philippines",
-        "indonesia",
-      ],
-      roads: [
-        { from: "russia-east", to: "russia-far-east", kind: "land" },
-        { from: "russia-east", to: "kazakhstan", kind: "land" },
-        { from: "russia-east", to: "mongolia", kind: "land" },
-        { from: "russia-east", to: "china-north", kind: "land" },
-        { from: "russia-far-east", to: "china-north", kind: "land" },
-        { from: "mongolia", to: "china-north", kind: "land" },
-        { from: "kazakhstan", to: "china-north", kind: "land" },
-        { from: "china-north", to: "china-central", kind: "land" },
-        { from: "china-north", to: "north-korea", kind: "land" },
-        { from: "china-central", to: "china-south", kind: "land" },
-        { from: "china-central", to: "north-korea", kind: "sea" },
-        { from: "north-korea", to: "south-korea", kind: "land" },
-        { from: "south-korea", to: "japan", kind: "sea" },
-        { from: "china-south", to: "vietnam", kind: "land" },
-        { from: "china-south", to: "philippines", kind: "sea" },
-        { from: "china-south", to: "indonesia", kind: "sea" },
-        { from: "vietnam", to: "philippines", kind: "sea" },
-        { from: "vietnam", to: "indonesia", kind: "sea" },
-        { from: "philippines", to: "indonesia", kind: "sea" },
-        { from: "japan", to: "philippines", kind: "sea" },
-      ],
-      decorations: {
-        labels: [
-          { text: "EAST ASIA", coordinates: [140, 58] },
-          { text: "SOUTHERN SEA", coordinates: [122, 4] },
-        ],
-        lines: [
-          { from: [120, 45], to: [127, 35] },
-          { from: [108, 26], to: [116, 11] },
-        ],
       },
     },
   },

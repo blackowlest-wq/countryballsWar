@@ -195,7 +195,12 @@ const dragState = {
 };
 
 function cloneRegion(region) {
-  return { ...region, occupation: null, points: region.points.map(([x, y]) => [x, y]) };
+  return {
+    ...region,
+    occupation: null,
+    points: region.points.map(([x, y]) => [x, y]),
+    polygons: cloneRegionPolygons(region),
+  };
 }
 
 function cloneRegionState(region) {
@@ -203,8 +208,13 @@ function cloneRegionState(region) {
     ...region,
     occupation: region.occupation ? { ...region.occupation } : null,
     points: region.points.map(([x, y]) => [x, y]),
+    polygons: cloneRegionPolygons(region),
     interactionPoint: region.interactionPoint ? [...region.interactionPoint] : region.interactionPoint,
   };
+}
+
+function cloneRegionPolygons(region) {
+  return (region.polygons || [[region.points]]).map((polygon) => polygon.map((ring) => ring.map(([x, y]) => [x, y])));
 }
 
 function cloneUnit(unit) {
@@ -376,6 +386,22 @@ function worldPointFromScreen(x, y) {
   ];
 }
 
+function pathForPolygons(polygons) {
+  ctx.beginPath();
+  polygons.forEach((polygon) => polygon.forEach((ring) => {
+    ring.forEach((point, index) => {
+      const screen = screenPoint(point);
+      if (index === 0) ctx.moveTo(screen.x, screen.y);
+      else ctx.lineTo(screen.x, screen.y);
+    });
+    ctx.closePath();
+  }));
+}
+
+function regionPolygons(region) {
+  return region.polygons || [[region.points]];
+}
+
 function pathForPoints(points) {
   ctx.beginPath();
   points.forEach((point, index) => {
@@ -422,9 +448,9 @@ function drawDecorationLabels(labels = []) {
 function drawRegions() {
   regions.forEach((region) => {
     const palette = COLORS[region.faction];
-    pathForPoints(region.points);
+    pathForPolygons(regionPolygons(region));
     ctx.fillStyle = palette.territory;
-    ctx.fill();
+    ctx.fill("evenodd");
 
     const selected = region.id === state.selectedRegionId;
     ctx.lineWidth = selected ? 4 : 2;
@@ -1461,7 +1487,7 @@ function updateInvasionWarning(dt) {
 }
 
 function regionForUnit(unit) {
-  const containingRegion = [...regions].reverse().find((region) => pointInPolygon([unit.x, unit.y], region.points));
+  const containingRegion = [...regions].reverse().find((region) => pointInRegion([unit.x, unit.y], region));
   return containingRegion || (unit.regionId ? getRegion(unit.regionId) : null) || (unit.targetRegionId ? getRegion(unit.targetRegionId) : null);
 }
 
@@ -1543,8 +1569,18 @@ function pointInPolygon(point, polygon) {
   return inside;
 }
 
+function pointInRegion(point, region) {
+  return regionPolygons(region).some((polygon) => {
+    let inside = false;
+    polygon.forEach((ring) => {
+      if (pointInPolygon(point, ring)) inside = !inside;
+    });
+    return inside;
+  });
+}
+
 function regionAtWorldPoint(point) {
-  const containingRegion = [...regions].reverse().find((region) => pointInPolygon(point, region.points));
+  const containingRegion = [...regions].reverse().find((region) => pointInRegion(point, region));
   if (containingRegion) return containingRegion;
 
   const radius = (GAME_CONFIG.map.interactionHitRadius || 0.02) / state.zoom;
