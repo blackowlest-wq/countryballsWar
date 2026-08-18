@@ -4,13 +4,24 @@ import test from "node:test";
 import { GAME_CONFIG } from "../src/config/game-config.js";
 import { screenPointFromWorld, worldPointFromScreen } from "../src/render/map-viewport.js";
 
-test("Japan map display offset centers its strategic region coordinates", () => {
-  const japanMap = GAME_CONFIG.maps["japan-front"];
-  const points = japanMap.regions.map((region) => region.interactionPoint[0]);
-  const averageX = points.reduce((total, x) => total + x, 0) / points.length;
-  const centered = averageX + japanMap.displayOffset.x;
+function coordinatePoints(value) {
+  if (Array.isArray(value) && typeof value[0] === "number") return [value];
+  if (!Array.isArray(value)) return [];
+  return value.flatMap(coordinatePoints);
+}
 
-  assert.ok(Math.abs(centered - 0.5) < 0.01);
+test("Japan map focuses the main-island geometry and excludes outlying islands", () => {
+  const japanMap = GAME_CONFIG.maps["japan-front"];
+  const sourcePoints = japanMap.regions.flatMap((region) => coordinatePoints(region.sourceGeometry?.coordinates));
+  const longitudes = sourcePoints.map(([longitude]) => longitude);
+  const latitudes = sourcePoints.map(([, latitude]) => latitude);
+
+  assert.deepEqual(japanMap.projection.bounds, { west: 129.3, east: 146.1, south: 30.7, north: 45.8 });
+  assert.equal(japanMap.displayOffset.x, 0);
+  assert.ok(Math.min(...longitudes) >= japanMap.projection.bounds.west);
+  assert.ok(Math.max(...longitudes) <= japanMap.projection.bounds.east);
+  assert.ok(Math.min(...latitudes) >= japanMap.projection.bounds.south);
+  assert.ok(Math.max(...latitudes) <= japanMap.projection.bounds.north);
 });
 
 test("map viewport display offset is reversible for pointer targeting", () => {

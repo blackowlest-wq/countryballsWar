@@ -14,7 +14,7 @@ function isHomeUnit(unit) {
 function canJoinBattleContact(unit, opponent, getUnitRegionId) {
   if (!isHomeUnit(unit)) return true;
   const homeRegionId = getUnitRegionId(unit);
-  return Boolean(homeRegionId && opponent.targetRegionId === homeRegionId);
+  return Boolean(homeRegionId && opponent.arrived && opponent.targetRegionId === homeRegionId);
 }
 
 export function collectBattleGroups({ units, battleDistance, getUnitRegionId = (unit) => unit.regionId || unit.targetRegionId || null }) {

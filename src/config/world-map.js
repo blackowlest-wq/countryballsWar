@@ -220,9 +220,19 @@ const JAPAN_SOURCE_ISO_A3_BY_COUNTRY = {
   japan: "JPN",
 };
 
-function sourcePolygons(sourceFragments, fragmentId) {
+function polygonArea(polygon) {
+  const ring = polygon[0] || [];
+  return Math.abs(ring.reduce((total, point, index) => {
+    const next = ring[(index + 1) % ring.length];
+    return total + point[0] * next[1] - next[0] * point[1];
+  }, 0)) / 2;
+}
+
+function sourcePolygons(sourceFragments, fragmentId, { mainLandOnly = false } = {}) {
   const geometry = sourceFragments[fragmentId].geometry;
-  return geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates;
+  const polygons = geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates;
+  if (!mainLandOnly) return polygons;
+  return polygons.slice().sort((left, right) => polygonArea(right) - polygonArea(left)).slice(0, 1);
 }
 
 function pointKey(point) {
@@ -231,10 +241,10 @@ function pointKey(point) {
 
 // Remove shared source edges so the renderer can draw one strategic-region
 // outline instead of exposing every internal administrative border.
-function buildBoundaryGeometry(sourceFragments, sourceFragmentIds) {
+function buildBoundaryGeometry(sourceFragments, sourceFragmentIds, options = {}) {
   const segments = new Map();
   sourceFragmentIds.forEach((fragmentId) => {
-    sourcePolygons(sourceFragments, fragmentId).forEach((polygon) => polygon.forEach((ring) => {
+    sourcePolygons(sourceFragments, fragmentId, options).forEach((polygon) => polygon.forEach((ring) => {
       for (let index = 0; index < ring.length - 1; index += 1) {
         const start = ring[index];
         const end = ring[index + 1];
@@ -296,7 +306,7 @@ function assertSourceCoverage(sourceFragments, groups, sourceLabel, excludedSour
   }
 }
 
-function buildFragments(sourceFragments, groups, sourceIsoA3ByCountry) {
+function buildFragments(sourceFragments, groups, sourceIsoA3ByCountry, options = {}) {
   return Object.fromEntries(groups.map((group) => [group.id, {
     id: group.id,
     countryId: group.countryId,
@@ -306,9 +316,9 @@ function buildFragments(sourceFragments, groups, sourceIsoA3ByCountry) {
     interactionRadius: group.interactionRadius,
     geometry: {
       type: "MultiPolygon",
-      coordinates: group.sourceFragmentIds.flatMap((fragmentId) => sourcePolygons(sourceFragments, fragmentId)),
+      coordinates: group.sourceFragmentIds.flatMap((fragmentId) => sourcePolygons(sourceFragments, fragmentId, options)),
     },
-    borderGeometry: buildBoundaryGeometry(sourceFragments, group.sourceFragmentIds),
+    borderGeometry: buildBoundaryGeometry(sourceFragments, group.sourceFragmentIds, options),
     sourceFeature: {
       isoA3: sourceIsoA3ByCountry[group.countryId],
       sourceFragmentIds: [...group.sourceFragmentIds],
@@ -322,7 +332,7 @@ assertSourceCoverage(NATURAL_EARTH_JAPAN_ADMIN_1, JAPAN_REGION_GROUPS, "Japan", 
 
 const fragments = {
   ...buildFragments(NATURAL_EARTH_KOREA_ADMIN_1, FRONT_REGION_GROUPS, KOREA_SOURCE_ISO_A3_BY_COUNTRY),
-  ...buildFragments(NATURAL_EARTH_JAPAN_ADMIN_1, JAPAN_REGION_GROUPS, JAPAN_SOURCE_ISO_A3_BY_COUNTRY),
+  ...buildFragments(NATURAL_EARTH_JAPAN_ADMIN_1, JAPAN_REGION_GROUPS, JAPAN_SOURCE_ISO_A3_BY_COUNTRY, { mainLandOnly: true }),
 };
 
 export const WORLD_MAP = {
@@ -373,11 +383,11 @@ export const WORLD_MAP = {
       id: "japan-front",
       name: "日本マップ",
       source: JAPAN_MAP_SOURCE,
-      bounds: { west: 128, east: 154, south: 24, north: 46 },
-      // Natural Earth includes Tokyo's remote islands in the source extent.
-      // Keep those source features, but center the playable archipelago for the
-      // game viewport so the strategic regions do not sit on the left edge.
-      displayOffset: { x: 0.175, y: 0 },
+      // The playable Japan map focuses on the main islands. Remote islands are
+      // removed from the compiled geometry, so the projection can fit the
+      // archipelago without large empty ocean margins.
+      bounds: { west: 129.3, east: 146.1, south: 30.7, north: 45.8 },
+      displayOffset: { x: 0, y: 0 },
       interactionMinDistance: 0.045,
       interactionHitRadius: 0.018,
       fragmentIds: JAPAN_REGION_GROUPS.map((group) => group.id),
@@ -398,7 +408,7 @@ export const WORLD_MAP = {
       ],
       decorations: {
         labels: [
-          { text: "JAPAN ARCHIPELAGO", coordinates: [144.7, 45.2] },
+          { text: "JAPAN ARCHIPELAGO", coordinates: [137.7, 45.2] },
         ],
         lines: [],
       },

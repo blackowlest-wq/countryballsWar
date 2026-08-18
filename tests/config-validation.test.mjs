@@ -74,7 +74,7 @@ test("the Japan map uses eleven connected geographic regions without Okinawa", (
   assert.equal(visited.size, japanMap.regions.length);
   assert.equal(japanMap.regions.some((region) => region.id === "japan-okinawa"), false);
   assert.equal(japanMap.regions.find((region) => region.id === "japan-kyushu-south").interactionRadius, undefined);
-  assert.equal(japanMap.projection.bounds.west, 128);
+  assert.equal(japanMap.projection.bounds.west, 129.3);
   assert.equal(japanMap.roadDefinitions.length, 13);
   assert.equal(japanMap.roadDefinitions.filter((road) => road.kind === "land").length, 8);
   assert.equal(japanMap.roadDefinitions.filter((road) => road.kind === "sea").length, 5);
