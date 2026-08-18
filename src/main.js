@@ -2618,7 +2618,7 @@ function openCountryDetail(countryId) {
   if (!country || !ui.countryDetailDialog || ui.countryDetailDialog.open) return;
 
   activeCountryDetailId = country.id;
-  showUsedCharacterImage = false;
+  showUsedCharacterImage = Boolean(GAME_CONFIG.characters[country.id]?.sprite);
   returnToFlagCollectionAfterCountryDetail = Boolean(ui.flagCollectionDialog?.open);
   returnToTitleAfterCountryDetail = returnToTitleAfterFlagCollection;
   renderCountryDetail(country);

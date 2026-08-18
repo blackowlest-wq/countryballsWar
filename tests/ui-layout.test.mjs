@@ -87,6 +87,15 @@ test("country character previews use the full country flag renderer", () => {
   assert.doesNotMatch(renderCharacter, /ball\.style\.background = countryFlagBackground\(country\)/);
 });
 
+test("country profile defaults to the equipped character image", () => {
+  const main = readProjectFile("src/main.js");
+
+  assert.match(
+    main,
+    /activeCountryDetailId = country\.id;\s*showUsedCharacterImage = Boolean\(GAME_CONFIG\.characters\[country\.id\]\?\.sprite\);/,
+  );
+});
+
 test("toast uses a left message lane instead of the centered lane", () => {
   const styles = readProjectFile("styles.css");
   const toast = styles.match(/\.toast \{[\s\S]*?\n\}/)?.[0] || "";
