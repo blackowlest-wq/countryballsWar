@@ -31,6 +31,14 @@ test("title screen exposes the flag collection menu", () => {
   assert.match(html, /id="flagCollectionGrid"/);
 });
 
+test("flag collection remains a two-dimensional grid on compact screens", () => {
+  const styles = readProjectFile("styles.css");
+  const grid = styles.match(/\.flag-collection-grid\s*\{[\s\S]*?\n\}/)?.[0] || "";
+
+  assert.match(grid, /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.doesNotMatch(styles, /\.flag-collection-grid\s*\{\s*grid-template-columns:\s*1fr;/);
+});
+
 test("title start opens a front selection dialog and clear returns to it", () => {
   const html = readProjectFile("index.html");
   const main = readProjectFile("src/main.js");

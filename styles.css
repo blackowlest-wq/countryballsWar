@@ -2666,10 +2666,6 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 
-  .flag-collection-grid {
-    grid-template-columns: 1fr;
-  }
-
   .country-detail-form {
     padding: 16px;
   }
