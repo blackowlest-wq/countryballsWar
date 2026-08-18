@@ -2,9 +2,13 @@ import { COUNTRIES } from "./countries.js";
 
 const SOUTH_KOREA_FRAGMENT_IDS = COUNTRIES["south-korea"].fragmentIds;
 const NORTH_KOREA_FRAGMENT_IDS = COUNTRIES["north-korea"].fragmentIds;
+const STARTING_REGION_ID = "south-capital";
+const SOUTH_KOREA_ENEMY_REGION_IDS = SOUTH_KOREA_FRAGMENT_IDS.filter((regionId) => regionId !== STARTING_REGION_ID);
+const KOREA_FRONT_OBJECTIVE_REGION_IDS = [...SOUTH_KOREA_ENEMY_REGION_IDS, ...NORTH_KOREA_FRAGMENT_IDS];
 
 const KOREA_FRONT_OWNERS = Object.fromEntries([
-  ...SOUTH_KOREA_FRAGMENT_IDS.map((fragmentId) => [fragmentId, "blue"]),
+  [STARTING_REGION_ID, "blue"],
+  ...SOUTH_KOREA_ENEMY_REGION_IDS.map((fragmentId) => [fragmentId, "gray"]),
   ...NORTH_KOREA_FRAGMENT_IDS.map((fragmentId) => [fragmentId, "red"]),
 ]);
 
@@ -23,8 +27,8 @@ const KOREA_FRONT_PRODUCTION = {
 };
 
 const KOREA_FRONT_UNITS = [
-  { id: "blue-1", faction: "blue", regionId: "south-capital", characterId: "south-korea", pulse: 0 },
-  { id: "blue-2", faction: "blue", regionId: "south-east", characterId: "south-korea", pulse: 0.4 },
+  { id: "blue-1", faction: "blue", regionId: STARTING_REGION_ID, characterId: "player", pulse: 0 },
+  { id: "gray-1", faction: "gray", regionId: "south-central", characterId: "south-korea", pulse: 0.8 },
   { id: "red-1", faction: "red", regionId: "north-central", characterId: "north-korea", pulse: 1.2 },
   { id: "red-2", faction: "red", regionId: "north-east-central", characterId: "north-korea", pulse: 1.8 },
   { id: "red-3", faction: "red", regionId: "north-east", characterId: "north-korea", pulse: 2.4 },
@@ -42,7 +46,7 @@ export const CAMPAIGN = {
       type: "regionalSmall",
       enemyProfileId: "regionalIntro",
       phaseIds: ["korea-front-opening"],
-      targetCountryIds: ["north-korea"],
+      targetCountryIds: ["south-korea", "north-korea"],
     },
   },
   phases: {
@@ -52,7 +56,7 @@ export const CAMPAIGN = {
       mapId: "korea-front",
       index: 0,
       name: "Border Breakthrough",
-      objectiveRegionIds: NORTH_KOREA_FRAGMENT_IDS,
+      objectiveRegionIds: KOREA_FRONT_OBJECTIVE_REGION_IDS,
       territoryOwners: KOREA_FRONT_OWNERS,
       productionByRegion: KOREA_FRONT_PRODUCTION,
       initialUnits: KOREA_FRONT_UNITS,

@@ -15,21 +15,23 @@ campaign
 
 The active map contains 11 strategic regions:
 
-- South Korea: six player-owned regions
+- South Korea: one player starting region and five enemy-owned regions
 - North Korea: five enemy-owned regions
 
 Each strategic region is composed from one or more adjacent Natural Earth
-administrative features. The first phase places controllable South Korean
-character units in the Capital and Southeastern Regions. North Korean
-character units begin in the Central, Eastern Central, and Northeastern
-Regions. The phase objective contains all five North Korean regions.
+administrative features. The player begins with one white character unit in
+the Capital Region. South Korean and North Korean character units are both
+enemy units; South Korean enemies begin in the Central Region, while North
+Korean enemies begin in the Central, Eastern Central, and Northeastern Regions.
+The phase objective contains the other ten enemy regions.
 
 Small-country fronts use one phase. A phase defines the same map's objective,
 territory owners, production, and initial deployment. Large-country operations
 may add multiple phases later without changing the runtime model.
 
 `faction` is the side that owns a unit or region. `countryId` and
-`characterId` identify the displayed country character. There is no neutral
+`characterId` identify the displayed country character for enemy units; the
+player uses the separate white `player` character. There is no neutral
 faction; every non-player faction is an enemy.
 
 On defeat, the current operation restarts from its first phase. Only completed

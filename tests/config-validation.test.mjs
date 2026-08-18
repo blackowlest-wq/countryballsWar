@@ -62,6 +62,7 @@ test("countries own fragments and major countries can require multiple fragments
   assert.deepEqual(GAME_CONFIG.countries.china.fragmentIds, ["china-north", "china-central", "china-south"]);
   assert.equal(GAME_CONFIG.characters.china.eyeStyle, "sharp");
   assert.equal(GAME_CONFIG.characters.vietnam.eyeStyle, "round");
+  assert.equal(GAME_CONFIG.characters.player.isPlayerCharacter, true);
   GAME_CONFIG.map.regions.forEach((region) => {
     assert.equal(GAME_CONFIG.countries[region.countryId].fragmentIds.includes(region.fragmentId), true);
   });
@@ -73,6 +74,17 @@ test("runtime scenario uses phase production and rounds front-start enemy streng
 
   assert.equal(runtime.regions.length, GAME_CONFIG.map.regions.length);
   assert.equal(runtime.units.length, phase.initialUnits.length);
+  assert.equal(runtime.regions.filter((region) => region.faction === "blue").length, 1);
+  assert.equal(runtime.units.filter((unit) => unit.faction === "blue").length, 1);
+  assert.equal(runtime.units.find((unit) => unit.faction === "blue").characterId, "player");
+  assert.ok(runtime.units.some((unit) => unit.faction === "gray" && unit.characterId === "south-korea"));
+  assert.ok(runtime.units.some((unit) => unit.faction === "red" && unit.characterId === "north-korea"));
+  assert.equal(phase.territoryOwners["south-capital"], "blue");
+  GAME_CONFIG.countries["south-korea"].fragmentIds
+    .filter((regionId) => regionId !== "south-capital")
+    .forEach((regionId) => assert.equal(phase.territoryOwners[regionId], "gray"));
+  GAME_CONFIG.countries["north-korea"].fragmentIds
+    .forEach((regionId) => assert.equal(phase.territoryOwners[regionId], "red"));
   runtime.regions.forEach((region) => {
     assert.equal(region.faction, phase.territoryOwners[region.id]);
     assert.equal(region.production, phase.productionByRegion[region.id]);
@@ -126,12 +138,12 @@ test("all non-player factions are active enemies and no neutral faction remains"
 test("campaign phases cover the map and carry explicit objectives", () => {
   const front = GAME_CONFIG.campaign.fronts[GAME_CONFIG.scenario.frontId];
   assert.deepEqual(front.phaseIds, ["korea-front-opening"]);
-  assert.deepEqual(front.targetCountryIds, ["north-korea"]);
+  assert.deepEqual(front.targetCountryIds, ["south-korea", "north-korea"]);
   front.phaseIds.forEach((phaseId, index) => {
     const phase = GAME_CONFIG.campaign.phases[phaseId];
     assert.equal(phase.index, index);
     assert.equal(Object.keys(phase.territoryOwners).length, GAME_CONFIG.map.regions.length);
-    assert.ok(phase.objectiveRegionIds.length > 0);
+    assert.equal(phase.objectiveRegionIds.length, 10);
   });
 });
 

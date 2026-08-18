@@ -1,6 +1,6 @@
 import { BALANCE } from "./balance.js";
 import { CAMPAIGN } from "./campaign.js";
-import { CHARACTERS } from "./characters.js";
+import { CHARACTERS, PLAYER_CHARACTER_ID } from "./characters.js";
 import { COUNTRIES } from "./countries.js";
 import { FACTIONS } from "./factions.js";
 import { MAP } from "./map.js";
@@ -131,7 +131,11 @@ function validateCharacterMaster(characters, countries, factionIds) {
   assertConfig(characters && typeof characters === "object" && !Array.isArray(characters), "characters must be an object");
   Object.entries(characters).forEach(([characterId, character]) => {
     assertConfig(character && character.id === characterId, `Character ${characterId} has an invalid id`);
-    assertConfig(typeof character.countryId === "string" && countries[character.countryId], `Character ${characterId} has an unknown countryId`);
+    if (character.isPlayerCharacter) {
+      assertConfig(characterId === PLAYER_CHARACTER_ID && character.countryId === null, `Character ${characterId} has an invalid player binding`);
+    } else {
+      assertConfig(typeof character.countryId === "string" && countries[character.countryId], `Character ${characterId} has an unknown countryId`);
+    }
     assertConfig(character.sprite === null || (typeof character.sprite === "string" && character.sprite.length > 0), `Character ${characterId} has invalid sprite`);
     assertConfig(factionIds.includes(character.fallbackFactionId), `Character ${characterId} has an unknown fallback faction`);
     assertConfig(character.eyeStyle === "sharp" || character.eyeStyle === "round", `Character ${characterId} has invalid eyeStyle`);
@@ -171,7 +175,7 @@ function validateInteractionPoints(map) {
   }
 }
 
-function validateCampaignData(campaign, map, countries, characters, factionIds, balance) {
+function validateCampaignData(campaign, map, countries, characters, factionIds, balance, playerFactionId) {
   assertConfig(campaign && typeof campaign === "object" && !Array.isArray(campaign), "campaign must be an object");
   assertConfig(typeof campaign.id === "string" && campaign.id.length > 0, "campaign.id is missing");
   assertConfig(Array.isArray(campaign.frontOrder) && campaign.frontOrder.length > 0, "campaign.frontOrder must not be empty");
@@ -217,7 +221,8 @@ function validateCampaignData(campaign, map, countries, characters, factionIds, 
         assertConfig(factionIds.includes(unit.faction), `campaign phase ${phaseId} unit ${unit.id} has an invalid faction`);
         assertConfig(regionIds.includes(unit.regionId), `campaign phase ${phaseId} unit ${unit.id} has an invalid region`);
         const region = map.regions.find((candidate) => candidate.id === unit.regionId);
-        assertConfig(characters[unit.characterId]?.countryId === region.countryId, `campaign phase ${phaseId} unit ${unit.id} has an invalid character binding`);
+        const isPlayerCharacter = unit.faction === playerFactionId && characters[unit.characterId]?.isPlayerCharacter === true;
+        assertConfig(isPlayerCharacter || characters[unit.characterId]?.countryId === region.countryId, `campaign phase ${phaseId} unit ${unit.id} has an invalid character binding`);
       });
       assertConfig(phase.initialUnits.some((unit) => unit.faction === "blue"), `campaign phase ${phaseId} has no player unit`);
     });
@@ -421,7 +426,7 @@ export function createGameConfig(source) {
   assertConfig(config.scenario.initialUnits.some((unit) => unit.faction === config.scenario.playerFactionId), "プレイヤー初期部隊がありません");
 
   validateBalance(config.balance, factionIds, regionIds);
-  validateCampaignData(config.campaign, config.map, config.countries, config.characters, factionIds, config.balance);
+  validateCampaignData(config.campaign, config.map, config.countries, config.characters, factionIds, config.balance, config.scenario.playerFactionId);
   return deepFreeze(config);
 }
 

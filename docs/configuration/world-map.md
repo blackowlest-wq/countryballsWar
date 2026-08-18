@@ -35,8 +35,9 @@ Natural Earth is public domain. The source URL and license URL are carried in
 `src/config/geodata/README.md`.
 
 The playable unit is a strategic region. `countryId` identifies the country
-character, while each region retains `sourceFragmentIds` for traceability. A
-country is completed only after every region listed in
+character for enemy units, while each region retains `sourceFragmentIds` for
+traceability. The player uses a separate white character and begins with one
+region. A country is completed only after every region listed in
 `src/config/countries.js` is player-controlled.
 
 Road validation covers explicit land and sea links. Strategic-region outer

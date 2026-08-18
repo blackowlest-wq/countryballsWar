@@ -10,7 +10,9 @@ geometry and source properties.
 `src/config/world-map.js`. It keeps the source feature ID, country mapping,
 English region name, label point, ISO codes, and geometry needed by the map
 compiler. `world-map.js` combines these source features into 11 larger
-strategic regions and derives an outer border for each group.
+strategic regions and derives an outer border for each group. The player starts
+in one strategic region; the South Korean and North Korean character mappings
+are used by enemy units.
 
 The previous country-level source remains available as
 `ne_110m_admin_0_countries.geojson` with its runtime subset

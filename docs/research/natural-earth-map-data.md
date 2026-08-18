@@ -29,6 +29,8 @@ copy is `src/config/geodata/ne_10m_admin_1_korea.geojson`.
   Jeju to the Southwestern Region.
 - Group boundaries are derived by removing shared source edges, so internal
   administrative borders do not become separate targets or visible map lines.
+- The player starts with one white faction region; country-character sprites
+  are reserved for the South Korean and North Korean enemy units.
 - The active map uses a close-up equirectangular projection and validated
   interaction-point spacing so the larger regions remain selectable.
 - The older 1:110m Admin 0 source is retained for future country-level fronts,

@@ -23,12 +23,12 @@ reduce accidental taps: six in South Korea and five in North Korea.
 
 | Region | Combined source areas | Country | Starting owner |
 |---|---|---|---|
-| `south-capital` | Seoul, Incheon, Gyeonggi | South Korea | Player |
-| `south-gangwon` | Gangwon | South Korea | Player |
-| `south-central` | South/North Chungcheong, Daejeon, Sejong | South Korea | Player |
-| `south-west` | North/South Jeolla, Gwangju | South Korea | Player |
-| `south-east` | North/South Gyeongsang, Daegu, Busan, Ulsan | South Korea | Player |
-| `south-jeju` | Jeju | South Korea | Player |
+| `south-capital` | Seoul, Incheon, Gyeonggi | South Korea | Player start |
+| `south-gangwon` | Gangwon | South Korea | Enemy |
+| `south-central` | South/North Chungcheong, Daejeon, Sejong | South Korea | Enemy |
+| `south-west` | North/South Jeolla, Gwangju | South Korea | Enemy |
+| `south-east` | North/South Gyeongsang, Daegu, Busan, Ulsan | South Korea | Enemy |
+| `south-jeju` | Jeju | South Korea | Enemy |
 | `north-central` | Pyongyang, South Pyongan | North Korea | Enemy |
 | `north-west` | North Pyongan, Chagang, Ryanggang | North Korea | Enemy |
 | `north-hwanghae` | North/South Hwanghae | North Korea | Enemy |
@@ -36,8 +36,9 @@ reduce accidental taps: six in South Korea and five in North Korea.
 | `north-east` | North Hamgyong, Rason | North Korea | Enemy |
 
 Country completion is evaluated against these strategic regions. South Korea
-requires all six `south-*` regions; North Korea requires all five `north-*`
-regions.
+requires all six `south-*` regions and North Korea requires all five `north-*`
+regions. The player starts with only `south-capital`; South Korea remains an
+enemy country until every South Korean region is controlled.
 
 ## Roads and interaction safety
 

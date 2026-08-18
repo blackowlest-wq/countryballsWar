@@ -41,7 +41,7 @@ export const COUNTRIES = {
     shortName: "PRK",
     fragmentIds: ["north-central", "north-west", "north-hwanghae", "north-east-central", "north-east"],
     isMajor: false,
-    description: "A Korean Peninsula country split into five strategic regions.",
+    description: "An enemy Korean Peninsula country split into five strategic regions.",
     flag: { type: "horizontal", colors: ["#024fa2", "#ffffff", "#ed1c27"] },
   },
   "south-korea": {
@@ -50,7 +50,7 @@ export const COUNTRIES = {
     shortName: "KOR",
     fragmentIds: ["south-capital", "south-gangwon", "south-central", "south-west", "south-east", "south-jeju"],
     isMajor: false,
-    description: "A Korean Peninsula country split into six strategic regions.",
+    description: "An enemy Korean Peninsula country split into six strategic regions.",
     flag: { type: "field", colors: ["#ffffff", "#000000"] },
   },
   japan: {

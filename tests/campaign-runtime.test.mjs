@@ -12,19 +12,28 @@ import {
 } from "../src/campaign/phase-runtime.js";
 import { selectUnitSpriteKey } from "../src/render/unit-sprite.js";
 
-test("player units show their country character while remaining controllable", () => {
+test("player units use the white faction sprite while enemies use country sprites", () => {
   assert.equal(selectUnitSpriteKey({
     playerFactionId: "blue",
     faction: "blue",
+    characterId: "player",
+    characters: {
+      player: { sprite: null, isPlayerCharacter: true },
+      "south-korea": { sprite: "./assets/units/enemy-korea.png" },
+    },
+  }), "blue");
+  assert.equal(selectUnitSpriteKey({
+    playerFactionId: "blue",
+    faction: "gray",
     characterId: "south-korea",
     characters: { "south-korea": { sprite: "./assets/units/enemy-korea.png" } },
   }), "south-korea");
   assert.equal(selectUnitSpriteKey({
     playerFactionId: "blue",
-    faction: "blue",
-    characterId: "unknown",
-    characters: {},
-  }), "blue");
+    faction: "red",
+    characterId: "north-korea",
+    characters: { "north-korea": { sprite: "./assets/units/enemy-north-korea.png" } },
+  }), "north-korea");
 });
 
 test("enemy strength is rounded once from the front profile", () => {
