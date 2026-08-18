@@ -66,6 +66,46 @@ export const BALANCE = {
       },
     },
   },
+  difficulty: {
+    profiles: {
+      easy: {
+        label: "やさしい",
+        description: "敵の戦力が低く、強化の上限も高めです。",
+        enemyStrengthMultiplier: 0.8,
+        specialMoveUsesPerOperation: 3,
+        upgradeCaps: {
+          logistics: 8,
+          armor: 8,
+          reserve: 5,
+          speed: 8,
+        },
+      },
+      normal: {
+        label: "ふつう",
+        description: "標準的な敵戦力と強化上限です。",
+        enemyStrengthMultiplier: 1,
+        specialMoveUsesPerOperation: 1,
+        upgradeCaps: {
+          logistics: 6,
+          armor: 6,
+          reserve: 4,
+          speed: 6,
+        },
+      },
+      hard: {
+        label: "むずかしい",
+        description: "敵の戦力が高く、強化の上限が低めです。",
+        enemyStrengthMultiplier: 1.2,
+        specialMoveUsesPerOperation: 0,
+        upgradeCaps: {
+          logistics: 4,
+          armor: 4,
+          reserve: 2,
+          speed: 4,
+        },
+      },
+    },
+  },
   ai: {
     initialDelaySeconds: 3.2,
     actionDelaySeconds: 3.8,

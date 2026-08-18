@@ -44,9 +44,10 @@ const SPECIAL_MOVE_BALANCE = {
 };
 
 const EMPTY_CAMPAIGN = {
-  version: 3,
+  version: 4,
   campaignId: "regional-fronts-v1",
   difficultyId: "normal",
+  difficultyLocked: false,
   completedCountryIds: [],
   collectedCountryIds: [],
   completedFrontIds: [],
@@ -163,9 +164,10 @@ test("saving and loading round trips campaign progress without phase state", () 
     gold: 350,
     upgrades: { logistics: 1, armor: 2, reserve: 3, speed: 2 },
     campaign: {
-      version: 3,
+      version: 4,
       campaignId: "regional-fronts-v1",
       difficultyId: "hard",
+      difficultyLocked: true,
       completedCountryIds: ["china", "japan"],
       collectedCountryIds: ["china", "south-korea"],
       completedFrontIds: ["korea-front"],

@@ -315,6 +315,24 @@ function validateCampaignBalance(campaign) {
   });
 }
 
+function validateDifficultyBalance(difficulty, shopItems) {
+  const profiles = difficulty?.profiles;
+  const profileKeys = ["easy", "normal", "hard"];
+  assertConfig(profiles && typeof profiles === "object" && !Array.isArray(profiles), "difficulty.profiles must be an object");
+  profileKeys.forEach((key) => {
+    const profile = profiles[key];
+    assertConfig(profile && typeof profile === "object" && !Array.isArray(profile), `difficulty.profiles.${key} is missing`);
+    assertConfig(typeof profile.label === "string" && profile.label.trim().length > 0, `difficulty.profiles.${key}.label must be a non-empty string`);
+    assertConfig(typeof profile.description === "string" && profile.description.trim().length > 0, `difficulty.profiles.${key}.description must be a non-empty string`);
+    assertConfig(Number.isFinite(profile.enemyStrengthMultiplier) && profile.enemyStrengthMultiplier > 0, `difficulty.profiles.${key}.enemyStrengthMultiplier must be positive`);
+    assertConfig(Number.isInteger(profile.specialMoveUsesPerOperation) && profile.specialMoveUsesPerOperation >= 0, `difficulty.profiles.${key}.specialMoveUsesPerOperation must be a non-negative integer`);
+    assertConfig(profile.upgradeCaps && typeof profile.upgradeCaps === "object" && !Array.isArray(profile.upgradeCaps), `difficulty.profiles.${key}.upgradeCaps must be an object`);
+    Object.keys(shopItems).forEach((itemKey) => {
+      assertConfig(Number.isInteger(profile.upgradeCaps[itemKey]) && profile.upgradeCaps[itemKey] >= 0, `difficulty.profiles.${key}.upgradeCaps.${itemKey} must be a non-negative integer`);
+    });
+  });
+}
+
 function validateSpecialMoveBalance(specialMove) {
   const typeKeys = ["enemyWeakness", "allyBoost", "invincibility"];
   assertConfig(specialMove?.usesPerOperation === 3, "specialMove.usesPerOperation must be 3");
@@ -396,6 +414,7 @@ function validateBalance(balance, factionIds, regionIds) {
     const item = balance.economy.shopItems[itemKey];
     assertConfig(item && Object.hasOwn(item, effectKey) && isValid(item[effectKey]), `Shop item ${itemKey} is missing ${effectKey}`);
   });
+  validateDifficultyBalance(balance.difficulty, balance.economy.shopItems);
   validateSpecialMoveBalance(balance.specialMove);
   validateCampaignBalance(balance.campaign);
 }
@@ -451,6 +470,10 @@ export function createGameConfig(source) {
   assertConfig(config.scenario.initialUnits.some((unit) => unit.faction === config.scenario.playerFactionId), "プレイヤー初期部隊がありません");
 
   validateBalance(config.balance, factionIds, regionIds);
+  assertConfig(
+    Object.hasOwn(config.balance.difficulty.profiles, config.campaign.defaultDifficultyId),
+    `campaign.defaultDifficultyId ${config.campaign.defaultDifficultyId} is not defined in difficulty.profiles`,
+  );
   validateCampaignData(config.campaign, config.map, config.countries, config.characters, factionIds, config.balance, config.scenario.playerFactionId);
   return deepFreeze(config);
 }
@@ -473,12 +496,14 @@ function regionCenter(region) {
   return { x: total.x / region.points.length, y: total.y / region.points.length };
 }
 
-export function createRuntimeScenario(config = GAME_CONFIG, phaseId = config.scenario.phaseId) {
+export function createRuntimeScenario(config = GAME_CONFIG, phaseId = config.scenario.phaseId, difficultyId = config.campaign.defaultDifficultyId) {
   const phase = config.campaign?.phases?.[phaseId];
   const front = config.campaign?.fronts?.[phase?.frontId || config.scenario.frontId];
   const territoryOwners = phase?.territoryOwners || config.scenario.territoryOwners;
   const productionByRegion = phase?.productionByRegion || config.balance.territoryProduction;
   const enemyProfile = front ? config.balance.campaign.enemyProfiles[front.enemyProfileId] : null;
+  const difficultyProfile = config.balance.difficulty.profiles[difficultyId]
+    || config.balance.difficulty.profiles[config.campaign.defaultDifficultyId];
   const regions = config.map.regions.map((region) => ({
     ...cloneData(region),
     faction: territoryOwners[region.id],
@@ -491,7 +516,10 @@ export function createRuntimeScenario(config = GAME_CONFIG, phaseId = config.sce
     const center = regionCenter(regionById[deployment.regionId]);
     const baseStrength = config.balance.units.baseMaxStrengthByFaction[deployment.faction];
     const maxStrength = config.factions[deployment.faction].isEnemy && enemyProfile
-      ? Math.max(config.balance.units.minimumSurvivorStrength, Math.round(baseStrength * enemyProfile.strengthMultiplier))
+      ? Math.max(
+        config.balance.units.minimumSurvivorStrength,
+        Math.round(baseStrength * enemyProfile.strengthMultiplier * difficultyProfile.enemyStrengthMultiplier),
+      )
       : baseStrength;
     return {
       ...cloneData(deployment),

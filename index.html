@@ -15,7 +15,7 @@
     <title>COUNTRYFRONTS — リアルタイム戦略</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./assets/icons/icon-192.png" />
-    <link rel="stylesheet" href="./styles.css?v=39" />
+    <link rel="stylesheet" href="./styles.css?v=40" />
   </head>
   <body>
     <main class="game-shell" id="gameShell">
@@ -181,6 +181,27 @@
     </dialog>
 
     <dialog
+      class="difficulty-selection-dialog"
+      id="difficultySelectionDialog"
+      aria-labelledby="difficultySelectionHeading"
+      aria-describedby="difficultySelectionDescription"
+    >
+      <div class="difficulty-selection-form">
+        <div class="dialog-heading">
+          <div>
+            <span class="panel-kicker">DIFFICULTY</span>
+            <h2 id="difficultySelectionHeading">難易度を選択</h2>
+          </div>
+          <button class="dialog-close" id="difficultySelectionBackButton" type="button" aria-label="タイトルへ戻る">×</button>
+        </div>
+        <p class="difficulty-selection-description" id="difficultySelectionDescription">
+          難易度はキャンペーン開始後に変更できません。作戦に合った難易度を選択してください。
+        </p>
+        <div class="difficulty-selection-grid" id="difficultySelectionGrid"></div>
+      </div>
+    </dialog>
+
+    <dialog
       class="map-selection-dialog"
       id="mapSelectionDialog"
       aria-labelledby="mapSelectionHeading"
@@ -201,6 +222,7 @@
           <span>選択可能な戦線</span>
           <strong id="mapSelectionSummary">0 / 0 戦線を選択可能</strong>
         </div>
+        <p class="map-selection-difficulty" id="mapSelectionDifficulty"></p>
         <div class="map-selection-grid" id="mapSelectionGrid"></div>
       </div>
     </dialog>
@@ -461,10 +483,10 @@
             <button class="shop-buy" data-shop-upgrade="speed" type="button">120 Gold</button>
           </article>
         </div>
-        <p class="shop-note">ショップを開いている間は戦場が一時停止します。購入するたびに次の価格が上がります。</p>
+        <p class="shop-note">ショップを開いている間は戦場が一時停止します。難易度ごとに強化上限があります。</p>
       </div>
     </dialog>
 
-    <script type="module" src="./src/main.js?v=40"></script>
+    <script type="module" src="./src/main.js?v=41"></script>
   </body>
 </html>

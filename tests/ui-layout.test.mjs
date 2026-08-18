@@ -54,6 +54,22 @@ test("title start opens a front selection dialog and clear returns to it", () =>
   assert.match(main, /clearRestartButton.*openMapSelection/);
 });
 
+test("title start exposes a fixed campaign difficulty before map selection", () => {
+  const html = readProjectFile("index.html");
+  const main = readProjectFile("src/main.js");
+  const balance = readProjectFile("src/config/balance.js");
+
+  assert.match(html, /id="difficultySelectionDialog"/);
+  assert.match(html, /id="difficultySelectionGrid"/);
+  assert.match(html, /id="mapSelectionDifficulty"/);
+  assert.match(main, /function openDifficultySelection/);
+  assert.match(main, /difficultyLocked/);
+  assert.match(main, /if \(state\.campaign\.difficultyLocked\) openMapSelection/);
+  assert.match(balance, /label: "やさしい"[\s\S]*specialMoveUsesPerOperation: 3/);
+  assert.match(balance, /label: "ふつう"[\s\S]*specialMoveUsesPerOperation: 1/);
+  assert.match(balance, /label: "むずかしい"[\s\S]*specialMoveUsesPerOperation: 0/);
+});
+
 test("country flag collection exposes a profile dialog with the requested sections", () => {
   const html = readProjectFile("index.html");
   const main = readProjectFile("src/main.js");

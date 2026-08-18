@@ -5,7 +5,7 @@ export const UPGRADES_STORAGE_KEY = "countryfronts.upgrades";
 export const SPECIAL_MOVE_STORAGE_KEY = "countryfronts.specialMove";
 export const EQUIPPED_CHARACTER_STORAGE_KEY = "countryfronts.equippedCharacter";
 export const CAMPAIGN_STORAGE_KEY = "countryfronts.campaign";
-export const CAMPAIGN_STATE_VERSION = 3;
+export const CAMPAIGN_STATE_VERSION = 4;
 export const DEFAULT_CAMPAIGN_ID = "regional-fronts-v1";
 
 function getStorage(storage) {
@@ -37,11 +37,16 @@ function normalizeCharacterId(value) {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }
 
-export function createDefaultCampaignState({ campaignId = DEFAULT_CAMPAIGN_ID, difficultyId = "normal" } = {}) {
+export function createDefaultCampaignState({
+  campaignId = DEFAULT_CAMPAIGN_ID,
+  difficultyId = "normal",
+  difficultyLocked = false,
+} = {}) {
   return {
     version: CAMPAIGN_STATE_VERSION,
     campaignId,
     difficultyId,
+    difficultyLocked,
     completedCountryIds: [],
     collectedCountryIds: [],
     completedFrontIds: [],
@@ -56,16 +61,31 @@ export function normalizeCampaignState(value, defaults = {}) {
   const collectedCountryIds = value.collectedCountryIds === undefined
     ? value.completedCountryIds
     : value.collectedCountryIds;
+  const completedCountryIds = normalizeStringList(value.completedCountryIds);
+  const normalizedCollectedCountryIds = normalizeStringList(collectedCountryIds);
+  const completedFrontIds = normalizeStringList(value.completedFrontIds);
+  const lastCompletedFrontId = typeof value.lastCompletedFrontId === "string" && value.lastCompletedFrontId.trim().length > 0
+    ? value.lastCompletedFrontId
+    : null;
+  const hasProgress = completedCountryIds.length > 0
+    || normalizedCollectedCountryIds.length > 0
+    || completedFrontIds.length > 0
+    || lastCompletedFrontId !== null;
+  const difficultyId = typeof value.difficultyId === "string" && value.difficultyId.trim().length > 0
+    ? value.difficultyId
+    : fallback.difficultyId;
+  const validDifficultyIds = Array.isArray(defaults.difficultyIds) && defaults.difficultyIds.length > 0
+    ? defaults.difficultyIds
+    : null;
   return {
     version: CAMPAIGN_STATE_VERSION,
     campaignId: typeof value.campaignId === "string" && value.campaignId.trim().length > 0 ? value.campaignId : fallback.campaignId,
-    difficultyId: typeof value.difficultyId === "string" && value.difficultyId.trim().length > 0 ? value.difficultyId : fallback.difficultyId,
-    completedCountryIds: normalizeStringList(value.completedCountryIds),
-    collectedCountryIds: normalizeStringList(collectedCountryIds),
-    completedFrontIds: normalizeStringList(value.completedFrontIds),
-    lastCompletedFrontId: typeof value.lastCompletedFrontId === "string" && value.lastCompletedFrontId.trim().length > 0
-      ? value.lastCompletedFrontId
-      : null,
+    difficultyId: validDifficultyIds && !validDifficultyIds.includes(difficultyId) ? fallback.difficultyId : difficultyId,
+    difficultyLocked: typeof value.difficultyLocked === "boolean" ? value.difficultyLocked : hasProgress,
+    completedCountryIds,
+    collectedCountryIds: normalizedCollectedCountryIds,
+    completedFrontIds,
+    lastCompletedFrontId,
   };
 }
 

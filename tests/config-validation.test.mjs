@@ -132,6 +132,24 @@ test("runtime scenario uses phase production and rounds front-start enemy streng
   });
 });
 
+test("difficulty applies enemy strength and special move balance at campaign start", () => {
+  const profiles = GAME_CONFIG.balance.difficulty.profiles;
+  assert.deepEqual(
+    Object.fromEntries(Object.entries(profiles).map(([id, profile]) => [id, profile.label])),
+    { easy: "やさしい", normal: "ふつう", hard: "むずかしい" },
+  );
+  assert.deepEqual(
+    Object.fromEntries(Object.entries(profiles).map(([id, profile]) => [id, profile.specialMoveUsesPerOperation])),
+    { easy: 3, normal: 1, hard: 0 },
+  );
+
+  const startingStrengths = Object.fromEntries(Object.keys(profiles).map((difficultyId) => {
+    const runtime = createRuntimeScenario(GAME_CONFIG, GAME_CONFIG.scenario.phaseId, difficultyId);
+    return [difficultyId, runtime.units.find((unit) => unit.faction === "red").maxStrength];
+  }));
+  assert.deepEqual(startingStrengths, { easy: 8, normal: 10, hard: 12 });
+});
+
 test("production values are defined for every geographic fragment", () => {
   const production = GAME_CONFIG.balance.territoryProduction;
   assert.deepEqual(Object.keys(production).sort(), GAME_CONFIG.map.regions.map((region) => region.id).sort());

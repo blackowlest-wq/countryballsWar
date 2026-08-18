@@ -83,10 +83,14 @@ const ui = {
   titleStart: document.querySelector("#titleStartButton"),
   titleReset: document.querySelector("#titleResetButton"),
   titleMessage: document.querySelector("#titleMessage"),
+  difficultySelectionDialog: document.querySelector("#difficultySelectionDialog"),
+  difficultySelectionBack: document.querySelector("#difficultySelectionBackButton"),
+  difficultySelectionGrid: document.querySelector("#difficultySelectionGrid"),
   mapSelectionDialog: document.querySelector("#mapSelectionDialog"),
   mapSelectionBack: document.querySelector("#mapSelectionBackButton"),
   mapSelectionGrid: document.querySelector("#mapSelectionGrid"),
   mapSelectionSummary: document.querySelector("#mapSelectionSummary"),
+  mapSelectionDifficulty: document.querySelector("#mapSelectionDifficulty"),
   flagCollectionButton: document.querySelector("#flagCollectionButton"),
   flagCollectionDialog: document.querySelector("#flagCollectionDialog"),
   flagCollectionGrid: document.querySelector("#flagCollectionGrid"),
@@ -135,9 +139,19 @@ const COMBAT_BALANCE = BALANCE.combat;
 const TARGETING_BALANCE = BALANCE.targeting;
 const ECONOMY_BALANCE = BALANCE.economy;
 const SPECIAL_MOVE_BALANCE = BALANCE.specialMove;
+const DIFFICULTY_PROFILES = BALANCE.difficulty.profiles;
+const DIFFICULTY_IDS = Object.keys(DIFFICULTY_PROFILES);
 const BATTLE_DISTANCE = COMBAT_BALANCE.contactDistance;
 const BATTLE_TICK_INTERVAL = COMBAT_BALANCE.tickIntervalSeconds;
 let selectedFrontId = GAME_CONFIG.scenario.frontId;
+
+function resolveDifficultyId(value) {
+  return DIFFICULTY_IDS.includes(value) ? value : GAME_CONFIG.campaign.defaultDifficultyId;
+}
+
+function getDifficultyProfile(difficultyId = GAME_CONFIG.campaign.defaultDifficultyId) {
+  return DIFFICULTY_PROFILES[resolveDifficultyId(difficultyId)] || DIFFICULTY_PROFILES[GAME_CONFIG.campaign.defaultDifficultyId];
+}
 
 function getSelectedFront() {
   return GAME_CONFIG.campaign.fronts[selectedFrontId]
@@ -187,6 +201,7 @@ const upgradeKeys = Object.keys(SHOP_ITEMS);
 const persistentState = loadPersistentState(undefined, upgradeKeys, {
   campaignId: GAME_CONFIG.campaign.id,
   difficultyId: GAME_CONFIG.campaign.defaultDifficultyId,
+  difficultyIds: DIFFICULTY_IDS,
 });
 const savedEquippedCharacterId = loadEquippedCharacter(undefined);
 const savedSpecialMove = loadSpecialMove(undefined, SPECIAL_MOVE_BALANCE);
@@ -235,6 +250,14 @@ const state = {
   battles: new Map(),
   suppressNextClick: false,
 };
+
+function getActiveDifficulty() {
+  return getDifficultyProfile(state.campaign.difficultyId);
+}
+
+function getDifficultyUpgradeCap(key) {
+  return getActiveDifficulty().upgradeCaps[key] ?? Number.MAX_SAFE_INTEGER;
+}
 
 const dragState = {
   active: false,
@@ -287,7 +310,7 @@ function cloneUnit(unit) {
 }
 
 let activePhaseId = GAME_CONFIG.scenario.phaseId;
-const runtimeScenario = createRuntimeScenario(GAME_CONFIG, activePhaseId);
+const runtimeScenario = createRuntimeScenario(GAME_CONFIG, activePhaseId, persistentState.campaign.difficultyId);
 const regions = runtimeScenario.regions;
 const units = runtimeScenario.units;
 let initialRegions = regions.map(cloneRegion);
@@ -303,11 +326,11 @@ function replaceRuntime(nextRuntime) {
 }
 
 function resetRuntimeToPhase(phaseId) {
-  replaceRuntime(createRuntimeScenario(GAME_CONFIG, phaseId));
+  replaceRuntime(createRuntimeScenario(GAME_CONFIG, phaseId, state.campaign.difficultyId));
 }
 
 function transitionToPhase(phaseId) {
-  const nextRuntime = createRuntimeScenario(GAME_CONFIG, phaseId);
+  const nextRuntime = createRuntimeScenario(GAME_CONFIG, phaseId, state.campaign.difficultyId);
   const transitioned = transitionPhase({
     currentRuntime: { frontId: selectedFrontId, phaseId: activePhaseId, regions, units },
     nextRuntime,
@@ -1470,7 +1493,11 @@ function getMaxUnitStrength(faction) {
   const baseStrength = UNIT_BALANCE.baseMaxStrengthByFaction[faction] || UNIT_BALANCE.minimumSurvivorStrength;
   const armor = SHOP_ITEMS.armor?.maxStrengthPerLevel || 0;
   const resolvedStrength = GAME_CONFIG.factions[faction]?.isEnemy
-    ? resolveEnemyStrength(baseStrength, getActiveEnemyProfile().strengthMultiplier, UNIT_BALANCE.minimumSurvivorStrength)
+    ? resolveEnemyStrength(
+      baseStrength,
+      getActiveEnemyProfile().strengthMultiplier * getActiveDifficulty().enemyStrengthMultiplier,
+      UNIT_BALANCE.minimumSurvivorStrength,
+    )
     : baseStrength;
   return resolvedStrength + (faction === PLAYER_FACTION_ID ? state.upgrades.armor * armor : 0);
 }
@@ -2049,7 +2076,7 @@ function restartGame({ announce = true } = {}) {
   state.runProgress = createRunProgress();
   state.recoveryTimer = 0;
   state.toastTimer = 0;
-  state.specialMoveUsesRemaining = state.specialMove ? SPECIAL_MOVE_BALANCE.usesPerOperation : 0;
+  state.specialMoveUsesRemaining = state.specialMove ? getActiveDifficulty().specialMoveUsesPerOperation : 0;
   state.invincibilityRemaining = 0;
   state.defeated = false;
   state.cleared = false;
@@ -2090,15 +2117,18 @@ function updateShopDialog() {
     const item = SHOP_ITEMS[key];
     if (!item) return;
     const level = Number(state.upgrades[key]) || 0;
+    const cap = getDifficultyUpgradeCap(key);
     const price = getUpgradePrice(key);
     const unaffordable = state.gold < price;
-    button.disabled = unaffordable;
-    button.textContent = `${price} Gold`;
+    const capped = level >= cap;
+    button.disabled = unaffordable || capped;
+    button.textContent = capped ? "上限" : `${price} Gold`;
     const card = button.closest("[data-shop-card]");
     card?.classList.toggle("is-purchased", level > 0);
     card?.classList.toggle("is-unaffordable", unaffordable);
+    card?.classList.toggle("is-capped", capped);
     const levelLabel = card?.querySelector("[data-shop-level]");
-    if (levelLabel) levelLabel.textContent = `Lv.${level}`;
+    if (levelLabel) levelLabel.textContent = `Lv.${level} / ${cap}`;
   });
 }
 
@@ -2106,6 +2136,11 @@ function purchaseUpgrade(key) {
   const item = SHOP_ITEMS[key];
   if (!item) return;
   const level = Number(state.upgrades[key]) || 0;
+  const cap = getDifficultyUpgradeCap(key);
+  if (level >= cap) {
+    showToast(`${item.label}は難易度「${getActiveDifficulty().label}」の上限です`);
+    return;
+  }
   const price = getUpgradePrice(key);
   if (state.gold < price) {
     showToast("Goldが不足しています");
@@ -2163,11 +2198,42 @@ function getFrontTargetNames(front) {
     .join("・");
 }
 
+function updateDifficultySelectionDialog() {
+  if (!ui.difficultySelectionGrid) return;
+  ui.difficultySelectionGrid.replaceChildren();
+  DIFFICULTY_IDS.forEach((difficultyId) => {
+    const profile = getDifficultyProfile(difficultyId);
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = [
+      "difficulty-selection-card",
+      state.campaign.difficultyId === difficultyId ? "is-selected" : "",
+    ].filter(Boolean).join(" ");
+    card.dataset.difficultyId = difficultyId;
+
+    const label = document.createElement("strong");
+    label.className = "difficulty-selection-card-label";
+    label.textContent = profile.label;
+    const description = document.createElement("span");
+    description.className = "difficulty-selection-card-description";
+    description.textContent = profile.description;
+    const details = document.createElement("span");
+    details.className = "difficulty-selection-card-details";
+    details.textContent = `敵戦力 ×${profile.enemyStrengthMultiplier} ・ 必殺技 ${profile.specialMoveUsesPerOperation}回`;
+    card.append(label, description, details);
+    ui.difficultySelectionGrid.append(card);
+  });
+}
+
 function updateMapSelectionDialog() {
   if (!ui.mapSelectionGrid) return;
 
   const entries = getFrontSelectionEntries(GAME_CONFIG.campaign, state.campaign).filter((entry) => entry.front);
   ui.mapSelectionGrid.replaceChildren();
+  if (ui.mapSelectionDifficulty) {
+    const profile = getActiveDifficulty();
+    ui.mapSelectionDifficulty.textContent = `難易度：${profile.label}　敵戦力 ×${profile.enemyStrengthMultiplier}　必殺技 ${profile.specialMoveUsesPerOperation}回`;
+  }
   if (ui.mapSelectionSummary) {
     const unlockedCount = entries.filter((entry) => entry.unlocked).length;
     ui.mapSelectionSummary.textContent = `${unlockedCount} / ${entries.length} 戦線を選択可能`;
@@ -2221,6 +2287,49 @@ function updateMapSelectionDialog() {
 
 let returnToTitleAfterMapSelection = false;
 let suppressMapSelectionRestore = false;
+let suppressDifficultySelectionRestore = false;
+
+function openDifficultySelection() {
+  if (!ui.difficultySelectionDialog) {
+    openMapSelection({ returnToTitle: true });
+    return;
+  }
+
+  state.started = false;
+  state.paused = true;
+  updateDifficultySelectionDialog();
+  if (ui.titleDialog?.open) ui.titleDialog.close();
+  try {
+    ui.difficultySelectionDialog.showModal();
+  } catch {
+    openTitleScreen();
+    return;
+  }
+  requestAnimationFrame(() => ui.difficultySelectionGrid?.querySelector("[data-difficulty-id]")?.focus());
+}
+
+function restoreTitleAfterDifficultySelection() {
+  if (suppressDifficultySelectionRestore) {
+    suppressDifficultySelectionRestore = false;
+    return;
+  }
+  openTitleScreen();
+}
+
+function handleDifficultySelectionClick(event) {
+  const card = event.target?.closest?.("[data-difficulty-id]");
+  if (!card || !DIFFICULTY_IDS.includes(card.dataset.difficultyId)) return;
+
+  state.campaign = {
+    ...state.campaign,
+    difficultyId: card.dataset.difficultyId,
+    difficultyLocked: true,
+  };
+  savePersistentProgress();
+  suppressDifficultySelectionRestore = true;
+  ui.difficultySelectionDialog?.close();
+  openMapSelection({ returnToTitle: true });
+}
 
 function openMapSelection({ returnToTitle = true } = {}) {
   if (!ui.mapSelectionDialog) return;
@@ -2575,7 +2684,8 @@ function confirmSpecialMoveSetup(event) {
 }
 
 function startFromTitle() {
-  openMapSelection({ returnToTitle: true });
+  if (state.campaign.difficultyLocked) openMapSelection({ returnToTitle: true });
+  else openDifficultySelection();
 }
 
 function openDataResetDialog() {
@@ -2775,6 +2885,13 @@ document.querySelector("#restartButton").addEventListener("click", restartGame);
 document.querySelector("#clearRestartButton").addEventListener("click", () => openMapSelection({ returnToTitle: true }));
 ui.titleStart?.addEventListener("click", startFromTitle);
 ui.titleReset?.addEventListener("click", openDataResetDialog);
+ui.difficultySelectionGrid?.addEventListener("click", handleDifficultySelectionClick);
+ui.difficultySelectionBack?.addEventListener("click", () => ui.difficultySelectionDialog?.close());
+ui.difficultySelectionDialog?.addEventListener("close", restoreTitleAfterDifficultySelection);
+ui.difficultySelectionDialog?.addEventListener("cancel", (event) => {
+  event.preventDefault();
+  ui.difficultySelectionDialog.close();
+});
 ui.mapSelectionGrid?.addEventListener("click", handleMapSelectionClick);
 ui.mapSelectionBack?.addEventListener("click", () => ui.mapSelectionDialog?.close());
 ui.mapSelectionDialog?.addEventListener("close", restoreTitleAfterMapSelection);
