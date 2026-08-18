@@ -1,6 +1,6 @@
 # Map geometry source
 
-The active Korea Front uses Natural Earth Admin 1 - States, Provinces at
+The Korea and Japan maps use Natural Earth Admin 1 - States, Provinces at
 1:10m, pinned to v5.1.1 (commit `9380cca`). The checked-in
 `ne_10m_admin_1_korea.geojson` is the extracted Korea subset containing 28
 first-order administrative features with their original Polygon/MultiPolygon
@@ -13,6 +13,11 @@ compiler. `world-map.js` combines these source features into 11 larger
 strategic regions and derives an outer border for each group. The player starts
 in one strategic region; the South Korean and North Korean character mappings
 are used by enemy units.
+
+The Japan subset is stored in `ne_10m_admin_1_japan.geojson` and
+`natural-earth-japan-admin-1.js`. It contains all 47 prefecture features and is
+combined into 12 strategic regions. Okinawa is the player start, and Japan's
+country character is used by every enemy deployment on that map.
 
 The previous country-level source remains available as
 `ne_110m_admin_0_countries.geojson` with its runtime subset

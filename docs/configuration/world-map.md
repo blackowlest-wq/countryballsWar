@@ -20,19 +20,22 @@ map.js
 ```
 
 `src/config/world-map.js` is the geographic map-definition source of truth.
-The Korea map uses the checked-in Natural Earth Admin 1 - States, Provinces
-GeoJSON subset at 1:10m, pinned to v5.1.1 (`9380cca`). The 28 source features
-are combined into 11 larger strategic regions while preserving their actual
-geographic outlines.
+The Korea and Japan maps use checked-in Natural Earth Admin 1 - States,
+Provinces GeoJSON subsets at 1:10m, pinned to v5.1.1 (`9380cca`). The 28 Korea
+features are combined into 11 larger strategic regions, and the 47 Japan
+prefecture features are combined into 12 larger strategic regions while
+preserving their actual geographic outlines.
 
 The source subset is retained in
 `src/config/geodata/ne_10m_admin_1_korea.geojson`; the compact runtime data is
-`src/config/geodata/natural-earth-korea-admin-1.js`. The full Admin 0 source
-is also retained for future country-level fronts. No map polygons are
+`src/config/geodata/natural-earth-korea-admin-1.js`. The Japan audit subset is
+`src/config/geodata/ne_10m_admin_1_japan.geojson`, with compact runtime data in
+`src/config/geodata/natural-earth-japan-admin-1.js`. The full Admin 0 source is
+also retained for future country-level fronts. No map polygons are
 hand-authored.
 
 Natural Earth is public domain. The source URL and license URL are carried in
-`WORLD_MAP.source`, and the extraction details are documented in
+each map's `frontMaps[*].source` metadata, and the extraction details are documented in
 `src/config/geodata/README.md`.
 
 The playable unit is a strategic region. `countryId` identifies the country

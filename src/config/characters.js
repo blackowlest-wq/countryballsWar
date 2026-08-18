@@ -5,6 +5,7 @@ const EXISTING_SPRITES = {
   china: "./assets/units/enemy-china.png",
   "north-korea": "./assets/units/enemy-north-korea.png",
   "south-korea": "./assets/units/enemy-korea.png",
+  japan: "./assets/units/enemy-japan.svg",
 };
 
 export const PLAYER_CHARACTER_ID = "player";

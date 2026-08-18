@@ -1,10 +1,10 @@
-const CACHE_NAME = "countryfronts-shell-v45";
+const CACHE_NAME = "countryfronts-shell-v46";
 
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css?v=40",
-  "./src/main.js?v=42",
+  "./src/main.js?v=43",
   "./src/special-move.js",
   "./src/economy/rewards.js",
   "./src/config/balance.js",
@@ -16,6 +16,8 @@ const APP_SHELL = [
   "./src/config/map-compiler.js",
   "./src/config/geodata/natural-earth-korea.js",
   "./src/config/geodata/natural-earth-korea-admin-1.js",
+  "./src/config/geodata/ne_10m_admin_1_japan.geojson",
+  "./src/config/geodata/natural-earth-japan-admin-1.js",
   "./src/config/scenario.js",
   "./src/config/world-map.js",
   "./src/config/game-config.js",
@@ -36,6 +38,7 @@ const APP_SHELL = [
   "./assets/units/enemy-china.png",
   "./assets/units/enemy-korea.png",
   "./assets/units/enemy-north-korea.png",
+  "./assets/units/enemy-japan.svg",
 ];
 
 self.addEventListener("install", (event) => {

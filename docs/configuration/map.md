@@ -13,11 +13,12 @@ currently selected map remains available as the compatibility alias `MAP` and
 The extracted GeoJSON and runtime subsets are stored in
 `src/config/geodata/`.
 
-The Korea source is Natural Earth Admin 1 - States, Provinces, 1:10m, v5.1.1
-(commit `9380cca`, public domain). The map source metadata is exposed as
-`GAME_CONFIG.map.source` so a future data update must be explicit.
+The Korea and Japan sources are Natural Earth Admin 1 - States, Provinces,
+1:10m, v5.1.1 (commit `9380cca`, public domain). Each compiled map exposes its
+own source metadata as `GAME_CONFIG.maps[mapId].source`; the compatibility alias
+`GAME_CONFIG.map.source` points to the initial Korea map.
 
-## Active front regions
+## Korea map regions
 
 Every map must contain 10 to 15 strategic regions. The player starts from one
 region only. Enemy units must be deployed to a region whose `countryId`
@@ -46,13 +47,41 @@ requires all six `south-*` regions and North Korea requires all five `north-*`
 regions. The player starts with only `south-jeju`; South Korea remains an
 enemy country until every South Korean region is controlled.
 
+## Japan map regions
+
+The Japan map extracts all 47 Natural Earth prefecture features and combines
+them into 12 strategic regions. The map uses the same Japanese country
+character for every enemy unit. Okinawa is the only player-owned starting
+region; the first phase focuses on the southern and central islands, and the
+second phase opens the northern advance while carrying player occupation and
+units forward.
+
+| Region | Combined source areas | Starting owner |
+|---|---|---|
+| `japan-okinawa` | Okinawa | Player start |
+| `japan-kyushu-north` | Fukuoka, Saga, Nagasaki, Kumamoto, Ōita | Enemy |
+| `japan-kyushu-south` | Miyazaki, Kagoshima | Enemy |
+| `japan-shikoku` | Tokushima, Kagawa, Ehime, Kōchi | Enemy |
+| `japan-chugoku` | Tottori, Shimane, Okayama, Hiroshima, Yamaguchi | Enemy |
+| `japan-kansai` | Shiga, Kyōto, Ōsaka, Hyōgo, Nara, Wakayama | Enemy |
+| `japan-chubu` | Fukui, Nagano, Gifu, Shizuoka, Aichi, Mie | Enemy |
+| `japan-hokuriku` | Niigata, Toyama, Ishikawa | Enemy |
+| `japan-kanto` | Ibaraki, Tochigi, Gunma, Saitama, Chiba, Tokyo, Kanagawa, Yamanashi | Enemy |
+| `japan-tohoku-south` | Miyagi, Fukushima | Enemy |
+| `japan-tohoku-north` | Aomori, Iwate, Akita, Yamagata | Enemy |
+| `japan-hokkaido` | Hokkaidō | Enemy |
+
+Japan is completed only after all twelve `japan-*` regions are controlled.
+
 ## Roads and interaction safety
 
 Roads are authored once in `WORLD_MAP.frontMaps[*].roads` and compiled to the
-runtime `roads` array plus `roadDefinitions` metadata. The active front has 18
+runtime `roads` array plus `roadDefinitions` metadata. The Korea map has 18
 passable adjacency links: 17 land links and one sea link from Jeju to the
-Southwestern Region. Validation checks unknown endpoints, self-links, duplicate
-reverse links, non-passable edges, invalid kinds, and graph connectivity.
+Southwestern Region. The Japan map has 14 links: 8 land links and 6 sea links
+for the island crossings. Validation checks unknown endpoints, self-links,
+duplicate reverse links, non-passable edges, invalid kinds, and graph
+connectivity.
 
 Each strategic region uses a source label point as its `interactionPoint`.
 `interactionMinDistance` is `0.045` and the default `interactionHitRadius` is

@@ -39,7 +39,7 @@ test("the compiled geographic front map is connected", () => {
   assert.equal(regionIds.length, 11);
   assert.equal(GAME_CONFIG.countries["south-korea"].fragmentIds.length, 6);
   assert.equal(GAME_CONFIG.countries["north-korea"].fragmentIds.length, 5);
-  assert.equal(GAME_CONFIG.map.sourceWorldMapId, "natural-earth-korea-regions-v2");
+  assert.equal(GAME_CONFIG.map.sourceWorldMapId, "natural-earth-admin-1-regions-v3");
   assert.equal(GAME_CONFIG.map.source.id, "natural-earth-admin-1-korea");
   assert.equal(GAME_CONFIG.map.source.version, "5.1.1");
   assert.equal(GAME_CONFIG.map.source.scale, "1:10m");
@@ -50,6 +50,45 @@ test("the compiled geographic front map is connected", () => {
   assert.ok(GAME_CONFIG.map.regions.every((region) => region.borderPolygons.length > 0));
   assert.equal(GAME_CONFIG.map.interactionMinDistance, 0.045);
   assert.equal(GAME_CONFIG.map.regions.find((region) => region.id === "south-jeju").interactionRadius, 0.035);
+});
+
+test("the Japan map uses twelve connected geographic regions and a country sprite", () => {
+  const japanMap = GAME_CONFIG.maps["japan-front"];
+  assert.ok(japanMap);
+  assert.equal(japanMap.source.id, "natural-earth-admin-1-japan");
+  assert.equal(japanMap.regions.length, 12);
+  assert.equal(japanMap.sourceWorldMapId, "natural-earth-admin-1-regions-v3");
+
+  const visited = new Set([japanMap.regions[0].id]);
+  const queue = [japanMap.regions[0].id];
+  while (queue.length > 0) {
+    const current = queue.shift();
+    japanMap.roadNeighbors[current].forEach((neighbor) => {
+      if (!visited.has(neighbor)) {
+        visited.add(neighbor);
+        queue.push(neighbor);
+      }
+    });
+  }
+
+  assert.equal(visited.size, japanMap.regions.length);
+  assert.equal(japanMap.regions.find((region) => region.id === "japan-okinawa").interactionRadius, 0.035);
+  assert.equal(GAME_CONFIG.countries.japan.fragmentIds.length, 12);
+  assert.equal(GAME_CONFIG.characters.japan.sprite, "./assets/units/enemy-japan.svg");
+
+  const openingRuntime = createRuntimeScenario(GAME_CONFIG, "japan-front-opening");
+  assert.equal(openingRuntime.mapId, "japan-front");
+  assert.equal(openingRuntime.regions.length, 12);
+  assert.equal(new Set(openingRuntime.units.filter((unit) => unit.faction === "blue").map((unit) => unit.regionId)).size, 1);
+  assert.ok(openingRuntime.units.some((unit) => unit.faction === "red" && unit.characterId === "japan"));
+  openingRuntime.units.filter((unit) => unit.faction === "red").forEach((unit) => {
+    const region = openingRuntime.regions.find((candidate) => candidate.id === unit.regionId);
+    assert.equal(region.countryId, GAME_CONFIG.characters[unit.characterId].countryId);
+  });
+
+  const lateRuntime = createRuntimeScenario(GAME_CONFIG, "japan-front-late");
+  assert.equal(lateRuntime.phaseId, "japan-front-late");
+  assert.equal(lateRuntime.units.filter((unit) => unit.faction === "red").length, 3);
 });
 
 test("roads remain the source of the runtime adjacency table and every road is passable", () => {

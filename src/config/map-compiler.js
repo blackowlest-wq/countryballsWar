@@ -82,7 +82,7 @@ export function compileWorldFrontMap(worldMap, frontMap, countries) {
     id: frontMap.id,
     name: frontMap.name,
     sourceWorldMapId: worldMap.id,
-    source: cloneData(worldMap.source),
+    source: cloneData(frontMap.source || worldMap.source),
     projection: { ...cloneData(worldMap.projection), bounds: cloneData(bounds) },
     interactionMinDistance: frontMap.interactionMinDistance,
     interactionHitRadius: frontMap.interactionHitRadius,

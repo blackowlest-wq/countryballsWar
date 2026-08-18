@@ -3,14 +3,16 @@
 ## Decision
 
 Use Natural Earth vector data instead of hand-authored country rectangles.
-The active Korea Front is built from the Admin 1 - States, Provinces GeoJSON
-at 1:10m, pinned to v5.1.1 (`9380cca`). The source is public domain under the
-Natural Earth terms of use.
+The Korea and Japan maps are built from the Admin 1 - States, Provinces
+GeoJSON at 1:10m, pinned to v5.1.1 (`9380cca`). The source is public domain
+under the Natural Earth terms of use.
 
-The runtime keeps only the 28 Korea features required by the front in
-`src/config/geodata/natural-earth-korea-admin-1.js`. The active map groups
-those source features into 11 larger strategic regions. The extracted audit
-copy is `src/config/geodata/ne_10m_admin_1_korea.geojson`.
+The runtime keeps only the 28 Korea features and 47 Japan features required by
+the campaign in `src/config/geodata/natural-earth-korea-admin-1.js` and
+`src/config/geodata/natural-earth-japan-admin-1.js`. The Korea source is grouped
+into 11 strategic regions and Japan into 12. The extracted audit copies are
+`src/config/geodata/ne_10m_admin_1_korea.geojson` and
+`src/config/geodata/ne_10m_admin_1_japan.geojson`.
 
 ## Sources
 
@@ -33,5 +35,7 @@ copy is `src/config/geodata/ne_10m_admin_1_korea.geojson`.
   are reserved for the South Korean and North Korean enemy units.
 - The active map uses a close-up equirectangular projection and validated
   interaction-point spacing so the larger regions remain selectable.
+- Japan uses a wider equirectangular view so Okinawa, Hokkaido, and the remote
+  Tokyo island features remain in the source geometry.
 - The older 1:110m Admin 0 source is retained for future country-level fronts,
-  but is not used for the active Korea Front.
+  but is not used by the Korea or Japan maps.

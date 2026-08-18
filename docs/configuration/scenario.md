@@ -1,7 +1,7 @@
 # Scenario and campaign configuration
 
-The active campaign is intentionally small while the map rules are being
-validated. The first playable operation is the Korea Front.
+The campaign begins with the small Korea map. Clearing it unlocks the Japan
+map, which is the first two-phase major-country operation.
 
 ```text
 campaign
@@ -9,8 +9,13 @@ campaign
     korea-front
       phaseIds: korea-front-opening
       targetCountryIds: south-korea, north-korea
+    japan-front
+      phaseIds: japan-front-opening, japan-front-late
+      targetCountryIds: japan
   phases
     korea-front-opening
+    japan-front-opening
+    japan-front-late
 ```
 
 The active Korea map contains 11 strategic regions:
@@ -32,7 +37,9 @@ not get starved by another enemy warning.
 
 Small-country maps use one phase. A phase defines the same map's objective,
 territory owners, production, and initial deployment. Large-country operations
-may add multiple phases later without changing the runtime model.
+use multiple phases on the same map. Player units and occupied regions carry
+over between phases; enemy units are cleared and recreated from the next
+phase's initial deployment.
 
 `faction` is the side that owns a unit or region. `countryId` and
 `characterId` identify the displayed country character for enemy units; the
