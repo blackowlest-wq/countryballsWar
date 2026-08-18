@@ -31,6 +31,25 @@ test("title screen exposes the flag collection menu", () => {
   assert.match(html, /id="flagCollectionGrid"/);
 });
 
+test("country flag collection exposes a profile dialog with the requested sections", () => {
+  const html = readProjectFile("index.html");
+  const main = readProjectFile("src/main.js");
+
+  assert.match(html, /id="countryDetailDialog"/);
+  [
+    "countryDetailFlag",
+    "countryDetailOverview",
+    "countryDetailMap",
+    "countryDetailCharacter",
+    "countryDetailFlagOrigin",
+    "countryDetailTrivia",
+    "countryDetailSources",
+  ].forEach((id) => assert.match(html, new RegExp(`id="${id}"`)));
+  assert.match(main, /openCountryDetail/);
+  assert.match(main, /country-location\.js/);
+  assert.match(main, /ne_110m_admin_0_countries\.geojson/);
+});
+
 test("toast uses a left message lane instead of the centered lane", () => {
   const styles = readProjectFile("styles.css");
   const toast = styles.match(/\.toast \{[\s\S]*?\n\}/)?.[0] || "";

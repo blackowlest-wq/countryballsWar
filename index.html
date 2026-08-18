@@ -188,6 +188,79 @@
     </dialog>
 
     <dialog
+      class="country-detail-dialog"
+      id="countryDetailDialog"
+      aria-labelledby="countryDetailName"
+      aria-describedby="countryDetailOverview"
+    >
+      <form method="dialog" class="country-detail-form">
+        <div class="country-detail-heading">
+          <button class="dialog-back" id="countryDetailBackButton" type="button" aria-label="国旗図鑑に戻る">←</button>
+          <div>
+            <span class="panel-kicker">COUNTRY PROFILE</span>
+            <h2 id="countryDetailName">国名</h2>
+            <p class="country-detail-english" id="countryDetailEnglishName"></p>
+          </div>
+          <button class="dialog-close" value="close" aria-label="国の説明を閉じる">×</button>
+        </div>
+
+        <div class="country-detail-hero">
+          <span class="country-detail-flag" id="countryDetailFlag" role="img" aria-label="国旗"></span>
+          <div class="country-detail-hero-copy">
+            <span class="country-detail-status" id="countryDetailStatus"></span>
+            <p id="countryDetailOverview"></p>
+          </div>
+        </div>
+
+        <section class="country-detail-section country-detail-location-section" aria-labelledby="countryDetailLocationHeading">
+          <div class="country-detail-section-heading">
+            <span class="panel-kicker">LOCATION</span>
+            <h3 id="countryDetailLocationHeading">実際の地図上の位置</h3>
+          </div>
+          <div class="country-detail-map" id="countryDetailMap" role="img" aria-label="国の位置を読み込み中"></div>
+          <p class="country-detail-copy" id="countryDetailLocation"></p>
+        </section>
+
+        <section class="country-detail-section country-detail-character-section" aria-labelledby="countryDetailCharacterHeading">
+          <div class="country-detail-section-heading">
+            <span class="panel-kicker">CHARACTER</span>
+            <h3 id="countryDetailCharacterHeading">国キャラクター</h3>
+          </div>
+          <div class="country-detail-character-row">
+            <div class="country-character-preview" id="countryDetailCharacter" aria-hidden="true"></div>
+            <p class="country-detail-copy">国旗をモチーフにしたキャラクターとして、戦線に登場します。</p>
+          </div>
+        </section>
+
+        <section class="country-detail-section" aria-labelledby="countryDetailFlagOriginHeading">
+          <div class="country-detail-section-heading">
+            <span class="panel-kicker">FLAG</span>
+            <h3 id="countryDetailFlagOriginHeading">国旗の由来</h3>
+          </div>
+          <p class="country-detail-copy" id="countryDetailFlagOrigin"></p>
+        </section>
+
+        <section class="country-detail-section" aria-labelledby="countryDetailTriviaHeading">
+          <div class="country-detail-section-heading">
+            <span class="panel-kicker">TRIVIA</span>
+            <h3 id="countryDetailTriviaHeading">豆知識</h3>
+          </div>
+          <ul class="country-detail-trivia" id="countryDetailTrivia"></ul>
+        </section>
+
+        <section class="country-detail-section country-detail-sources-section" aria-labelledby="countryDetailSourcesHeading">
+          <div class="country-detail-section-heading">
+            <span class="panel-kicker">SOURCES</span>
+            <h3 id="countryDetailSourcesHeading">参考情報</h3>
+          </div>
+          <ul class="country-detail-sources" id="countryDetailSources"></ul>
+        </section>
+
+        <button class="primary-action" value="close">国旗図鑑に戻る</button>
+      </form>
+    </dialog>
+
+    <dialog
       class="data-reset-dialog"
       id="dataResetDialog"
       aria-labelledby="dataResetHeading"

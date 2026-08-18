@@ -1429,6 +1429,8 @@ button:disabled {
   border: 1px solid rgba(41, 57, 83, 0.12);
   border-radius: 10px;
   background: #f8fafc;
+  font: inherit;
+  text-align: left;
 }
 
 .flag-collection-item.is-collected {
@@ -1436,14 +1438,33 @@ button:disabled {
   background: #f4f8ff;
 }
 
+.flag-collection-item:hover {
+  border-color: rgba(79, 130, 202, 0.5);
+  background: #edf5ff;
+  transform: translateY(-1px);
+}
+
+.flag-collection-item:focus-visible {
+  outline: 3px solid rgba(41, 90, 161, 0.35);
+  outline-offset: 2px;
+}
+
 .flag-collection-flag {
   display: block;
   width: 56px;
   height: 36px;
+  overflow: hidden;
   border: 1px solid rgba(23, 32, 52, 0.28);
   border-radius: 6px;
   background-color: #d9e0ea;
   box-shadow: 0 3px 0 rgba(23, 32, 52, 0.1);
+}
+
+.flag-collection-flag svg,
+.country-detail-flag svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .flag-collection-flag.is-locked {
@@ -1484,6 +1505,257 @@ button:disabled {
   margin-top: 4px;
   color: var(--muted);
   font-size: 8px;
+  font-weight: 800;
+}
+
+.country-detail-dialog {
+  width: min(640px, calc(100% - 24px));
+  max-height: calc(100dvh - 24px);
+  padding: 0;
+  color: var(--ink);
+  border: 0;
+  border-radius: 17px;
+  background: #fff;
+  box-shadow: 0 30px 90px rgba(22, 36, 63, 0.3);
+}
+
+.country-detail-dialog::backdrop {
+  background: rgba(14, 23, 39, 0.62);
+  backdrop-filter: blur(3px);
+}
+
+.country-detail-form {
+  display: grid;
+  gap: 16px;
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+  padding: 20px;
+}
+
+.country-detail-heading {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 32px;
+  align-items: start;
+  gap: 10px;
+}
+
+.country-detail-heading h2 {
+  margin: 4px 0 0;
+  font-size: 26px;
+  line-height: 1.1;
+}
+
+.dialog-back {
+  width: 32px;
+  height: 32px;
+  color: var(--muted);
+  border-radius: 9px;
+  background: #eef2f6;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.dialog-back:hover {
+  color: var(--blue-deep);
+  background: #e5effd;
+}
+
+.country-detail-english {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.country-detail-hero {
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  padding: 14px;
+  border: 1px solid rgba(79, 130, 202, 0.18);
+  border-radius: 13px;
+  background: linear-gradient(135deg, #f5f9ff, #eef3f8);
+}
+
+.country-detail-flag {
+  display: block;
+  width: 128px;
+  height: 82px;
+  overflow: hidden;
+  border: 2px solid rgba(23, 32, 52, 0.25);
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 5px 0 rgba(23, 32, 52, 0.12);
+}
+
+.country-detail-status {
+  display: inline-flex;
+  padding: 4px 7px;
+  color: #39734b;
+  border-radius: 999px;
+  background: #e3f4e6;
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.country-detail-status.is-uncollected {
+  color: #7e5d21;
+  background: #fff1c8;
+}
+
+.country-detail-hero-copy p {
+  margin: 10px 0 0;
+  color: #4a5c77;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.country-detail-section {
+  display: grid;
+  gap: 9px;
+  padding-top: 15px;
+  border-top: 1px solid var(--line);
+}
+
+.country-detail-section-heading h3 {
+  margin: 4px 0 0;
+  font-size: 15px;
+}
+
+.country-detail-copy {
+  margin: 0;
+  color: #4a5c77;
+  font-size: 10px;
+  line-height: 1.7;
+}
+
+.country-detail-map {
+  display: grid;
+  min-height: 165px;
+  overflow: hidden;
+  place-items: center;
+  border: 1px solid rgba(79, 130, 202, 0.2);
+  border-radius: 11px;
+  background: #eaf2fa;
+}
+
+.country-detail-map.is-loading {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.country-detail-map svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.country-world-land {
+  fill: #d4deea;
+  stroke: rgba(74, 92, 119, 0.55);
+  stroke-width: 0.35;
+  vector-effect: non-scaling-stroke;
+}
+
+.country-world-land.is-selected {
+  fill: #5f91c9;
+  stroke: #2455a4;
+  stroke-width: 0.8;
+}
+
+.country-world-marker {
+  fill: #d94f58;
+  stroke: #fff;
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+}
+
+.country-detail-character-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.country-character-preview {
+  position: relative;
+  flex: 0 0 auto;
+  width: 94px;
+  height: 94px;
+  overflow: hidden;
+  border: 3px solid #222b3d;
+  border-radius: 50%;
+  background: #f6f8fb;
+  box-shadow: 0 5px 0 rgba(23, 32, 52, 0.14);
+}
+
+.country-character-preview.has-sprite {
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 12px;
+  background: #eef3f8;
+}
+
+.country-character-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.country-character-ball {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+}
+
+.country-character-face {
+  position: absolute;
+  inset: 0;
+}
+
+.country-character-eye {
+  position: absolute;
+  top: 37%;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  box-shadow: inset 0 0 0 3px #1c2334;
+}
+
+.country-character-eye:first-child {
+  left: 27%;
+}
+
+.country-character-eye:last-child {
+  right: 27%;
+}
+
+.country-character-face.is-round .country-character-eye {
+  border-radius: 50%;
+}
+
+.country-character-face.is-sharp .country-character-eye {
+  transform: rotate(45deg) scale(0.82, 1.08);
+}
+
+.country-detail-trivia,
+.country-detail-sources {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.country-detail-trivia li,
+.country-detail-sources li {
+  color: #4a5c77;
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.country-detail-sources a {
+  color: var(--blue-deep);
   font-weight: 800;
 }
 
@@ -1988,6 +2260,29 @@ button:disabled {
 
   .flag-collection-grid {
     grid-template-columns: 1fr;
+  }
+
+  .country-detail-form {
+    padding: 16px;
+  }
+
+  .country-detail-heading h2 {
+    font-size: 22px;
+  }
+
+  .country-detail-hero {
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: 11px;
+    padding: 10px;
+  }
+
+  .country-detail-flag {
+    width: 96px;
+    height: 62px;
+  }
+
+  .country-detail-map {
+    min-height: 128px;
   }
 
   .shop-item {

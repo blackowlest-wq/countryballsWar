@@ -27,6 +27,7 @@ import {
 import { getAiAttackCandidates as collectAiAttackCandidates, chooseAiAttackCandidate } from "./campaign/ai.js";
 import { calculateGroupCombatDamage } from "./campaign/combat.js";
 import { collectCountryFlags } from "./campaign/flag-collection.js";
+import { getCountryWorldMapData, projectWorldMapPoint } from "./campaign/country-location.js";
 import { findRegionAtWorldPoint } from "./render/region-targeting.js";
 import { selectUnitSpriteKey } from "./render/unit-sprite.js";
 
@@ -75,6 +76,19 @@ const ui = {
   flagCollectionGrid: document.querySelector("#flagCollectionGrid"),
   flagCollectionCount: document.querySelector("#flagCollectionCount"),
   flagCollectionSummary: document.querySelector("#flagCollectionSummary"),
+  countryDetailDialog: document.querySelector("#countryDetailDialog"),
+  countryDetailBack: document.querySelector("#countryDetailBackButton"),
+  countryDetailName: document.querySelector("#countryDetailName"),
+  countryDetailEnglishName: document.querySelector("#countryDetailEnglishName"),
+  countryDetailFlag: document.querySelector("#countryDetailFlag"),
+  countryDetailStatus: document.querySelector("#countryDetailStatus"),
+  countryDetailOverview: document.querySelector("#countryDetailOverview"),
+  countryDetailMap: document.querySelector("#countryDetailMap"),
+  countryDetailLocation: document.querySelector("#countryDetailLocation"),
+  countryDetailCharacter: document.querySelector("#countryDetailCharacter"),
+  countryDetailFlagOrigin: document.querySelector("#countryDetailFlagOrigin"),
+  countryDetailTrivia: document.querySelector("#countryDetailTrivia"),
+  countryDetailSources: document.querySelector("#countryDetailSources"),
   dataResetDialog: document.querySelector("#dataResetDialog"),
   cancelDataReset: document.querySelector("#cancelDataResetButton"),
   confirmDataReset: document.querySelector("#confirmDataResetButton"),
@@ -1673,6 +1687,163 @@ function countryFlagBackground(country) {
   return `linear-gradient(${direction}, ${stops})`;
 }
 
+const COUNTRY_FLAG_SVG_NS = "http://www.w3.org/2000/svg";
+
+function createCountryFlagSvgElement(tagName, attributes = {}) {
+  const element = document.createElementNS(COUNTRY_FLAG_SVG_NS, tagName);
+  Object.entries(attributes).forEach(([name, value]) => element.setAttribute(name, value));
+  return element;
+}
+
+function flagStarPoints(centerX, centerY, outerRadius, innerRadius, pointCount = 5) {
+  return Array.from({ length: pointCount * 2 }, (_, index) => {
+    const angle = -Math.PI / 2 + (index * Math.PI) / pointCount;
+    const radius = index % 2 === 0 ? outerRadius : innerRadius;
+    return `${(centerX + Math.cos(angle) * radius).toFixed(3)},${(centerY + Math.sin(angle) * radius).toFixed(3)}`;
+  }).join(" ");
+}
+
+function appendCountryFlagStar(svg, centerX, centerY, outerRadius, innerRadius, color) {
+  svg.append(createCountryFlagSvgElement("polygon", {
+    points: flagStarPoints(centerX, centerY, outerRadius, innerRadius),
+    fill: color,
+  }));
+}
+
+function appendCountryFlagTrigram(svg, x, y, pattern) {
+  pattern.forEach((row, rowIndex) => {
+    const top = y + rowIndex * 0.1;
+    row.forEach((solid, segmentIndex) => {
+      if (!solid) return;
+      svg.append(createCountryFlagSvgElement("rect", {
+        x: x + segmentIndex * 0.16,
+        y: top,
+        width: 0.13,
+        height: 0.045,
+        fill: "#111827",
+      }));
+    });
+  });
+}
+
+function appendCountryFlagTaegeuk(svg) {
+  svg.append(createCountryFlagSvgElement("circle", { cx: 1.5, cy: 1, r: 0.42, fill: "#0047a0" }));
+  svg.append(createCountryFlagSvgElement("path", {
+    d: "M 1.5 0.58 A 0.42 0.42 0 0 0 1.5 1.42 A 0.21 0.21 0 0 1 1.5 1.00 A 0.21 0.21 0 0 0 1.5 0.58 Z",
+    fill: "#cd2e3a",
+  }));
+  svg.append(createCountryFlagSvgElement("circle", { cx: 1.5, cy: 0.79, r: 0.105, fill: "#0047a0" }));
+  svg.append(createCountryFlagSvgElement("circle", { cx: 1.5, cy: 1.21, r: 0.105, fill: "#cd2e3a" }));
+}
+
+function renderCountryFlag(country, container) {
+  if (!country || !container) return;
+
+  const svg = createCountryFlagSvgElement("svg", {
+    viewBox: "0 0 3 2",
+    preserveAspectRatio: "none",
+    "aria-hidden": "true",
+  });
+  const addRect = (x, y, width, height, fill) => svg.append(createCountryFlagSvgElement("rect", { x, y, width, height, fill }));
+
+  switch (country.id) {
+    case "russia":
+      addRect(0, 0, 3, 2 / 3, "#fff");
+      addRect(0, 2 / 3, 3, 2 / 3, "#2455a4");
+      addRect(0, 4 / 3, 3, 2 / 3, "#d52b1e");
+      break;
+    case "kazakhstan": {
+      addRect(0, 0, 3, 2, "#00afca");
+      addRect(0, 0, 0.22, 2, "#f6d04d");
+      svg.append(createCountryFlagSvgElement("circle", { cx: 1.62, cy: 0.62, r: 0.2, fill: "#f6d04d" }));
+      for (let index = 0; index < 12; index += 1) {
+        const angle = (index * Math.PI) / 6;
+        svg.append(createCountryFlagSvgElement("line", {
+          x1: 1.62 + Math.cos(angle) * 0.25,
+          y1: 0.62 + Math.sin(angle) * 0.25,
+          x2: 1.62 + Math.cos(angle) * 0.34,
+          y2: 0.62 + Math.sin(angle) * 0.34,
+          stroke: "#f6d04d",
+          "stroke-width": 0.04,
+        }));
+      }
+      svg.append(createCountryFlagSvgElement("path", { d: "M 1.27 1.06 Q 1.62 0.83 1.98 1.06 Q 1.62 1.26 1.27 1.06 Z", fill: "#f6d04d" }));
+      break;
+    }
+    case "mongolia":
+      addRect(0, 0, 1, 2, "#c4272f");
+      addRect(1, 0, 1, 2, "#164b9b");
+      addRect(2, 0, 1, 2, "#c4272f");
+      svg.append(createCountryFlagSvgElement("circle", { cx: 0.5, cy: 0.72, r: 0.13, fill: "none", stroke: "#f6d04d", "stroke-width": 0.035 }));
+      svg.append(createCountryFlagSvgElement("line", { x1: 0.5, y1: 0.42, x2: 0.5, y2: 1.58, stroke: "#f6d04d", "stroke-width": 0.04 }));
+      svg.append(createCountryFlagSvgElement("rect", { x: 0.4, y: 1.0, width: 0.2, height: 0.08, fill: "#f6d04d" }));
+      break;
+    case "china":
+      addRect(0, 0, 3, 2, "#de2910");
+      appendCountryFlagStar(svg, 0.52, 0.52, 0.28, 0.12, "#ffde00");
+      appendCountryFlagStar(svg, 0.98, 0.23, 0.1, 0.04, "#ffde00");
+      appendCountryFlagStar(svg, 1.16, 0.48, 0.1, 0.04, "#ffde00");
+      appendCountryFlagStar(svg, 1.13, 0.79, 0.1, 0.04, "#ffde00");
+      appendCountryFlagStar(svg, 0.9, 1.02, 0.1, 0.04, "#ffde00");
+      break;
+    case "north-korea":
+      addRect(0, 0, 3, 0.3, "#024fa2");
+      addRect(0, 0.3, 3, 0.15, "#fff");
+      addRect(0, 0.45, 3, 1.1, "#ed1c27");
+      addRect(0, 1.55, 3, 0.15, "#fff");
+      addRect(0, 1.7, 3, 0.3, "#024fa2");
+      svg.append(createCountryFlagSvgElement("circle", { cx: 0.62, cy: 1, r: 0.31, fill: "#fff" }));
+      appendCountryFlagStar(svg, 0.62, 1, 0.22, 0.09, "#ed1c27");
+      break;
+    case "south-korea":
+      addRect(0, 0, 3, 2, "#fff");
+      appendCountryFlagTaegeuk(svg);
+      appendCountryFlagTrigram(svg, 0.62, 0.37, [[1, 1, 1], [1, 0, 1], [1, 1, 1]]);
+      appendCountryFlagTrigram(svg, 2.02, 0.37, [[1, 0, 1], [1, 1, 1], [1, 0, 1]]);
+      appendCountryFlagTrigram(svg, 0.62, 1.32, [[1, 1, 1], [1, 1, 1], [1, 0, 1]]);
+      appendCountryFlagTrigram(svg, 2.02, 1.32, [[1, 0, 1], [1, 1, 1], [1, 1, 1]]);
+      break;
+    case "japan":
+      addRect(0, 0, 3, 2, "#fff");
+      svg.append(createCountryFlagSvgElement("circle", { cx: 1.5, cy: 1, r: 0.42, fill: "#bc002d" }));
+      break;
+    case "vietnam":
+      addRect(0, 0, 3, 2, "#da251d");
+      appendCountryFlagStar(svg, 1.5, 1, 0.42, 0.18, "#ffcd00");
+      break;
+    case "philippines":
+      addRect(0, 0, 3, 1, "#0038a8");
+      addRect(0, 1, 3, 1, "#ce1126");
+      svg.append(createCountryFlagSvgElement("polygon", { points: "0,0 0,2 1.58,1", fill: "#fff" }));
+      svg.append(createCountryFlagSvgElement("circle", { cx: 0.56, cy: 1, r: 0.2, fill: "#fcd116" }));
+      for (let index = 0; index < 8; index += 1) {
+        const angle = (index * Math.PI) / 4;
+        svg.append(createCountryFlagSvgElement("line", {
+          x1: 0.56 + Math.cos(angle) * 0.24,
+          y1: 1 + Math.sin(angle) * 0.24,
+          x2: 0.56 + Math.cos(angle) * 0.31,
+          y2: 1 + Math.sin(angle) * 0.31,
+          stroke: "#fcd116",
+          "stroke-width": 0.035,
+        }));
+      }
+      [[0.14, 0.27], [0.14, 1.73], [1.42, 1]].forEach(([cx, cy]) => appendCountryFlagStar(svg, cx, cy, 0.08, 0.035, "#fcd116"));
+      break;
+    case "indonesia":
+      addRect(0, 0, 3, 1, "#ce1126");
+      addRect(0, 1, 3, 1, "#fff");
+      break;
+    default:
+      addRect(0, 0, 3, 2, countryFlagBackground(country));
+      break;
+  }
+
+  container.style.background = "transparent";
+  container.replaceChildren(svg);
+  container.setAttribute("role", "img");
+  container.setAttribute("aria-label", `${countryDisplayName(country)}の国旗`);
+}
+
 function updateFlagCollectionDialog() {
   if (!ui.flagCollectionGrid) return;
 
@@ -1687,13 +1858,15 @@ function updateFlagCollectionDialog() {
   const fragment = document.createDocumentFragment();
   countries.forEach((country) => {
     const isCollected = collectedIds.has(country.id);
-    const item = document.createElement("article");
+    const item = document.createElement("button");
+    item.type = "button";
+    item.dataset.countryId = country.id;
     item.className = `flag-collection-item${isCollected ? " is-collected" : ""}`;
     item.setAttribute("aria-label", `${countryDisplayName(country)}の国旗 ${isCollected ? "獲得済み" : "未獲得"}`);
 
     const flag = document.createElement("span");
     flag.className = `flag-collection-flag${isCollected ? "" : " is-locked"}`;
-    flag.style.background = countryFlagBackground(country);
+    renderCountryFlag(country, flag);
     flag.setAttribute("aria-hidden", "true");
 
     const copy = document.createElement("span");
@@ -2009,13 +2182,18 @@ function closeTitleScreen() {
 
 let specialMoveSetupDefaultName = "";
 let returnToTitleAfterFlagCollection = false;
+let returnToFlagCollectionAfterCountryDetail = false;
+let returnToTitleAfterCountryDetail = false;
+let suppressFlagCollectionRestore = false;
+let activeCountryDetailId = null;
+let countryWorldMapPromise = null;
 
-function openFlagCollection() {
+function openFlagCollection({ returnToTitle = Boolean(ui.titleDialog?.open) } = {}) {
   if (!ui.flagCollectionDialog || ui.flagCollectionDialog.open) return;
 
   updateFlagCollectionDialog();
-  returnToTitleAfterFlagCollection = Boolean(ui.titleDialog?.open);
-  if (returnToTitleAfterFlagCollection) ui.titleDialog.close();
+  returnToTitleAfterFlagCollection = returnToTitle;
+  if (ui.titleDialog?.open) ui.titleDialog.close();
 
   try {
     ui.flagCollectionDialog.showModal();
@@ -2028,12 +2206,203 @@ function openFlagCollection() {
 }
 
 function restoreTitleAfterFlagCollection() {
+  if (suppressFlagCollectionRestore) {
+    suppressFlagCollectionRestore = false;
+    return;
+  }
+
   const shouldReturnToTitle = returnToTitleAfterFlagCollection;
   returnToTitleAfterFlagCollection = false;
   if (!shouldReturnToTitle || state.started) return;
 
   openTitleScreen();
   requestAnimationFrame(() => ui.flagCollectionButton?.focus());
+}
+
+function renderCountryCharacter(country) {
+  if (!ui.countryDetailCharacter) return;
+
+  const character = GAME_CONFIG.characters[country.id];
+  ui.countryDetailCharacter.className = "country-character-preview";
+  ui.countryDetailCharacter.replaceChildren();
+
+  if (character?.sprite) {
+    ui.countryDetailCharacter.classList.add("has-sprite");
+    const image = document.createElement("img");
+    image.src = character.sprite;
+    image.alt = `${countryDisplayName(country)}の国キャラクター`;
+    ui.countryDetailCharacter.append(image);
+    return;
+  }
+
+  const ball = document.createElement("span");
+  ball.className = "country-character-ball";
+  ball.style.background = countryFlagBackground(country);
+  const face = document.createElement("span");
+  face.className = `country-character-face is-${character?.eyeStyle || "round"}`;
+  ["left", "right"].forEach((side) => {
+    const eye = document.createElement("span");
+    eye.className = "country-character-eye";
+    eye.dataset.side = side;
+    face.append(eye);
+  });
+  ball.append(face);
+  ui.countryDetailCharacter.append(ball);
+}
+
+function renderCountryDetailSources(country) {
+  if (!ui.countryDetailSources) return;
+  const fragment = document.createDocumentFragment();
+  country.sources.forEach((source) => {
+    const item = document.createElement("li");
+    const link = document.createElement("a");
+    link.href = source.url;
+    link.target = "_blank";
+    link.rel = "noreferrer noopener";
+    link.textContent = source.label;
+    item.append(link);
+    fragment.append(item);
+  });
+  ui.countryDetailSources.replaceChildren(fragment);
+}
+
+function renderCountryDetail(country) {
+  const collected = new Set(state.campaign.collectedCountryIds || []).has(country.id);
+  if (ui.countryDetailName) ui.countryDetailName.textContent = countryDisplayName(country);
+  if (ui.countryDetailEnglishName) ui.countryDetailEnglishName.textContent = country.name;
+  if (ui.countryDetailFlag) {
+    renderCountryFlag(country, ui.countryDetailFlag);
+  }
+  if (ui.countryDetailStatus) {
+    ui.countryDetailStatus.textContent = collected ? "獲得済み" : "未獲得";
+    ui.countryDetailStatus.classList.toggle("is-uncollected", !collected);
+  }
+  if (ui.countryDetailOverview) ui.countryDetailOverview.textContent = country.overview;
+  if (ui.countryDetailLocation) ui.countryDetailLocation.textContent = `${country.location.region}。${country.location.description}`;
+  if (ui.countryDetailFlagOrigin) ui.countryDetailFlagOrigin.textContent = country.flagOrigin;
+  if (ui.countryDetailTrivia) {
+    const fragment = document.createDocumentFragment();
+    country.trivia.forEach((trivia) => {
+      const item = document.createElement("li");
+      item.textContent = trivia;
+      fragment.append(item);
+    });
+    ui.countryDetailTrivia.replaceChildren(fragment);
+  }
+  renderCountryCharacter(country);
+  renderCountryDetailSources(country);
+}
+
+function setCountryDetailMapMessage(message) {
+  if (!ui.countryDetailMap) return;
+  ui.countryDetailMap.classList.add("is-loading");
+  ui.countryDetailMap.setAttribute("aria-label", message);
+  ui.countryDetailMap.textContent = message;
+}
+
+function renderCountryWorldMap(country, worldGeoJson) {
+  if (!ui.countryDetailMap) return;
+  const mapData = getCountryWorldMapData(worldGeoJson, country.isoA3);
+  const svgNamespace = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNamespace, "svg");
+  svg.setAttribute("viewBox", mapData.viewBox);
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", `${countryDisplayName(country)}の実際の地図上の位置`);
+  ui.countryDetailMap.setAttribute("aria-label", `${countryDisplayName(country)}の実際の地図上の位置`);
+
+  const ocean = document.createElementNS(svgNamespace, "rect");
+  ocean.setAttribute("width", "360");
+  ocean.setAttribute("height", "180");
+  ocean.setAttribute("fill", "#eaf2fa");
+  svg.append(ocean);
+
+  mapData.paths.forEach(({ path, selected }) => {
+    const shape = document.createElementNS(svgNamespace, "path");
+    shape.setAttribute("class", `country-world-land${selected ? " is-selected" : ""}`);
+    shape.setAttribute("d", path);
+    svg.append(shape);
+  });
+
+  const markerPoint = projectWorldMapPoint(mapData.selectedPoint);
+  if (markerPoint) {
+    const marker = document.createElementNS(svgNamespace, "circle");
+    marker.classList.add("country-world-marker");
+    marker.setAttribute("cx", markerPoint[0].toFixed(2));
+    marker.setAttribute("cy", markerPoint[1].toFixed(2));
+    marker.setAttribute("r", "2.8");
+    svg.append(marker);
+  }
+
+  ui.countryDetailMap.classList.remove("is-loading");
+  ui.countryDetailMap.replaceChildren(svg);
+}
+
+function loadCountryWorldMap() {
+  if (!countryWorldMapPromise) {
+    countryWorldMapPromise = fetch("./src/config/geodata/ne_110m_admin_0_countries.geojson")
+      .then((response) => {
+        if (!response.ok) throw new Error(`Country world map request failed: ${response.status}`);
+        return response.json();
+      });
+  }
+  return countryWorldMapPromise;
+}
+
+async function updateCountryDetailMap(country) {
+  setCountryDetailMapMessage("地図を読み込んでいます…");
+  try {
+    const worldGeoJson = await loadCountryWorldMap();
+    if (activeCountryDetailId !== country.id) return;
+    renderCountryWorldMap(country, worldGeoJson);
+  } catch {
+    if (activeCountryDetailId !== country.id) return;
+    setCountryDetailMapMessage("地図を表示できませんでした。");
+  }
+}
+
+function openCountryDetail(countryId) {
+  const country = GAME_CONFIG.countries[countryId];
+  if (!country || !ui.countryDetailDialog || ui.countryDetailDialog.open) return;
+
+  activeCountryDetailId = country.id;
+  returnToFlagCollectionAfterCountryDetail = Boolean(ui.flagCollectionDialog?.open);
+  returnToTitleAfterCountryDetail = returnToTitleAfterFlagCollection;
+  renderCountryDetail(country);
+
+  if (returnToFlagCollectionAfterCountryDetail) {
+    suppressFlagCollectionRestore = true;
+    ui.flagCollectionDialog.close();
+  }
+
+  try {
+    ui.countryDetailDialog.showModal();
+  } catch {
+    activeCountryDetailId = null;
+    if (returnToFlagCollectionAfterCountryDetail) {
+      returnToFlagCollectionAfterCountryDetail = false;
+      openFlagCollection({ returnToTitle: returnToTitleAfterCountryDetail });
+    }
+    return;
+  }
+  requestAnimationFrame(() => ui.countryDetailBack?.focus());
+  updateCountryDetailMap(country);
+}
+
+function restoreFlagCollectionAfterCountryDetail() {
+  activeCountryDetailId = null;
+  const shouldReturnToCollection = returnToFlagCollectionAfterCountryDetail;
+  const shouldReturnToTitle = returnToTitleAfterCountryDetail;
+  returnToFlagCollectionAfterCountryDetail = false;
+  returnToTitleAfterCountryDetail = false;
+  if (!shouldReturnToCollection) return;
+
+  openFlagCollection({ returnToTitle: shouldReturnToTitle });
+}
+
+function handleFlagCollectionClick(event) {
+  const item = event.target?.closest?.("[data-country-id]");
+  if (!item) return;
+  openCountryDetail(item.dataset.countryId);
 }
 
 function selectedSpecialMoveType() {
@@ -2285,10 +2654,17 @@ document.querySelector("#clearRestartButton").addEventListener("click", restartG
 ui.titleStart?.addEventListener("click", startFromTitle);
 ui.titleReset?.addEventListener("click", openDataResetDialog);
 ui.flagCollectionButton?.addEventListener("click", openFlagCollection);
+ui.flagCollectionGrid?.addEventListener("click", handleFlagCollectionClick);
 ui.flagCollectionDialog?.addEventListener("close", restoreTitleAfterFlagCollection);
 ui.flagCollectionDialog?.addEventListener("cancel", (event) => {
   event.preventDefault();
   ui.flagCollectionDialog.close();
+});
+ui.countryDetailBack?.addEventListener("click", () => ui.countryDetailDialog?.close());
+ui.countryDetailDialog?.addEventListener("close", restoreFlagCollectionAfterCountryDetail);
+ui.countryDetailDialog?.addEventListener("cancel", (event) => {
+  event.preventDefault();
+  ui.countryDetailDialog.close();
 });
 ui.specialMoveButton?.addEventListener("click", useSpecialMove);
 ui.specialMoveForm?.addEventListener("submit", confirmSpecialMoveSetup);

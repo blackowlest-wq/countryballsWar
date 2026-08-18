@@ -69,6 +69,19 @@ test("countries own fragments and major countries can require multiple fragments
   });
 });
 
+test("every country has researched profile content and a world map code", () => {
+  Object.values(GAME_CONFIG.countries).forEach((country) => {
+    assert.match(country.isoA3, /^[A-Z]{3}$/);
+    assert.ok(country.overview.length > 0);
+    assert.ok(country.location.region.length > 0);
+    assert.ok(country.location.description.length > 0);
+    assert.ok(country.flagOrigin.length > 0);
+    assert.ok(country.trivia.length >= 2);
+    assert.ok(country.sources.length >= 2);
+    country.sources.forEach((source) => assert.match(source.url, /^https?:\/\//));
+  });
+});
+
 test("runtime scenario uses phase production and rounds front-start enemy strength", () => {
   const runtime = createRuntimeScenario();
   const phase = GAME_CONFIG.campaign.phases[GAME_CONFIG.scenario.phaseId];

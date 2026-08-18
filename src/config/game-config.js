@@ -108,6 +108,21 @@ function validateCountryMaster(countries, mapRegions) {
     assertConfig(typeof country.name === "string" && country.name.trim().length > 0, `Country ${countryId} is missing name`);
     assertConfig(typeof country.nameJa === "string" && country.nameJa.trim().length > 0, `Country ${countryId} is missing nameJa`);
     assertConfig(typeof country.shortName === "string" && country.shortName.trim().length > 0, `Country ${countryId} is missing shortName`);
+    assertConfig(typeof country.isoA3 === "string" && /^[A-Z]{3}$/.test(country.isoA3), `Country ${countryId} is missing isoA3`);
+    assertConfig(typeof country.overview === "string" && country.overview.trim().length > 0, `Country ${countryId} is missing overview`);
+    assertConfig(country.location && typeof country.location === "object", `Country ${countryId} is missing location`);
+    assertConfig(typeof country.location.region === "string" && country.location.region.trim().length > 0, `Country ${countryId} is missing location.region`);
+    assertConfig(typeof country.location.description === "string" && country.location.description.trim().length > 0, `Country ${countryId} is missing location.description`);
+    assertConfig(typeof country.flagOrigin === "string" && country.flagOrigin.trim().length > 0, `Country ${countryId} is missing flagOrigin`);
+    assertConfig(Array.isArray(country.trivia) && country.trivia.length > 0, `Country ${countryId} is missing trivia`);
+    country.trivia.forEach((trivia, triviaIndex) => {
+      assertConfig(typeof trivia === "string" && trivia.trim().length > 0, `Country ${countryId} trivia #${triviaIndex + 1} is invalid`);
+    });
+    assertConfig(Array.isArray(country.sources) && country.sources.length > 0, `Country ${countryId} is missing sources`);
+    country.sources.forEach((source, sourceIndex) => {
+      assertConfig(source && typeof source.label === "string" && source.label.trim().length > 0, `Country ${countryId} source #${sourceIndex + 1} is missing label`);
+      assertConfig(typeof source.url === "string" && /^https?:\/\//.test(source.url), `Country ${countryId} source #${sourceIndex + 1} has an invalid url`);
+    });
     assertConfig(Array.isArray(country.fragmentIds) && country.fragmentIds.length > 0, `Country ${countryId} is missing fragmentIds`);
     assertConfig(typeof country.isMajor === "boolean", `Country ${countryId} is missing isMajor`);
     assertConfig(country.flag && typeof country.flag === "object", `Country ${countryId} is missing flag data`);

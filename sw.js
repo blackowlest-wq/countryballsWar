@@ -1,4 +1,4 @@
-const CACHE_NAME = "countryfronts-shell-v27";
+const CACHE_NAME = "countryfronts-shell-v29";
 
 const APP_SHELL = [
   "./",
@@ -22,10 +22,12 @@ const APP_SHELL = [
   "./src/campaign/ai.js",
   "./src/campaign/combat.js",
   "./src/campaign/flag-collection.js",
+  "./src/campaign/country-location.js",
   "./src/campaign/phase-runtime.js",
   "./src/render/region-targeting.js",
   "./src/render/unit-sprite.js",
   "./src/storage/persistent-state.js",
+  "./src/config/geodata/ne_110m_admin_0_countries.geojson",
   "./manifest.webmanifest",
   "./assets/icons/icon-192.png",
   "./assets/icons/icon-512.png",
