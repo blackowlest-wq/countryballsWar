@@ -31,12 +31,15 @@ test("title screen exposes the flag collection menu", () => {
   assert.match(html, /id="flagCollectionGrid"/);
 });
 
-test("flag collection remains a two-dimensional grid on compact screens", () => {
+test("flag collection uses four compact columns with names below flags", () => {
+  const main = readProjectFile("src/main.js");
   const styles = readProjectFile("styles.css");
   const grid = styles.match(/\.flag-collection-grid\s*\{[\s\S]*?\n\}/)?.[0] || "";
 
-  assert.match(grid, /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
-  assert.doesNotMatch(styles, /\.flag-collection-grid\s*\{\s*grid-template-columns:\s*1fr;/);
+  assert.match(grid, /grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(main, /name\.textContent = countryDisplayName\(country\)/);
+  assert.doesNotMatch(main, /status\.textContent = isCollected \? "獲得済み" : countryDisplayName\(country\)/);
+  assert.doesNotMatch(main, /name\.textContent = isCollected \? countryDisplayName\(country\) : "未獲得"/);
 });
 
 test("title start opens a front selection dialog and clear returns to it", () => {

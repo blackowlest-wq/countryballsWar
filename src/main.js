@@ -1780,7 +1780,7 @@ function updateFlagCollectionDialog() {
     item.type = "button";
     item.dataset.countryId = country.id;
     item.className = `flag-collection-item${isCollected ? " is-collected" : ""}`;
-    item.setAttribute("aria-label", `${countryDisplayName(country)}の国旗 ${isCollected ? "獲得済み" : "未獲得"}`);
+    item.setAttribute("aria-label", `${countryDisplayName(country)}の国旗`);
 
     const flag = document.createElement("span");
     flag.className = `flag-collection-flag${isCollected ? "" : " is-locked"}`;
@@ -1790,10 +1790,8 @@ function updateFlagCollectionDialog() {
     const copy = document.createElement("span");
     copy.className = "flag-collection-copy";
     const name = document.createElement("strong");
-    name.textContent = isCollected ? countryDisplayName(country) : "未獲得";
-    const status = document.createElement("small");
-    status.textContent = isCollected ? "獲得済み" : countryDisplayName(country);
-    copy.append(name, status);
+    name.textContent = countryDisplayName(country);
+    copy.append(name);
 
     item.append(flag, copy);
     fragment.append(item);
