@@ -69,6 +69,10 @@ const ui = {
   specialMoveName: document.querySelector("#specialMoveName"),
   specialMoveUses: document.querySelector("#specialMoveUses"),
   specialMoveButton: document.querySelector("#specialMoveButton"),
+  specialMoveCutIn: document.querySelector("#specialMoveCutIn"),
+  specialMoveCutInCharacter: document.querySelector("#specialMoveCutInCharacter"),
+  specialMoveCutInCharacterFallback: document.querySelector("#specialMoveCutInCharacterFallback"),
+  specialMoveCutInName: document.querySelector("#specialMoveCutInName"),
   titleDialog: document.querySelector("#titleDialog"),
   titleStart: document.querySelector("#titleStartButton"),
   titleReset: document.querySelector("#titleResetButton"),
@@ -321,6 +325,7 @@ function transitionToPhase(phaseId) {
 const view = { width: 0, height: 0 };
 let lastTime = performance.now();
 let toastTimeout = null;
+let specialMoveCutInTimeout = null;
 
 function resizeCanvas() {
   const rect = stage.getBoundingClientRect();
@@ -1949,6 +1954,63 @@ function specialMoveEffectMessage(type, config) {
   return `${config.durationSeconds}秒間、味方部隊を戦闘ダメージと敗北判定から守ります`;
 }
 
+function getSelectedPlayerUnit() {
+  const playerUnits = units.filter((unit) => unit.faction === PLAYER_FACTION_ID);
+  if (state.selectedRegionId) {
+    const selectedUnit = playerUnits.find((unit) => unit.regionId === state.selectedRegionId || unit.targetRegionId === state.selectedRegionId);
+    if (selectedUnit) return selectedUnit;
+  }
+  return playerUnits[0] || null;
+}
+
+function getSpecialMoveCutInCharacter() {
+  const unit = getSelectedPlayerUnit();
+  const spriteKey = selectUnitSpriteKey({
+    playerFactionId: PLAYER_FACTION_ID,
+    faction: unit?.faction || PLAYER_FACTION_ID,
+    characterId: unit?.characterId || "player",
+    characters: GAME_CONFIG.characters,
+  });
+  const source = spriteKey ? GAME_CONFIG.factions[spriteKey]?.unitSprite : null;
+  const character = unit?.characterId ? GAME_CONFIG.characters[unit.characterId] : null;
+  const label = character?.countryId
+    ? `${countryDisplayName(GAME_CONFIG.countries[character.countryId])}のキャラクター`
+    : "自軍キャラクター";
+  return { label, source };
+}
+
+function hideSpecialMoveCutIn() {
+  if (!ui.specialMoveCutIn) return;
+  ui.specialMoveCutIn.classList.remove("is-visible", "is-static");
+  ui.specialMoveCutIn.setAttribute("aria-hidden", "true");
+}
+
+function showSpecialMoveCutIn(name) {
+  if (!ui.specialMoveCutIn || !ui.specialMoveCutInName) return;
+
+  const { label, source } = getSpecialMoveCutInCharacter();
+  if (ui.specialMoveCutInName) ui.specialMoveCutInName.textContent = name;
+  if (ui.specialMoveCutInCharacter) {
+    ui.specialMoveCutInCharacter.hidden = !source;
+    ui.specialMoveCutInCharacter.alt = label;
+    if (source) ui.specialMoveCutInCharacter.src = source;
+  }
+  if (ui.specialMoveCutInCharacterFallback) {
+    ui.specialMoveCutInCharacterFallback.hidden = Boolean(source);
+  }
+
+  if (specialMoveCutInTimeout) window.clearTimeout(specialMoveCutInTimeout);
+  ui.specialMoveCutIn.classList.remove("is-visible", "is-static");
+  ui.specialMoveCutIn.setAttribute("aria-hidden", "false");
+  void ui.specialMoveCutIn.offsetWidth;
+  ui.specialMoveCutIn.classList.toggle("is-static", !state.motion);
+  ui.specialMoveCutIn.classList.add("is-visible");
+  specialMoveCutInTimeout = window.setTimeout(() => {
+    hideSpecialMoveCutIn();
+    specialMoveCutInTimeout = null;
+  }, 1800);
+}
+
 function useSpecialMove() {
   if (!state.started || state.defeated || state.cleared || state.specialMoveUsesRemaining <= 0 || !state.specialMove) return;
 
@@ -1959,6 +2021,7 @@ function useSpecialMove() {
 
   state.specialMoveUsesRemaining -= 1;
   if (type === "invincibility") state.invincibilityRemaining = config.durationSeconds;
+  showSpecialMoveCutIn(name);
   const message = `${name}を発動：${specialMoveEffectMessage(type, config)}`;
   showToast(message);
   addEvent(message);
@@ -2123,6 +2186,7 @@ function restartGame({ announce = true } = {}) {
   ui.dispatchHint.classList.remove("is-hidden");
   ui.defeatDialog?.close();
   ui.clearDialog?.close();
+  hideSpecialMoveCutIn();
   lastTime = performance.now();
   updateHud();
   render();

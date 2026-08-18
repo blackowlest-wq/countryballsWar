@@ -87,3 +87,16 @@ test("toast uses a left message lane instead of the centered lane", () => {
   assert.doesNotMatch(toast, /left: 50%/);
   assert.match(visibleToast, /transform: translate\(0, 0\)/);
 });
+
+test("special move includes a character cut-in with the configured name", () => {
+  const html = readProjectFile("index.html");
+  const main = readProjectFile("src/main.js");
+  const styles = readProjectFile("styles.css");
+
+  assert.match(html, /id="specialMoveCutIn"/);
+  assert.match(html, /id="specialMoveCutInCharacter"/);
+  assert.match(html, /id="specialMoveCutInName"/);
+  assert.match(main, /function showSpecialMoveCutIn/);
+  assert.match(main, /showSpecialMoveCutIn\(name\)/);
+  assert.match(styles, /\.special-move-cut-in-panel/);
+});
