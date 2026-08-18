@@ -28,6 +28,7 @@ import { getAiAttackCandidates as collectAiAttackCandidates, chooseAiAttackCandi
 import { calculateGroupCombatDamage } from "./campaign/combat.js";
 import { collectCountryFlags } from "./campaign/flag-collection.js";
 import { getCountryWorldMapData, projectWorldMapPoint } from "./campaign/country-location.js";
+import { getCountryFlagOrigin } from "./config/countries.js";
 import { findRegionAtWorldPoint } from "./render/region-targeting.js";
 import { selectUnitSpriteKey } from "./render/unit-sprite.js";
 
@@ -2279,7 +2280,7 @@ function renderCountryDetail(country) {
   }
   if (ui.countryDetailOverview) ui.countryDetailOverview.textContent = country.overview;
   if (ui.countryDetailLocation) ui.countryDetailLocation.textContent = `${country.location.region}。${country.location.description}`;
-  if (ui.countryDetailFlagOrigin) ui.countryDetailFlagOrigin.textContent = country.flagOrigin;
+  if (ui.countryDetailFlagOrigin) ui.countryDetailFlagOrigin.textContent = getCountryFlagOrigin(country);
   if (ui.countryDetailTrivia) {
     const fragment = document.createDocumentFragment();
     country.trivia.forEach((trivia) => {

@@ -113,7 +113,12 @@ function validateCountryMaster(countries, mapRegions) {
     assertConfig(country.location && typeof country.location === "object", `Country ${countryId} is missing location`);
     assertConfig(typeof country.location.region === "string" && country.location.region.trim().length > 0, `Country ${countryId} is missing location.region`);
     assertConfig(typeof country.location.description === "string" && country.location.description.trim().length > 0, `Country ${countryId} is missing location.description`);
-    assertConfig(typeof country.flagOrigin === "string" && country.flagOrigin.trim().length > 0, `Country ${countryId} is missing flagOrigin`);
+    assertConfig(
+      country.flagOrigin === undefined
+        || country.flagOrigin === null
+        || typeof country.flagOrigin === "string",
+      `Country ${countryId} has an invalid flagOrigin`,
+    );
     assertConfig(Array.isArray(country.trivia) && country.trivia.length > 0, `Country ${countryId} is missing trivia`);
     country.trivia.forEach((trivia, triviaIndex) => {
       assertConfig(typeof trivia === "string" && trivia.trim().length > 0, `Country ${countryId} trivia #${triviaIndex + 1} is invalid`);

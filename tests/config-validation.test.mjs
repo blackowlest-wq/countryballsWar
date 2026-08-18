@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { GAME_CONFIG, createGameConfig, createRuntimeScenario } from "../src/config/game-config.js";
 import { MAP } from "../src/config/map.js";
+import { getCountryFlagOrigin, UNKNOWN_COUNTRY_FLAG_ORIGIN } from "../src/config/countries.js";
 
 function editableConfig() {
   return JSON.parse(JSON.stringify(GAME_CONFIG));
@@ -80,6 +81,17 @@ test("every country has researched profile content and a world map code", () => 
     assert.ok(country.sources.length >= 2);
     country.sources.forEach((source) => assert.match(source.url, /^https?:\/\//));
   });
+});
+
+test("missing flag origin is accepted and uses the neutral fallback text", () => {
+  const config = editableConfig();
+  delete config.countries.russia.flagOrigin;
+
+  assert.doesNotThrow(() => createGameConfig(config));
+  assert.equal(getCountryFlagOrigin(config.countries.russia), UNKNOWN_COUNTRY_FLAG_ORIGIN);
+
+  config.countries.russia.flagOrigin = "  ";
+  assert.equal(getCountryFlagOrigin(config.countries.russia), UNKNOWN_COUNTRY_FLAG_ORIGIN);
 });
 
 test("runtime scenario uses phase production and rounds front-start enemy strength", () => {

@@ -1,3 +1,11 @@
+export const UNKNOWN_COUNTRY_FLAG_ORIGIN = "国旗の由来は不明。";
+
+export function getCountryFlagOrigin(country) {
+  return typeof country?.flagOrigin === "string" && country.flagOrigin.trim().length > 0
+    ? country.flagOrigin
+    : UNKNOWN_COUNTRY_FLAG_ORIGIN;
+}
+
 export const COUNTRIES = {
   russia: {
     id: "russia",
