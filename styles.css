@@ -488,6 +488,9 @@ button:disabled {
   box-shadow: 0 22px 70px rgba(5, 12, 28, 0.5);
   clip-path: polygon(0 13%, 100% 0, 100% 87%, 0 100%);
   transform: translateX(-110%) skewX(-10deg);
+}
+
+.special-move-cut-in.is-visible .special-move-cut-in-panel {
   animation: special-move-cut-in-panel 1.7s cubic-bezier(0.18, 0.86, 0.26, 1) both;
 }
 
@@ -530,6 +533,9 @@ button:disabled {
   object-fit: contain;
   filter: drop-shadow(9px 12px 0 rgba(11, 24, 48, 0.32));
   transform: translateY(28px) scale(0.86);
+}
+
+.special-move-cut-in.is-visible .special-move-cut-in-character img {
   animation: special-move-cut-in-character 1.7s cubic-bezier(0.16, 0.84, 0.27, 1) both;
 }
 

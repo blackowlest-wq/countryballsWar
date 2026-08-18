@@ -100,3 +100,14 @@ test("special move includes a character cut-in with the configured name", () => 
   assert.match(main, /showSpecialMoveCutIn\(name\)/);
   assert.match(styles, /\.special-move-cut-in-panel/);
 });
+
+test("special move cut-in animations wait until the overlay is visible", () => {
+  const styles = readProjectFile("styles.css");
+  const panelBlock = styles.match(/\.special-move-cut-in-panel\s*\{[\s\S]*?\n\}/)?.[0] || "";
+  const characterBlock = styles.match(/\.special-move-cut-in-character img\s*\{[\s\S]*?\n\}/)?.[0] || "";
+
+  assert.match(styles, /\.special-move-cut-in\.is-visible\s+\.special-move-cut-in-panel/);
+  assert.match(styles, /\.special-move-cut-in\.is-visible\s+\.special-move-cut-in-character img/);
+  assert.doesNotMatch(panelBlock, /animation:\s*special-move-cut-in-panel/);
+  assert.doesNotMatch(characterBlock, /animation:\s*special-move-cut-in-character/);
+});
