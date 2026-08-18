@@ -53,6 +53,7 @@ test("country flag collection exposes a profile dialog with the requested sectio
     "countryDetailOverview",
     "countryDetailMap",
     "countryDetailCharacter",
+    "countryDetailCharacterToggle",
     "countryDetailFlagOrigin",
     "countryDetailTrivia",
     "countryDetailSources",
@@ -60,6 +61,17 @@ test("country flag collection exposes a profile dialog with the requested sectio
   assert.match(main, /openCountryDetail/);
   assert.match(main, /country-location\.js/);
   assert.match(main, /ne_110m_admin_0_countries\.geojson/);
+});
+
+test("country profile can switch to the character image used in battle", () => {
+  const html = readProjectFile("index.html");
+  const main = readProjectFile("src/main.js");
+
+  assert.match(html, /id="countryDetailCharacterToggle"/);
+  assert.match(html, /利用キャラクターの絵に切り替える/);
+  assert.match(main, /function toggleCountryCharacterImage/);
+  assert.match(main, /countryDetailCharacterToggle[\s\S]*aria-pressed/);
+  assert.match(main, /character\.sprite/);
 });
 
 test("toast uses a left message lane instead of the centered lane", () => {

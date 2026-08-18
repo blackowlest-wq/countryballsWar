@@ -92,6 +92,7 @@ const ui = {
   countryDetailMap: document.querySelector("#countryDetailMap"),
   countryDetailLocation: document.querySelector("#countryDetailLocation"),
   countryDetailCharacter: document.querySelector("#countryDetailCharacter"),
+  countryDetailCharacterToggle: document.querySelector("#countryDetailCharacterToggle"),
   countryDetailFlagOrigin: document.querySelector("#countryDetailFlagOrigin"),
   countryDetailTrivia: document.querySelector("#countryDetailTrivia"),
   countryDetailSources: document.querySelector("#countryDetailSources"),
@@ -2332,6 +2333,7 @@ let returnToFlagCollectionAfterCountryDetail = false;
 let returnToTitleAfterCountryDetail = false;
 let suppressFlagCollectionRestore = false;
 let activeCountryDetailId = null;
+let showUsedCharacterImage = false;
 let countryWorldMapPromise = null;
 
 function openFlagCollection({ returnToTitle = Boolean(ui.titleDialog?.open) } = {}) {
@@ -2369,31 +2371,53 @@ function renderCountryCharacter(country) {
   if (!ui.countryDetailCharacter) return;
 
   const character = GAME_CONFIG.characters[country.id];
+  const hasUsedCharacterImage = Boolean(character?.sprite);
+  const shouldShowUsedCharacterImage = showUsedCharacterImage && hasUsedCharacterImage;
   ui.countryDetailCharacter.className = "country-character-preview";
   ui.countryDetailCharacter.replaceChildren();
 
-  if (character?.sprite) {
+  if (shouldShowUsedCharacterImage) {
     ui.countryDetailCharacter.classList.add("has-sprite");
     const image = document.createElement("img");
     image.src = character.sprite;
-    image.alt = `${countryDisplayName(country)}の国キャラクター`;
+    image.alt = `${countryDisplayName(country)}の利用キャラクター`;
     ui.countryDetailCharacter.append(image);
-    return;
+  } else {
+    const ball = document.createElement("span");
+    ball.className = "country-character-ball";
+    ball.style.background = countryFlagBackground(country);
+    const face = document.createElement("span");
+    face.className = `country-character-face is-${character?.eyeStyle || "round"}`;
+    ["left", "right"].forEach((side) => {
+      const eye = document.createElement("span");
+      eye.className = "country-character-eye";
+      eye.dataset.side = side;
+      face.append(eye);
+    });
+    ball.append(face);
+    ui.countryDetailCharacter.append(ball);
   }
 
-  const ball = document.createElement("span");
-  ball.className = "country-character-ball";
-  ball.style.background = countryFlagBackground(country);
-  const face = document.createElement("span");
-  face.className = `country-character-face is-${character?.eyeStyle || "round"}`;
-  ["left", "right"].forEach((side) => {
-    const eye = document.createElement("span");
-    eye.className = "country-character-eye";
-    eye.dataset.side = side;
-    face.append(eye);
-  });
-  ball.append(face);
-  ui.countryDetailCharacter.append(ball);
+  if (ui.countryDetailCharacterToggle) {
+    ui.countryDetailCharacterToggle.disabled = !hasUsedCharacterImage;
+    ui.countryDetailCharacterToggle.setAttribute("aria-pressed", String(shouldShowUsedCharacterImage));
+    ui.countryDetailCharacterToggle.classList.toggle("is-active", shouldShowUsedCharacterImage);
+    ui.countryDetailCharacterToggle.textContent = shouldShowUsedCharacterImage
+      ? "国旗デザインに戻す"
+      : hasUsedCharacterImage
+        ? "利用キャラクターの絵に切り替える"
+        : "利用キャラクターの絵は未登録";
+    ui.countryDetailCharacterToggle.title = hasUsedCharacterImage
+      ? "戦場で利用するキャラクター画像と切り替えます"
+      : "この国の利用キャラクター画像は未登録です";
+  }
+}
+
+function toggleCountryCharacterImage() {
+  const country = GAME_CONFIG.countries[activeCountryDetailId];
+  if (!country || !GAME_CONFIG.characters[country.id]?.sprite) return;
+  showUsedCharacterImage = !showUsedCharacterImage;
+  renderCountryCharacter(country);
 }
 
 function renderCountryDetailSources(country) {
@@ -2511,6 +2535,7 @@ function openCountryDetail(countryId) {
   if (!country || !ui.countryDetailDialog || ui.countryDetailDialog.open) return;
 
   activeCountryDetailId = country.id;
+  showUsedCharacterImage = false;
   returnToFlagCollectionAfterCountryDetail = Boolean(ui.flagCollectionDialog?.open);
   returnToTitleAfterCountryDetail = returnToTitleAfterFlagCollection;
   renderCountryDetail(country);
@@ -2809,6 +2834,7 @@ ui.flagCollectionDialog?.addEventListener("cancel", (event) => {
   ui.flagCollectionDialog.close();
 });
 ui.countryDetailBack?.addEventListener("click", () => ui.countryDetailDialog?.close());
+ui.countryDetailCharacterToggle?.addEventListener("click", toggleCountryCharacterImage);
 ui.countryDetailDialog?.addEventListener("close", restoreFlagCollectionAfterCountryDetail);
 ui.countryDetailDialog?.addEventListener("cancel", (event) => {
   event.preventDefault();
