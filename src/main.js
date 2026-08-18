@@ -35,6 +35,7 @@ import { getCountryWorldMapData, projectWorldMapPoint } from "./campaign/country
 import { getCountryFlagOrigin } from "./config/countries.js";
 import { PLAYER_CHARACTER_ID } from "./config/characters.js";
 import { findRegionAtWorldPoint } from "./render/region-targeting.js";
+import { screenPointFromWorld, worldPointFromScreen as mapWorldPointFromScreen } from "./render/map-viewport.js";
 import {
   createCharacterSpriteImage,
   getCharacterSpriteSource,
@@ -457,23 +458,25 @@ function regionCenter(region) {
 }
 
 function screenPoint(point) {
-  const centerX = view.width / 2;
-  const centerY = view.height / 2;
-  const x = Array.isArray(point) ? point[0] : point.x;
-  const y = Array.isArray(point) ? point[1] : point.y;
-  return {
-    x: centerX + (x * view.width - centerX) * state.zoom + state.panX,
-    y: centerY + (y * view.height - centerY) * state.zoom + state.panY,
-  };
+  return screenPointFromWorld(point, {
+    width: view.width,
+    height: view.height,
+    zoom: state.zoom,
+    panX: state.panX,
+    panY: state.panY,
+    displayOffset: getActiveMap().displayOffset,
+  });
 }
 
 function worldPointFromScreen(x, y) {
-  const centerX = view.width / 2;
-  const centerY = view.height / 2;
-  return [
-    (centerX + (x - centerX - state.panX) / state.zoom) / view.width,
-    (centerY + (y - centerY - state.panY) / state.zoom) / view.height,
-  ];
+  return mapWorldPointFromScreen(x, y, {
+    width: view.width,
+    height: view.height,
+    zoom: state.zoom,
+    panX: state.panX,
+    panY: state.panY,
+    displayOffset: getActiveMap().displayOffset,
+  });
 }
 
 function pathForPolygons(polygons) {

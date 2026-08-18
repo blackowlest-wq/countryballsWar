@@ -374,6 +374,10 @@ export const WORLD_MAP = {
       name: "日本マップ",
       source: JAPAN_MAP_SOURCE,
       bounds: { west: 128, east: 154, south: 24, north: 46 },
+      // Natural Earth includes Tokyo's remote islands in the source extent.
+      // Keep those source features, but center the playable archipelago for the
+      // game viewport so the strategic regions do not sit on the left edge.
+      displayOffset: { x: 0.175, y: 0 },
       interactionMinDistance: 0.045,
       interactionHitRadius: 0.018,
       fragmentIds: JAPAN_REGION_GROUPS.map((group) => group.id),
