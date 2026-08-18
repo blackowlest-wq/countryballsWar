@@ -4,7 +4,7 @@ export const GOLD_STORAGE_KEY = "countryfronts.gold";
 export const UPGRADES_STORAGE_KEY = "countryfronts.upgrades";
 export const SPECIAL_MOVE_STORAGE_KEY = "countryfronts.specialMove";
 export const CAMPAIGN_STORAGE_KEY = "countryfronts.campaign";
-export const CAMPAIGN_STATE_VERSION = 1;
+export const CAMPAIGN_STATE_VERSION = 2;
 export const DEFAULT_CAMPAIGN_ID = "regional-fronts-v1";
 
 function getStorage(storage) {
@@ -38,6 +38,7 @@ export function createDefaultCampaignState({ campaignId = DEFAULT_CAMPAIGN_ID, d
     campaignId,
     difficultyId,
     completedCountryIds: [],
+    collectedCountryIds: [],
     lastCompletedFrontId: null,
   };
 }
@@ -46,11 +47,15 @@ export function normalizeCampaignState(value, defaults = {}) {
   const fallback = createDefaultCampaignState(defaults);
   if (!value || typeof value !== "object" || Array.isArray(value)) return fallback;
   if (defaults.campaignId && value.campaignId && value.campaignId !== defaults.campaignId) return fallback;
+  const collectedCountryIds = value.collectedCountryIds === undefined
+    ? value.completedCountryIds
+    : value.collectedCountryIds;
   return {
     version: CAMPAIGN_STATE_VERSION,
     campaignId: typeof value.campaignId === "string" && value.campaignId.trim().length > 0 ? value.campaignId : fallback.campaignId,
     difficultyId: typeof value.difficultyId === "string" && value.difficultyId.trim().length > 0 ? value.difficultyId : fallback.difficultyId,
     completedCountryIds: normalizeStringList(value.completedCountryIds),
+    collectedCountryIds: normalizeStringList(collectedCountryIds),
     lastCompletedFrontId: typeof value.lastCompletedFrontId === "string" && value.lastCompletedFrontId.trim().length > 0
       ? value.lastCompletedFrontId
       : null,

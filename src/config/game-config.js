@@ -106,6 +106,7 @@ function validateCountryMaster(countries, mapRegions) {
   Object.entries(countries).forEach(([countryId, country]) => {
     assertConfig(country && country.id === countryId, `Country ${countryId} has an invalid id`);
     assertConfig(typeof country.name === "string" && country.name.trim().length > 0, `Country ${countryId} is missing name`);
+    assertConfig(typeof country.nameJa === "string" && country.nameJa.trim().length > 0, `Country ${countryId} is missing nameJa`);
     assertConfig(typeof country.shortName === "string" && country.shortName.trim().length > 0, `Country ${countryId} is missing shortName`);
     assertConfig(Array.isArray(country.fragmentIds) && country.fragmentIds.length > 0, `Country ${countryId} is missing fragmentIds`);
     assertConfig(typeof country.isMajor === "boolean", `Country ${countryId} is missing isMajor`);

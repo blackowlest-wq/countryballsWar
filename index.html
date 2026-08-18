@@ -149,12 +149,42 @@
           <button class="primary-action title-start" id="titleStartButton" type="button">
             スタート
           </button>
+          <button class="title-collection" id="flagCollectionButton" type="button" aria-haspopup="dialog">
+            <span><strong>集めた国旗</strong><small>国旗図鑑</small></span>
+            <b id="flagCollectionCount">0 / 0</b>
+          </button>
           <button class="title-reset" id="titleResetButton" type="button" aria-haspopup="dialog">
             データをリセット
           </button>
         </div>
         <p class="title-message" id="titleMessage" role="status" aria-live="polite"></p>
       </div>
+    </dialog>
+
+    <dialog
+      class="flag-collection-dialog"
+      id="flagCollectionDialog"
+      aria-labelledby="flagCollectionHeading"
+      aria-describedby="flagCollectionDescription"
+    >
+      <form method="dialog" class="flag-collection-form">
+        <div class="dialog-heading">
+          <div>
+            <span class="panel-kicker">COUNTRY FLAG BOOK</span>
+            <h2 id="flagCollectionHeading">集めた国旗</h2>
+          </div>
+          <button class="dialog-close" value="close" aria-label="国旗図鑑を閉じる">×</button>
+        </div>
+        <p class="flag-collection-description" id="flagCollectionDescription">
+          国の領土をすべて制圧すると、その国の国旗を獲得します。
+        </p>
+        <div class="flag-collection-summary">
+          <span>獲得数</span>
+          <strong id="flagCollectionSummary">0 / 0</strong>
+        </div>
+        <div class="flag-collection-grid" id="flagCollectionGrid"></div>
+        <button class="primary-action" value="close">閉じる</button>
+      </form>
     </dialog>
 
     <dialog

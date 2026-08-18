@@ -41,10 +41,11 @@ const SPECIAL_MOVE_BALANCE = {
 };
 
 const EMPTY_CAMPAIGN = {
-  version: 1,
+  version: 2,
   campaignId: "regional-fronts-v1",
   difficultyId: "normal",
   completedCountryIds: [],
+  collectedCountryIds: [],
   lastCompletedFrontId: null,
 };
 
@@ -126,6 +127,7 @@ test("saving and loading round trips campaign progress without phase state", () 
       campaignId: "regional-fronts-v1",
       difficultyId: "hard",
       completedCountryIds: ["japan", "china", "china"],
+      collectedCountryIds: ["south-korea", "china", "south-korea"],
       currentPhaseId: "korea-front-opening",
       lastCompletedFrontId: "korea-front",
     },
@@ -135,13 +137,25 @@ test("saving and loading round trips campaign progress without phase state", () 
     gold: 350,
     upgrades: { logistics: 1, armor: 2, reserve: 3, speed: 2 },
     campaign: {
-      version: 1,
+      version: 2,
       campaignId: "regional-fronts-v1",
       difficultyId: "hard",
       completedCountryIds: ["china", "japan"],
+      collectedCountryIds: ["china", "south-korea"],
       lastCompletedFrontId: "korea-front",
     },
   });
+});
+
+test("legacy campaign completion seeds the flag collection", () => {
+  const storage = createStorage({
+    [CAMPAIGN_STORAGE_KEY]: JSON.stringify({
+      campaignId: "regional-fronts-v1",
+      completedCountryIds: ["south-korea"],
+    }),
+  });
+
+  assert.deepEqual(loadPersistentState(storage, UPGRADE_KEYS).campaign.collectedCountryIds, ["south-korea"]);
 });
 
 test("special move settings remain compatible with persistent state", () => {

@@ -22,6 +22,15 @@ test("front title uses the Japanese front name", () => {
   assert.match(worldMap, /name: "朝鮮半島戦線"/);
 });
 
+test("title screen exposes the flag collection menu", () => {
+  const html = readProjectFile("index.html");
+  const titleScreen = html.match(/<div class="title-screen">[\s\S]*?<\/div>\s*<\/dialog>/)?.[0] || "";
+
+  assert.match(titleScreen, /id="flagCollectionButton"/);
+  assert.match(html, /id="flagCollectionDialog"/);
+  assert.match(html, /id="flagCollectionGrid"/);
+});
+
 test("toast uses a left message lane instead of the centered lane", () => {
   const styles = readProjectFile("styles.css");
   const toast = styles.match(/\.toast \{[\s\S]*?\n\}/)?.[0] || "";

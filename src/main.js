@@ -26,6 +26,7 @@ import {
 } from "./special-move.js";
 import { getAiAttackCandidates as collectAiAttackCandidates, chooseAiAttackCandidate } from "./campaign/ai.js";
 import { calculateGroupCombatDamage } from "./campaign/combat.js";
+import { collectCountryFlags } from "./campaign/flag-collection.js";
 import { findRegionAtWorldPoint } from "./render/region-targeting.js";
 import { selectUnitSpriteKey } from "./render/unit-sprite.js";
 
@@ -69,6 +70,11 @@ const ui = {
   titleStart: document.querySelector("#titleStartButton"),
   titleReset: document.querySelector("#titleResetButton"),
   titleMessage: document.querySelector("#titleMessage"),
+  flagCollectionButton: document.querySelector("#flagCollectionButton"),
+  flagCollectionDialog: document.querySelector("#flagCollectionDialog"),
+  flagCollectionGrid: document.querySelector("#flagCollectionGrid"),
+  flagCollectionCount: document.querySelector("#flagCollectionCount"),
+  flagCollectionSummary: document.querySelector("#flagCollectionSummary"),
   dataResetDialog: document.querySelector("#dataResetDialog"),
   cancelDataReset: document.querySelector("#cancelDataResetButton"),
   confirmDataReset: document.querySelector("#confirmDataResetButton"),
@@ -1157,9 +1163,12 @@ function completeOccupation(unit, region) {
   unit.arrived = true;
   unit.stationCenter = regionCenter(region);
   unit.arrivalResolved = true;
-  showToast(`${region.name}を占領しました`);
+  const occupationMessage = `${region.name}を占領しました`;
   const factionName = GAME_CONFIG.factions[unit.faction]?.name || unit.faction;
   addEvent(`${region.shortName}が${factionName}の支配下に入りました`);
+  const newlyCollectedCountryIds = unit.faction === PLAYER_FACTION_ID ? collectNewCountryFlags() : [];
+  if (newlyCollectedCountryIds.length > 0) announceCollectedCountryFlags(newlyCollectedCountryIds);
+  else showToast(occupationMessage);
 }
 
 function updateOccupationProgress(dt) {
@@ -1644,6 +1653,89 @@ function showToast(message) {
   state.toastTimer = 2.6;
 }
 
+function countryDisplayName(country) {
+  return country?.nameJa || country?.name || country?.id || "不明な国";
+}
+
+function countryFlagBackground(country) {
+  const colors = country?.flag?.colors || [];
+  if (colors.length < 2) return "#d9e0ea";
+  if (country.flag.type === "field") {
+    return `radial-gradient(circle at center, ${colors[1]} 0 20%, transparent 21%), ${colors[0]}`;
+  }
+
+  const direction = country.flag.type === "vertical" ? "to right" : "to bottom";
+  const stops = colors.map((color, index) => {
+    const start = (index / colors.length) * 100;
+    const end = ((index + 1) / colors.length) * 100;
+    return `${color} ${start}% ${end}%`;
+  }).join(", ");
+  return `linear-gradient(${direction}, ${stops})`;
+}
+
+function updateFlagCollectionDialog() {
+  if (!ui.flagCollectionGrid) return;
+
+  const countries = Object.values(GAME_CONFIG.countries)
+    .sort((left, right) => countryDisplayName(left).localeCompare(countryDisplayName(right), "ja"));
+  const collectedIds = new Set(state.campaign.collectedCountryIds || []);
+  const collectedCount = countries.filter((country) => collectedIds.has(country.id)).length;
+
+  if (ui.flagCollectionCount) ui.flagCollectionCount.textContent = `${collectedCount} / ${countries.length}`;
+  if (ui.flagCollectionSummary) ui.flagCollectionSummary.textContent = `${collectedCount} / ${countries.length}`;
+
+  const fragment = document.createDocumentFragment();
+  countries.forEach((country) => {
+    const isCollected = collectedIds.has(country.id);
+    const item = document.createElement("article");
+    item.className = `flag-collection-item${isCollected ? " is-collected" : ""}`;
+    item.setAttribute("aria-label", `${countryDisplayName(country)}の国旗 ${isCollected ? "獲得済み" : "未獲得"}`);
+
+    const flag = document.createElement("span");
+    flag.className = `flag-collection-flag${isCollected ? "" : " is-locked"}`;
+    flag.style.background = countryFlagBackground(country);
+    flag.setAttribute("aria-hidden", "true");
+
+    const copy = document.createElement("span");
+    copy.className = "flag-collection-copy";
+    const name = document.createElement("strong");
+    name.textContent = isCollected ? countryDisplayName(country) : "未獲得";
+    const status = document.createElement("small");
+    status.textContent = isCollected ? "獲得済み" : countryDisplayName(country);
+    copy.append(name, status);
+
+    item.append(flag, copy);
+    fragment.append(item);
+  });
+  ui.flagCollectionGrid.replaceChildren(fragment);
+}
+
+function collectNewCountryFlags() {
+  const result = collectCountryFlags({
+    regions,
+    countries: GAME_CONFIG.countries,
+    playerFactionId: PLAYER_FACTION_ID,
+    collectedCountryIds: state.campaign.collectedCountryIds,
+  });
+  if (result.newlyCollectedCountryIds.length === 0) return [];
+
+  state.campaign = {
+    ...state.campaign,
+    collectedCountryIds: result.collectedCountryIds,
+  };
+  savePersistentProgress();
+  updateFlagCollectionDialog();
+  return result.newlyCollectedCountryIds;
+}
+
+function announceCollectedCountryFlags(countryIds) {
+  const names = countryIds.map((countryId) => countryDisplayName(GAME_CONFIG.countries[countryId]));
+  if (names.length === 0) return;
+
+  names.forEach((name) => addEvent(`${name}の国旗を獲得しました！`));
+  showToast(`${names.join("・")}の国旗を獲得しました！`);
+}
+
 function addEvent(message) {
   if (!state.eventNotice) return;
   const item = document.createElement("span");
@@ -1770,11 +1862,13 @@ function triggerDefeat() {
 function triggerClear() {
   if (state.cleared || state.defeated) return;
 
+  const newlyCollectedCountryIds = collectNewCountryFlags();
   const nextPhaseId = getNextPhaseId(GAME_CONFIG.campaign, GAME_CONFIG.scenario.frontId, state.phaseId);
   if (nextPhaseId) {
     transitionToPhase(nextPhaseId);
     showToast("PHASE COMPLETE — NEXT LINE ENGAGED");
     addEvent("The enemy front was reset and the next phase began.");
+    if (newlyCollectedCountryIds.length > 0) announceCollectedCountryFlags(newlyCollectedCountryIds);
     updateHud();
     render();
     return;
@@ -1790,6 +1884,7 @@ function triggerClear() {
     lastCompletedFrontId: front.id,
   };
   savePersistentProgress();
+  if (newlyCollectedCountryIds.length > 0) announceCollectedCountryFlags(newlyCollectedCountryIds);
   const reward = grantGold(calculateClearGold(currentRewardProgress(), ECONOMY_BALANCE.rewards));
   ui.clearReward.textContent = `+${reward} GOLD`;
   ui.clearDialog?.showModal();
@@ -1902,6 +1997,7 @@ function finishShop() {
 function openTitleScreen() {
   state.started = false;
   state.paused = true;
+  updateFlagCollectionDialog();
   if (!ui.titleDialog || ui.titleDialog.open) return;
   ui.titleDialog.showModal();
   requestAnimationFrame(() => ui.titleStart?.focus());
@@ -1912,6 +2008,33 @@ function closeTitleScreen() {
 }
 
 let specialMoveSetupDefaultName = "";
+let returnToTitleAfterFlagCollection = false;
+
+function openFlagCollection() {
+  if (!ui.flagCollectionDialog || ui.flagCollectionDialog.open) return;
+
+  updateFlagCollectionDialog();
+  returnToTitleAfterFlagCollection = Boolean(ui.titleDialog?.open);
+  if (returnToTitleAfterFlagCollection) ui.titleDialog.close();
+
+  try {
+    ui.flagCollectionDialog.showModal();
+  } catch {
+    returnToTitleAfterFlagCollection = false;
+    openTitleScreen();
+    return;
+  }
+  requestAnimationFrame(() => ui.flagCollectionDialog.querySelector(".dialog-close")?.focus());
+}
+
+function restoreTitleAfterFlagCollection() {
+  const shouldReturnToTitle = returnToTitleAfterFlagCollection;
+  returnToTitleAfterFlagCollection = false;
+  if (!shouldReturnToTitle || state.started) return;
+
+  openTitleScreen();
+  requestAnimationFrame(() => ui.flagCollectionButton?.focus());
+}
 
 function selectedSpecialMoveType() {
   return document.querySelector('input[name="specialMoveType"]:checked')?.value || "enemyWeakness";
@@ -1984,6 +2107,7 @@ function confirmPersistentDataReset() {
   state.specialMove = null;
   restartGame({ announce: false });
   updateShopDialog();
+  updateFlagCollectionDialog();
   updateHud();
   render();
   if (ui.titleMessage) ui.titleMessage.textContent = "データをリセットしました。";
@@ -2160,6 +2284,12 @@ document.querySelector("#restartButton").addEventListener("click", restartGame);
 document.querySelector("#clearRestartButton").addEventListener("click", restartGame);
 ui.titleStart?.addEventListener("click", startFromTitle);
 ui.titleReset?.addEventListener("click", openDataResetDialog);
+ui.flagCollectionButton?.addEventListener("click", openFlagCollection);
+ui.flagCollectionDialog?.addEventListener("close", restoreTitleAfterFlagCollection);
+ui.flagCollectionDialog?.addEventListener("cancel", (event) => {
+  event.preventDefault();
+  ui.flagCollectionDialog.close();
+});
 ui.specialMoveButton?.addEventListener("click", useSpecialMove);
 ui.specialMoveForm?.addEventListener("submit", confirmSpecialMoveSetup);
 document.querySelectorAll('input[name="specialMoveType"]').forEach((input) => {
@@ -2195,6 +2325,7 @@ function registerServiceWorker() {
 applyConfiguredDisplayNames();
 setupInitialUnits();
 updateShopDialog();
+updateFlagCollectionDialog();
 resizeCanvas();
 updateSelectedPanel();
 updateHud();

@@ -2,6 +2,7 @@ export const COUNTRIES = {
   russia: {
     id: "russia",
     name: "Russia",
+    nameJa: "ロシア",
     shortName: "RUS",
     fragmentIds: ["russia-east", "russia-far-east"],
     isMajor: true,
@@ -11,6 +12,7 @@ export const COUNTRIES = {
   kazakhstan: {
     id: "kazakhstan",
     name: "Kazakhstan",
+    nameJa: "カザフスタン",
     shortName: "KAZ",
     fragmentIds: ["kazakhstan"],
     isMajor: false,
@@ -20,6 +22,7 @@ export const COUNTRIES = {
   mongolia: {
     id: "mongolia",
     name: "Mongolia",
+    nameJa: "モンゴル",
     shortName: "MNG",
     fragmentIds: ["mongolia"],
     isMajor: false,
@@ -29,6 +32,7 @@ export const COUNTRIES = {
   china: {
     id: "china",
     name: "China",
+    nameJa: "中国",
     shortName: "CHN",
     fragmentIds: ["china-north", "china-central", "china-south"],
     isMajor: true,
@@ -38,6 +42,7 @@ export const COUNTRIES = {
   "north-korea": {
     id: "north-korea",
     name: "North Korea",
+    nameJa: "北朝鮮",
     shortName: "PRK",
     fragmentIds: ["north-central", "north-west", "north-hwanghae", "north-east-central", "north-east"],
     isMajor: false,
@@ -47,6 +52,7 @@ export const COUNTRIES = {
   "south-korea": {
     id: "south-korea",
     name: "South Korea",
+    nameJa: "韓国",
     shortName: "KOR",
     fragmentIds: ["south-capital", "south-gangwon", "south-central", "south-west", "south-east", "south-jeju"],
     isMajor: false,
@@ -56,6 +62,7 @@ export const COUNTRIES = {
   japan: {
     id: "japan",
     name: "Japan",
+    nameJa: "日本",
     shortName: "JPN",
     fragmentIds: ["japan"],
     isMajor: true,
@@ -65,6 +72,7 @@ export const COUNTRIES = {
   vietnam: {
     id: "vietnam",
     name: "Vietnam",
+    nameJa: "ベトナム",
     shortName: "VNM",
     fragmentIds: ["vietnam"],
     isMajor: false,
@@ -74,6 +82,7 @@ export const COUNTRIES = {
   philippines: {
     id: "philippines",
     name: "Philippines",
+    nameJa: "フィリピン",
     shortName: "PHL",
     fragmentIds: ["philippines"],
     isMajor: false,
@@ -83,6 +92,7 @@ export const COUNTRIES = {
   indonesia: {
     id: "indonesia",
     name: "Indonesia",
+    nameJa: "インドネシア",
     shortName: "IDN",
     fragmentIds: ["indonesia"],
     isMajor: false,
