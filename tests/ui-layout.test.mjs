@@ -31,6 +31,18 @@ test("title screen exposes the flag collection menu", () => {
   assert.match(html, /id="flagCollectionGrid"/);
 });
 
+test("title start opens a front selection dialog and clear returns to it", () => {
+  const html = readProjectFile("index.html");
+  const main = readProjectFile("src/main.js");
+
+  assert.match(html, /id="mapSelectionDialog"/);
+  assert.match(html, /id="mapSelectionGrid"/);
+  assert.match(html, /id="clearRestartButton"[^>]*>戦線を選択/);
+  assert.match(main, /function openMapSelection/);
+  assert.match(main, /startFromTitle\(\)[\s\S]*openMapSelection/);
+  assert.match(main, /clearRestartButton.*openMapSelection/);
+});
+
 test("country flag collection exposes a profile dialog with the requested sections", () => {
   const html = readProjectFile("index.html");
   const main = readProjectFile("src/main.js");

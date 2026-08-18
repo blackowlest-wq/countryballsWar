@@ -162,6 +162,31 @@
     </dialog>
 
     <dialog
+      class="map-selection-dialog"
+      id="mapSelectionDialog"
+      aria-labelledby="mapSelectionHeading"
+      aria-describedby="mapSelectionDescription"
+    >
+      <div class="map-selection-form">
+        <div class="dialog-heading">
+          <div>
+            <span class="panel-kicker">FRONT SELECT</span>
+            <h2 id="mapSelectionHeading">戦線を選択</h2>
+          </div>
+          <button class="dialog-close" id="mapSelectionBackButton" type="button" aria-label="タイトルへ戻る">×</button>
+        </div>
+        <p class="map-selection-description" id="mapSelectionDescription">
+          作戦を開始するマップを選択してください。クリア済みの戦線は再戦できます。
+        </p>
+        <div class="map-selection-summary">
+          <span>選択可能な戦線</span>
+          <strong id="mapSelectionSummary">0 / 0 戦線を選択可能</strong>
+        </div>
+        <div class="map-selection-grid" id="mapSelectionGrid"></div>
+      </div>
+    </dialog>
+
+    <dialog
       class="flag-collection-dialog"
       id="flagCollectionDialog"
       aria-labelledby="flagCollectionHeading"
@@ -351,7 +376,7 @@
         <h2>クリア！</h2>
         <p>すべての領土を<span id="clearPlayerFactionName"></span>が制圧しました。</p>
         <strong class="clear-reward" id="clearReward">+0 GOLD</strong>
-        <button class="primary-action" id="clearRestartButton" type="button">もう一度プレイ</button>
+        <button class="primary-action" id="clearRestartButton" type="button">戦線を選択</button>
       </div>
     </dialog>
 

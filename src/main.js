@@ -27,6 +27,7 @@ import {
 import { getAiAttackCandidates as collectAiAttackCandidates, chooseAiAttackCandidate } from "./campaign/ai.js";
 import { calculateGroupCombatDamage } from "./campaign/combat.js";
 import { collectCountryFlags } from "./campaign/flag-collection.js";
+import { getFrontSelectionEntries } from "./campaign/front-selection.js";
 import { getCountryWorldMapData, projectWorldMapPoint } from "./campaign/country-location.js";
 import { getCountryFlagOrigin } from "./config/countries.js";
 import { findRegionAtWorldPoint } from "./render/region-targeting.js";
@@ -72,6 +73,10 @@ const ui = {
   titleStart: document.querySelector("#titleStartButton"),
   titleReset: document.querySelector("#titleResetButton"),
   titleMessage: document.querySelector("#titleMessage"),
+  mapSelectionDialog: document.querySelector("#mapSelectionDialog"),
+  mapSelectionBack: document.querySelector("#mapSelectionBackButton"),
+  mapSelectionGrid: document.querySelector("#mapSelectionGrid"),
+  mapSelectionSummary: document.querySelector("#mapSelectionSummary"),
   flagCollectionButton: document.querySelector("#flagCollectionButton"),
   flagCollectionDialog: document.querySelector("#flagCollectionDialog"),
   flagCollectionGrid: document.querySelector("#flagCollectionGrid"),
@@ -111,19 +116,33 @@ const MOVEMENT_BALANCE = BALANCE.movement;
 const UNIT_BALANCE = BALANCE.units;
 const OCCUPATION_DURATION = BALANCE.occupation.durationSeconds;
 const COMBAT_BALANCE = BALANCE.combat;
-const ACTIVE_FRONT = GAME_CONFIG.campaign.fronts[GAME_CONFIG.scenario.frontId];
-const ACTIVE_ENEMY_PROFILE = BALANCE.campaign.enemyProfiles[ACTIVE_FRONT.enemyProfileId];
-const AI_BALANCE = {
-  ...BALANCE.ai,
-  activeUnitLimit: ACTIVE_ENEMY_PROFILE.activeUnitLimit,
-  reinforcementLimit: ACTIVE_ENEMY_PROFILE.reinforcementLimit,
-  actionDelaySeconds: ACTIVE_ENEMY_PROFILE.actionDelaySeconds,
-};
 const TARGETING_BALANCE = BALANCE.targeting;
 const ECONOMY_BALANCE = BALANCE.economy;
 const SPECIAL_MOVE_BALANCE = BALANCE.specialMove;
 const BATTLE_DISTANCE = COMBAT_BALANCE.contactDistance;
 const BATTLE_TICK_INTERVAL = COMBAT_BALANCE.tickIntervalSeconds;
+let selectedFrontId = GAME_CONFIG.scenario.frontId;
+
+function getSelectedFront() {
+  return GAME_CONFIG.campaign.fronts[selectedFrontId]
+    || GAME_CONFIG.campaign.fronts[GAME_CONFIG.scenario.frontId]
+    || null;
+}
+
+function getActiveEnemyProfile() {
+  const front = getSelectedFront();
+  return BALANCE.campaign.enemyProfiles[front?.enemyProfileId] || BALANCE.campaign.enemyProfiles.regionalIntro;
+}
+
+function getActiveAiBalance() {
+  const enemyProfile = getActiveEnemyProfile();
+  return {
+    ...BALANCE.ai,
+    activeUnitLimit: enemyProfile.activeUnitLimit,
+    reinforcementLimit: enemyProfile.reinforcementLimit,
+    actionDelaySeconds: enemyProfile.actionDelaySeconds,
+  };
+}
 
 function createAiFactionState(value) {
   return Object.fromEntries(AI_FACTION_IDS.map((factionId) => [factionId, value]));
@@ -138,7 +157,7 @@ const UNIT_SPRITE_SOURCES = Object.fromEntries(
 
 function applyConfiguredDisplayNames() {
   const playerFactionName = GAME_CONFIG.factions[PLAYER_FACTION_ID].name;
-  ui.mapName.textContent = GAME_CONFIG.map.name;
+  ui.mapName.textContent = getSelectedFront()?.name || GAME_CONFIG.map.name;
   ui.clearPlayerFactionName.textContent = playerFactionName;
 }
 
@@ -190,8 +209,8 @@ const state = {
   specialMoveUsesRemaining: 0,
   invincibilityRemaining: 0,
   selectedRegionId: null,
-  aiTimers: createAiFactionState(AI_BALANCE.initialDelaySeconds),
-  aiReinforcements: createAiFactionState(AI_BALANCE.reinforcementLimit),
+  aiTimers: createAiFactionState(getActiveAiBalance().initialDelaySeconds),
+  aiReinforcements: createAiFactionState(getActiveAiBalance().reinforcementLimit),
   invasionWarning: null,
   runProgress: createRunProgress(),
   recoveryTimer: 0,
@@ -281,7 +300,7 @@ function resetRuntimeToPhase(phaseId) {
 function transitionToPhase(phaseId) {
   const nextRuntime = createRuntimeScenario(GAME_CONFIG, phaseId);
   const transitioned = transitionPhase({
-    currentRuntime: { frontId: GAME_CONFIG.scenario.frontId, phaseId: activePhaseId, regions, units },
+    currentRuntime: { frontId: selectedFrontId, phaseId: activePhaseId, regions, units },
     nextRuntime,
     playerFactionId: PLAYER_FACTION_ID,
   });
@@ -291,8 +310,8 @@ function transitionToPhase(phaseId) {
   activePhaseId = phaseId;
   state.phaseId = phaseId;
   state.selectedRegionId = null;
-  state.aiTimers = createAiFactionState(AI_BALANCE.initialDelaySeconds);
-  state.aiReinforcements = createAiFactionState(AI_BALANCE.reinforcementLimit);
+  state.aiTimers = createAiFactionState(getActiveAiBalance().initialDelaySeconds);
+  state.aiReinforcements = createAiFactionState(getActiveAiBalance().reinforcementLimit);
   state.invasionWarning = null;
   state.battles.clear();
 }
@@ -1468,6 +1487,7 @@ function createUnit(faction, regionId, targetRegionId = null) {
 }
 
 function runAi(dt) {
+  const aiBalance = getActiveAiBalance();
   AI_FACTION_IDS.forEach((factionId) => {
     state.aiTimers[factionId] -= dt;
   });
@@ -1477,8 +1497,8 @@ function runAi(dt) {
   AI_FACTION_IDS.forEach((factionId) => {
     if (state.aiTimers[factionId] > 0 || state.aiReinforcements[factionId] <= 0) return;
 
-    state.aiTimers[factionId] = AI_BALANCE.actionDelaySeconds + Math.random() * AI_BALANCE.actionDelayJitterSeconds;
-    if (units.filter((unit) => unit.faction === factionId).length >= AI_BALANCE.activeUnitLimit) return;
+    state.aiTimers[factionId] = aiBalance.actionDelaySeconds + Math.random() * aiBalance.actionDelayJitterSeconds;
+    if (units.filter((unit) => unit.faction === factionId).length >= aiBalance.activeUnitLimit) return;
     candidates.push(...getAiAttackCandidates(factionId));
   });
 
@@ -1489,7 +1509,7 @@ function runAi(dt) {
     factionId: candidate.factionId,
     sourceRegionId: candidate.source.id,
     targetRegionId: candidate.target.id,
-    remaining: AI_BALANCE.invasionWarningSeconds,
+    remaining: aiBalance.invasionWarningSeconds,
   };
   addEvent("侵攻予告あり！");
   showToast("侵攻予告あり！");
@@ -1497,6 +1517,7 @@ function runAi(dt) {
 }
 
 function updateInvasionWarning(dt) {
+  const aiBalance = getActiveAiBalance();
   const warning = state.invasionWarning;
   if (!warning) return;
 
@@ -1510,7 +1531,7 @@ function updateInvasionWarning(dt) {
   warning.remaining -= dt;
   if (warning.remaining > 0) return;
   state.invasionWarning = null;
-  if (units.filter((unit) => unit.faction === warning.factionId).length >= AI_BALANCE.activeUnitLimit) return;
+  if (units.filter((unit) => unit.faction === warning.factionId).length >= aiBalance.activeUnitLimit) return;
 
   const created = createUnit(warning.factionId, source.id, target.id);
   if (!created) return;
@@ -1553,7 +1574,7 @@ function getMaxUnitStrength(faction) {
   const baseStrength = UNIT_BALANCE.baseMaxStrengthByFaction[faction] || UNIT_BALANCE.minimumSurvivorStrength;
   const armor = SHOP_ITEMS.armor?.maxStrengthPerLevel || 0;
   const resolvedStrength = GAME_CONFIG.factions[faction]?.isEnemy
-    ? resolveEnemyStrength(baseStrength, ACTIVE_ENEMY_PROFILE.strengthMultiplier, UNIT_BALANCE.minimumSurvivorStrength)
+    ? resolveEnemyStrength(baseStrength, getActiveEnemyProfile().strengthMultiplier, UNIT_BALANCE.minimumSurvivorStrength)
     : baseStrength;
   return resolvedStrength + (faction === PLAYER_FACTION_ID ? state.upgrades.armor * armor : 0);
 }
@@ -2037,7 +2058,7 @@ function triggerClear() {
   if (state.cleared || state.defeated) return;
 
   const newlyCollectedCountryIds = collectNewCountryFlags();
-  const nextPhaseId = getNextPhaseId(GAME_CONFIG.campaign, GAME_CONFIG.scenario.frontId, state.phaseId);
+  const nextPhaseId = getNextPhaseId(GAME_CONFIG.campaign, selectedFrontId, state.phaseId);
   if (nextPhaseId) {
     transitionToPhase(nextPhaseId);
     showToast("PHASE COMPLETE — NEXT LINE ENGAGED");
@@ -2050,11 +2071,12 @@ function triggerClear() {
 
   state.cleared = true;
   state.paused = true;
-  const front = GAME_CONFIG.campaign.fronts[GAME_CONFIG.scenario.frontId];
+  const front = getSelectedFront();
   const completedCountryIds = getCompletedCountryIds(regions, GAME_CONFIG.countries, PLAYER_FACTION_ID);
   state.campaign = {
     ...state.campaign,
     completedCountryIds: [...new Set([...state.campaign.completedCountryIds, ...completedCountryIds, ...front.targetCountryIds])].sort(),
+    completedFrontIds: [...new Set([...(state.campaign.completedFrontIds || []), front.id])].sort(),
     lastCompletedFrontId: front.id,
   };
   savePersistentProgress();
@@ -2065,7 +2087,7 @@ function triggerClear() {
 }
 
 function restartGame({ announce = true } = {}) {
-  resetRuntimeToPhase(getFirstPhaseId(GAME_CONFIG.campaign, GAME_CONFIG.scenario.frontId));
+  resetRuntimeToPhase(getFirstPhaseId(GAME_CONFIG.campaign, selectedFrontId));
   setupInitialUnits();
   state.zoom = 1;
   state.panX = 0;
@@ -2074,8 +2096,8 @@ function restartGame({ announce = true } = {}) {
   state.speed = 1;
   state.elapsed = 0;
   state.selectedRegionId = null;
-  state.aiTimers = createAiFactionState(AI_BALANCE.initialDelaySeconds);
-  state.aiReinforcements = createAiFactionState(AI_BALANCE.reinforcementLimit);
+  state.aiTimers = createAiFactionState(getActiveAiBalance().initialDelaySeconds);
+  state.aiReinforcements = createAiFactionState(getActiveAiBalance().reinforcementLimit);
   state.invasionWarning = null;
   state.runProgress = createRunProgress();
   state.recoveryTimer = 0;
@@ -2179,6 +2201,129 @@ function openTitleScreen() {
 
 function closeTitleScreen() {
   ui.titleDialog?.close();
+}
+
+function getFrontDisplayName(front) {
+  return front?.name || (front?.mapId === GAME_CONFIG.map.id ? GAME_CONFIG.map.name : front?.mapId || "未設定の戦線");
+}
+
+function getFrontTargetNames(front) {
+  return (front?.targetCountryIds || [])
+    .map((countryId) => GAME_CONFIG.countries[countryId])
+    .filter(Boolean)
+    .map(countryDisplayName)
+    .join("・");
+}
+
+function updateMapSelectionDialog() {
+  if (!ui.mapSelectionGrid) return;
+
+  const entries = getFrontSelectionEntries(GAME_CONFIG.campaign, state.campaign).filter((entry) => entry.front);
+  ui.mapSelectionGrid.replaceChildren();
+  if (ui.mapSelectionSummary) {
+    const unlockedCount = entries.filter((entry) => entry.unlocked).length;
+    ui.mapSelectionSummary.textContent = `${unlockedCount} / ${entries.length} 戦線を選択可能`;
+  }
+
+  entries.forEach(({ frontId, front, index, completed, unlocked }) => {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = [
+      "map-selection-card",
+      selectedFrontId === frontId ? "is-selected" : "",
+      completed ? "is-completed" : "",
+      !unlocked ? "is-locked" : "",
+    ].filter(Boolean).join(" ");
+    card.dataset.frontId = frontId;
+    card.disabled = !unlocked;
+
+    const header = document.createElement("span");
+    header.className = "map-selection-card-header";
+    const number = document.createElement("span");
+    number.className = "map-selection-card-number";
+    number.textContent = String(index + 1).padStart(2, "0");
+    const status = document.createElement("span");
+    status.className = "map-selection-card-status";
+    status.textContent = completed ? "クリア済み" : unlocked ? "選択可能" : "ロック中";
+    header.append(number, status);
+
+    const title = document.createElement("strong");
+    title.className = "map-selection-card-title";
+    title.textContent = getFrontDisplayName(front);
+
+    const target = document.createElement("span");
+    target.className = "map-selection-card-target";
+    target.textContent = getFrontTargetNames(front) || "対象国データ準備中";
+
+    const footer = document.createElement("span");
+    footer.className = "map-selection-card-footer";
+    footer.textContent = `${front.phaseIds?.length || 0}局面 ・ ${front.type === "regionalSmall" ? "小国戦線" : "戦線"}`;
+
+    card.append(header, title, target, footer);
+    ui.mapSelectionGrid.append(card);
+  });
+
+  if (entries.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "map-selection-empty";
+    empty.textContent = "選択できる戦線がありません。";
+    ui.mapSelectionGrid.append(empty);
+  }
+}
+
+let returnToTitleAfterMapSelection = false;
+let suppressMapSelectionRestore = false;
+
+function openMapSelection({ returnToTitle = true } = {}) {
+  if (!ui.mapSelectionDialog) return;
+
+  state.started = false;
+  state.paused = true;
+  returnToTitleAfterMapSelection = returnToTitle;
+  updateMapSelectionDialog();
+  if (ui.titleDialog?.open) ui.titleDialog.close();
+  if (ui.clearDialog?.open) ui.clearDialog.close();
+
+  try {
+    ui.mapSelectionDialog.showModal();
+  } catch {
+    returnToTitleAfterMapSelection = false;
+    openTitleScreen();
+    return;
+  }
+  requestAnimationFrame(() => ui.mapSelectionGrid?.querySelector(".map-selection-card:not(:disabled)")?.focus());
+}
+
+function restoreTitleAfterMapSelection() {
+  if (suppressMapSelectionRestore) {
+    suppressMapSelectionRestore = false;
+    return;
+  }
+
+  const shouldReturnToTitle = returnToTitleAfterMapSelection;
+  returnToTitleAfterMapSelection = false;
+  if (!shouldReturnToTitle || state.started || ui.specialMoveDialog?.open) return;
+  openTitleScreen();
+}
+
+function handleMapSelectionClick(event) {
+  const card = event.target?.closest?.("[data-front-id]");
+  if (!card || card.disabled) return;
+
+  const entry = getFrontSelectionEntries(GAME_CONFIG.campaign, state.campaign)
+    .find((candidate) => candidate.frontId === card.dataset.frontId);
+  if (!entry?.front || !entry.unlocked) return;
+
+  selectedFrontId = entry.frontId;
+  applyConfiguredDisplayNames();
+  suppressMapSelectionRestore = true;
+  ui.mapSelectionDialog?.close();
+  if (!state.specialMove) {
+    openSpecialMoveSetup();
+    return;
+  }
+  restartGame();
+  closeTitleScreen();
 }
 
 let specialMoveSetupDefaultName = "";
@@ -2450,12 +2595,7 @@ function confirmSpecialMoveSetup(event) {
 }
 
 function startFromTitle() {
-  if (!state.specialMove) {
-    openSpecialMoveSetup();
-    return;
-  }
-  restartGame();
-  closeTitleScreen();
+  openMapSelection({ returnToTitle: true });
 }
 
 function openDataResetDialog() {
@@ -2651,9 +2791,16 @@ ui.shopDialog?.addEventListener("close", finishShop);
 const settingsDialog = document.querySelector("#settingsDialog");
 document.querySelector("#settingsButton").addEventListener("click", () => settingsDialog.showModal());
 document.querySelector("#restartButton").addEventListener("click", restartGame);
-document.querySelector("#clearRestartButton").addEventListener("click", restartGame);
+document.querySelector("#clearRestartButton").addEventListener("click", () => openMapSelection({ returnToTitle: true }));
 ui.titleStart?.addEventListener("click", startFromTitle);
 ui.titleReset?.addEventListener("click", openDataResetDialog);
+ui.mapSelectionGrid?.addEventListener("click", handleMapSelectionClick);
+ui.mapSelectionBack?.addEventListener("click", () => ui.mapSelectionDialog?.close());
+ui.mapSelectionDialog?.addEventListener("close", restoreTitleAfterMapSelection);
+ui.mapSelectionDialog?.addEventListener("cancel", (event) => {
+  event.preventDefault();
+  ui.mapSelectionDialog.close();
+});
 ui.flagCollectionButton?.addEventListener("click", openFlagCollection);
 ui.flagCollectionGrid?.addEventListener("click", handleFlagCollectionClick);
 ui.flagCollectionDialog?.addEventListener("close", restoreTitleAfterFlagCollection);

@@ -41,11 +41,12 @@ const SPECIAL_MOVE_BALANCE = {
 };
 
 const EMPTY_CAMPAIGN = {
-  version: 2,
+  version: 3,
   campaignId: "regional-fronts-v1",
   difficultyId: "normal",
   completedCountryIds: [],
   collectedCountryIds: [],
+  completedFrontIds: [],
   lastCompletedFrontId: null,
 };
 
@@ -128,6 +129,7 @@ test("saving and loading round trips campaign progress without phase state", () 
       difficultyId: "hard",
       completedCountryIds: ["japan", "china", "china"],
       collectedCountryIds: ["south-korea", "china", "south-korea"],
+      completedFrontIds: ["korea-front", "korea-front"],
       currentPhaseId: "korea-front-opening",
       lastCompletedFrontId: "korea-front",
     },
@@ -137,11 +139,12 @@ test("saving and loading round trips campaign progress without phase state", () 
     gold: 350,
     upgrades: { logistics: 1, armor: 2, reserve: 3, speed: 2 },
     campaign: {
-      version: 2,
+      version: 3,
       campaignId: "regional-fronts-v1",
       difficultyId: "hard",
       completedCountryIds: ["china", "japan"],
       collectedCountryIds: ["china", "south-korea"],
+      completedFrontIds: ["korea-front"],
       lastCompletedFrontId: "korea-front",
     },
   });

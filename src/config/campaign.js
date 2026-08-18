@@ -43,6 +43,7 @@ export const CAMPAIGN = {
     "korea-front": {
       id: "korea-front",
       mapId: "korea-front",
+      name: "朝鮮半島戦線",
       type: "regionalSmall",
       enemyProfileId: "regionalIntro",
       phaseIds: ["korea-front-opening"],

@@ -1354,6 +1354,182 @@ button:disabled {
   font-weight: 800;
 }
 
+.map-selection-dialog {
+  width: min(560px, calc(100% - 24px));
+  max-height: calc(100dvh - 24px);
+  padding: 0;
+  color: var(--ink);
+  border: 0;
+  border-radius: 17px;
+  background: #fff;
+  box-shadow: 0 30px 90px rgba(22, 36, 63, 0.3);
+}
+
+.map-selection-dialog::backdrop {
+  background: rgba(14, 23, 39, 0.58);
+  backdrop-filter: blur(3px);
+}
+
+.map-selection-form {
+  display: grid;
+  gap: 14px;
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+  padding: 22px;
+}
+
+.map-selection-form .dialog-heading {
+  margin-bottom: 0;
+}
+
+.map-selection-form .dialog-heading h2 {
+  margin: 5px 0 0;
+  font-size: 22px;
+}
+
+.map-selection-description {
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.map-selection-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  color: #4f6686;
+  border: 1px solid rgba(79, 130, 202, 0.26);
+  border-radius: 10px;
+  background: #f4f8fe;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.map-selection-summary strong {
+  color: var(--blue-deep);
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.map-selection-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.map-selection-card {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+  padding: 13px;
+  color: var(--ink);
+  border: 1px solid #d8e0eb;
+  border-radius: 13px;
+  background: linear-gradient(145deg, #fbfcfe, #f1f5fa);
+  box-shadow: 0 3px 0 rgba(61, 86, 119, 0.1);
+  text-align: left;
+  transition: border-color 140ms ease, background 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+}
+
+.map-selection-card:not(:disabled):hover {
+  border-color: #7ca7dc;
+  background: #f1f7ff;
+  box-shadow: 0 5px 0 rgba(70, 119, 183, 0.17);
+  transform: translateY(-1px);
+}
+
+.map-selection-card:not(:disabled):active {
+  box-shadow: 0 2px 0 rgba(70, 119, 183, 0.17);
+  transform: translateY(2px);
+}
+
+.map-selection-card.is-selected {
+  border-color: #5c91d0;
+  background: #edf5ff;
+  box-shadow: 0 0 0 2px rgba(92, 145, 208, 0.16), 0 3px 0 rgba(70, 119, 183, 0.17);
+}
+
+.map-selection-card.is-completed .map-selection-card-status {
+  color: #39734b;
+  border-color: #b9dfbe;
+  background: #effaf0;
+}
+
+.map-selection-card.is-locked {
+  opacity: 0.58;
+}
+
+.map-selection-card:focus-visible {
+  outline: 4px solid rgba(41, 90, 161, 0.25);
+  outline-offset: 3px;
+}
+
+.map-selection-card-header,
+.map-selection-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.map-selection-card-number {
+  color: #7890ad;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+}
+
+.map-selection-card-status {
+  padding: 3px 6px;
+  color: #37649a;
+  border: 1px solid #bed4ee;
+  border-radius: 999px;
+  background: #f1f7ff;
+  font-size: 8px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.map-selection-card-title {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map-selection-card-target {
+  overflow: hidden;
+  min-height: 16px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map-selection-card-footer {
+  padding-top: 6px;
+  color: #7085a1;
+  border-top: 1px solid rgba(120, 144, 173, 0.2);
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.map-selection-empty {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 22px 12px;
+  color: var(--muted);
+  border: 1px dashed #cdd7e4;
+  border-radius: 12px;
+  font-size: 10px;
+  text-align: center;
+}
+
 .flag-collection-dialog {
   width: min(560px, calc(100% - 24px));
   max-height: calc(100dvh - 24px);
@@ -2256,6 +2432,14 @@ button:disabled {
 
   .flag-collection-form {
     padding: 16px;
+  }
+
+  .map-selection-form {
+    padding: 16px;
+  }
+
+  .map-selection-grid {
+    grid-template-columns: 1fr;
   }
 
   .flag-collection-grid {

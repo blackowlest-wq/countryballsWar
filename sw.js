@@ -1,4 +1,4 @@
-const CACHE_NAME = "countryfronts-shell-v29";
+const CACHE_NAME = "countryfronts-shell-v30";
 
 const APP_SHELL = [
   "./",
@@ -22,6 +22,7 @@ const APP_SHELL = [
   "./src/campaign/ai.js",
   "./src/campaign/combat.js",
   "./src/campaign/flag-collection.js",
+  "./src/campaign/front-selection.js",
   "./src/campaign/country-location.js",
   "./src/campaign/phase-runtime.js",
   "./src/render/region-targeting.js",
