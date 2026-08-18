@@ -20,6 +20,14 @@
   <body>
     <main class="game-shell" id="gameShell">
       <header class="topbar">
+        <div class="front-title" aria-label="戦線情報">
+          <span class="caption-dot" aria-hidden="true"></span>
+          <span class="front-title-copy">
+            <strong id="mapName"></strong>
+            <small>DAY <b id="dayValue">01</b></small>
+          </span>
+        </div>
+
         <div class="topbar-center">
           <div class="mission-meter" aria-label="作戦進行度">
             <span class="meter-segment is-filled"></span>
@@ -56,11 +64,6 @@
 
       <section class="game-stage" id="gameStage" aria-label="戦場マップ">
         <canvas id="mapCanvas" aria-label="リアルタイム戦場マップ"></canvas>
-
-        <div class="map-caption">
-          <span class="caption-dot"></span>
-          <span><span id="mapName"></span> / DAY <strong id="dayValue">01</strong></span>
-        </div>
 
         <div class="invasion-alert" id="invasionAlert" aria-live="assertive" aria-atomic="true">
           <span class="invasion-alert-icon" aria-hidden="true">!</span>
