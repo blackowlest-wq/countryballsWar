@@ -52,11 +52,11 @@ test("the compiled geographic front map is connected", () => {
   assert.equal(GAME_CONFIG.map.regions.find((region) => region.id === "south-jeju").interactionRadius, 0.035);
 });
 
-test("the Japan map uses twelve connected geographic regions and a country sprite", () => {
+test("the Japan map uses eleven connected geographic regions without Okinawa", () => {
   const japanMap = GAME_CONFIG.maps["japan-front"];
   assert.ok(japanMap);
   assert.equal(japanMap.source.id, "natural-earth-admin-1-japan");
-  assert.equal(japanMap.regions.length, 12);
+  assert.equal(japanMap.regions.length, 11);
   assert.equal(japanMap.sourceWorldMapId, "natural-earth-admin-1-regions-v3");
 
   const visited = new Set([japanMap.regions[0].id]);
@@ -72,13 +72,19 @@ test("the Japan map uses twelve connected geographic regions and a country sprit
   }
 
   assert.equal(visited.size, japanMap.regions.length);
-  assert.equal(japanMap.regions.find((region) => region.id === "japan-okinawa").interactionRadius, 0.035);
-  assert.equal(GAME_CONFIG.countries.japan.fragmentIds.length, 12);
+  assert.equal(japanMap.regions.some((region) => region.id === "japan-okinawa"), false);
+  assert.equal(japanMap.regions.find((region) => region.id === "japan-kyushu-south").interactionRadius, undefined);
+  assert.equal(japanMap.projection.bounds.west, 128);
+  assert.equal(japanMap.roadDefinitions.length, 13);
+  assert.equal(japanMap.roadDefinitions.filter((road) => road.kind === "land").length, 8);
+  assert.equal(japanMap.roadDefinitions.filter((road) => road.kind === "sea").length, 5);
+  assert.equal(GAME_CONFIG.countries.japan.fragmentIds.length, 11);
   assert.equal(GAME_CONFIG.characters.japan.sprite, "./assets/units/enemy-japan.svg");
 
   const openingRuntime = createRuntimeScenario(GAME_CONFIG, "japan-front-opening");
   assert.equal(openingRuntime.mapId, "japan-front");
-  assert.equal(openingRuntime.regions.length, 12);
+  assert.equal(openingRuntime.regions.length, 11);
+  assert.equal(openingRuntime.units.find((unit) => unit.faction === "blue").regionId, "japan-kyushu-south");
   assert.equal(new Set(openingRuntime.units.filter((unit) => unit.faction === "blue").map((unit) => unit.regionId)).size, 1);
   assert.ok(openingRuntime.units.some((unit) => unit.faction === "red" && unit.characterId === "japan"));
   openingRuntime.units.filter((unit) => unit.faction === "red").forEach((unit) => {

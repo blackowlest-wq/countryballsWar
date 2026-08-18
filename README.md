@@ -17,7 +17,7 @@
 - マップの拡大・縮小・初期化
 - ローカルシミュレーション用の設定ダイアログ
 - PWA対応（ホーム画面への追加、オフライン用キャッシュ、アプリアイコン）
-- Korea map clear unlocks a two-phase Japan map with twelve geographic regions
+- Korea map clear unlocks a two-phase Japan map with eleven geographic regions; Okinawa is excluded from the playable map
 
 ユニット画像は `assets/units` に収録したローカルアセットを使用しています。BGMや外部APIへの接続はありません。
 

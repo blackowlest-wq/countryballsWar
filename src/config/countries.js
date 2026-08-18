@@ -170,7 +170,6 @@ export const COUNTRIES = {
     shortName: "JPN",
     isoA3: "JPN",
     fragmentIds: [
-      "japan-okinawa",
       "japan-kyushu-north",
       "japan-kyushu-south",
       "japan-shikoku",
@@ -184,7 +183,7 @@ export const COUNTRIES = {
       "japan-hokkaido",
     ],
     isMajor: true,
-    description: "A major island country divided into twelve strategic regions.",
+    description: "A major island country divided into eleven strategic regions.",
     overview: "日本は東アジアの島国で、北海道・本州・四国・九州などの島々から構成されています。",
     location: {
       region: "東アジア・西太平洋",

@@ -35,12 +35,11 @@ const KOREA_FRONT_UNITS = [
 ];
 
 const JAPAN_FRAGMENT_IDS = COUNTRIES.japan.fragmentIds;
-const JAPAN_STARTING_REGION_ID = "japan-okinawa";
+const JAPAN_STARTING_REGION_ID = "japan-kyushu-south";
 const JAPAN_ENEMY_REGION_IDS = JAPAN_FRAGMENT_IDS.filter((regionId) => regionId !== JAPAN_STARTING_REGION_ID);
 const JAPAN_FRONT_OBJECTIVE_REGION_IDS = [...JAPAN_ENEMY_REGION_IDS];
 const JAPAN_FRONT_OPENING_OBJECTIVE_REGION_IDS = [
   "japan-kyushu-north",
-  "japan-kyushu-south",
   "japan-shikoku",
   "japan-chugoku",
   "japan-kansai",
@@ -53,7 +52,6 @@ const JAPAN_FRONT_OWNERS = Object.fromEntries([
 ]);
 
 const JAPAN_FRONT_PRODUCTION = {
-  "japan-okinawa": 2,
   "japan-kyushu-north": 4,
   "japan-kyushu-south": 3,
   "japan-shikoku": 3,

@@ -35,6 +35,12 @@ factions can attack at the same time, the configured active AI faction (North
 Korea in this front) is selected first so an adjacent North Korean region does
 not get starved by another enemy warning.
 
+The Japan map contains 11 strategic regions. Okinawa is excluded from the
+playable map; Southern Kyushu is the single player starting region and the
+remaining 10 regions are enemy-owned. Its two phases use the same map and
+carry the player's units and occupation state forward while recreating enemy
+units from the next phase's deployment.
+
 Small-country maps use one phase. A phase defines the same map's objective,
 territory owners, production, and initial deployment. Large-country operations
 use multiple phases on the same map. Player units and occupied regions carry

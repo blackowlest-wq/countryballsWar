@@ -49,18 +49,18 @@ enemy country until every South Korean region is controlled.
 
 ## Japan map regions
 
-The Japan map extracts all 47 Natural Earth prefecture features and combines
-them into 12 strategic regions. The map uses the same Japanese country
-character for every enemy unit. Okinawa is the only player-owned starting
-region; the first phase focuses on the southern and central islands, and the
-second phase opens the northern advance while carrying player occupation and
-units forward.
+The checked-in Japan source contains all 47 Natural Earth prefecture features,
+but the playable map intentionally excludes Okinawa (`jp-47`) and combines the
+remaining 46 features into 11 strategic regions. The map uses the same
+Japanese country character for every enemy unit. Southern Kyushu is the only
+player-owned starting region; the first phase focuses on the southern and
+central islands, and the second phase opens the northern advance while
+carrying player occupation and units forward.
 
 | Region | Combined source areas | Starting owner |
 |---|---|---|
-| `japan-okinawa` | Okinawa | Player start |
 | `japan-kyushu-north` | Fukuoka, Saga, Nagasaki, Kumamoto, Ōita | Enemy |
-| `japan-kyushu-south` | Miyazaki, Kagoshima | Enemy |
+| `japan-kyushu-south` | Miyazaki, Kagoshima | Player start |
 | `japan-shikoku` | Tokushima, Kagawa, Ehime, Kōchi | Enemy |
 | `japan-chugoku` | Tottori, Shimane, Okayama, Hiroshima, Yamaguchi | Enemy |
 | `japan-kansai` | Shiga, Kyōto, Ōsaka, Hyōgo, Nara, Wakayama | Enemy |
@@ -71,15 +71,15 @@ units forward.
 | `japan-tohoku-north` | Aomori, Iwate, Akita, Yamagata | Enemy |
 | `japan-hokkaido` | Hokkaidō | Enemy |
 
-Japan is completed only after all twelve `japan-*` regions are controlled.
+Japan is completed only after all eleven `japan-*` regions are controlled.
 
 ## Roads and interaction safety
 
 Roads are authored once in `WORLD_MAP.frontMaps[*].roads` and compiled to the
 runtime `roads` array plus `roadDefinitions` metadata. The Korea map has 18
 passable adjacency links: 17 land links and one sea link from Jeju to the
-Southwestern Region. The Japan map has 14 links: 8 land links and 6 sea links
-for the island crossings. Validation checks unknown endpoints, self-links,
+Southwestern Region. The Japan map has 13 links: 8 land links and 5 sea links
+for the island crossings; the Okinawa connection is not included. Validation checks unknown endpoints, self-links,
 duplicate reverse links, non-passable edges, invalid kinds, and graph
 connectivity.
 

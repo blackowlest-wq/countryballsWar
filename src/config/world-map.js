@@ -122,15 +122,6 @@ const FRONT_REGION_GROUPS = [
 
 const JAPAN_REGION_GROUPS = [
   {
-    id: "japan-okinawa",
-    countryId: "japan",
-    name: "Okinawa Region",
-    shortName: "OKINAWA",
-    labelPoint: [127.78, 26.35],
-    interactionRadius: 0.035,
-    sourceFragmentIds: ["jp-47"],
-  },
-  {
     id: "japan-kyushu-north",
     countryId: "japan",
     name: "Northern Kyushu",
@@ -291,9 +282,13 @@ function buildBoundaryGeometry(sourceFragments, sourceFragmentIds) {
   return { type: "MultiPolygon", coordinates: rings.map(([ring]) => [ring]) };
 }
 
-function assertSourceCoverage(sourceFragments, groups, sourceLabel) {
+function assertSourceCoverage(sourceFragments, groups, sourceLabel, excludedSourceFragmentIds = []) {
   const configuredSourceFragmentIds = groups.flatMap((group) => group.sourceFragmentIds);
-  const sourceFragmentIds = Object.keys(sourceFragments);
+  const excluded = new Set(excludedSourceFragmentIds);
+  const sourceFragmentIds = Object.keys(sourceFragments).filter((fragmentId) => !excluded.has(fragmentId));
+  if ([...excluded].some((fragmentId) => !Object.hasOwn(sourceFragments, fragmentId))) {
+    throw new Error(`World map: ${sourceLabel} excludes an unknown source fragment`);
+  }
   if (new Set(configuredSourceFragmentIds).size !== configuredSourceFragmentIds.length
     || new Set(configuredSourceFragmentIds).size !== sourceFragmentIds.length
     || sourceFragmentIds.some((fragmentId) => !configuredSourceFragmentIds.includes(fragmentId))) {
@@ -323,7 +318,7 @@ function buildFragments(sourceFragments, groups, sourceIsoA3ByCountry) {
 }
 
 assertSourceCoverage(NATURAL_EARTH_KOREA_ADMIN_1, FRONT_REGION_GROUPS, "Korea");
-assertSourceCoverage(NATURAL_EARTH_JAPAN_ADMIN_1, JAPAN_REGION_GROUPS, "Japan");
+assertSourceCoverage(NATURAL_EARTH_JAPAN_ADMIN_1, JAPAN_REGION_GROUPS, "Japan", ["jp-47"]);
 
 const fragments = {
   ...buildFragments(NATURAL_EARTH_KOREA_ADMIN_1, FRONT_REGION_GROUPS, KOREA_SOURCE_ISO_A3_BY_COUNTRY),
@@ -378,12 +373,11 @@ export const WORLD_MAP = {
       id: "japan-front",
       name: "日本マップ",
       source: JAPAN_MAP_SOURCE,
-      bounds: { west: 122, east: 154, south: 24, north: 46 },
+      bounds: { west: 128, east: 154, south: 24, north: 46 },
       interactionMinDistance: 0.045,
       interactionHitRadius: 0.018,
       fragmentIds: JAPAN_REGION_GROUPS.map((group) => group.id),
       roads: [
-        { from: "japan-okinawa", to: "japan-kyushu-south", kind: "sea" },
         { from: "japan-kyushu-south", to: "japan-kyushu-north", kind: "land" },
         { from: "japan-kyushu-north", to: "japan-chugoku", kind: "sea" },
         { from: "japan-kyushu-north", to: "japan-shikoku", kind: "sea" },
