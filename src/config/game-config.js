@@ -3,7 +3,7 @@ import { CAMPAIGN } from "./campaign.js";
 import { CHARACTERS, PLAYER_CHARACTER_ID } from "./characters.js";
 import { COUNTRIES } from "./countries.js";
 import { FACTIONS } from "./factions.js";
-import { MAP } from "./map.js";
+import { MAP, MAPS } from "./map.js";
 import { SCENARIO } from "./scenario.js";
 
 function assertConfig(condition, message) {
@@ -197,16 +197,17 @@ function validateInteractionPoints(map) {
   }
 }
 
-function validateCampaignData(campaign, map, countries, characters, factionIds, balance, playerFactionId) {
+function validateCampaignData(campaign, maps, countries, characters, factionIds, balance, playerFactionId) {
   assertConfig(campaign && typeof campaign === "object" && !Array.isArray(campaign), "campaign must be an object");
   assertConfig(typeof campaign.id === "string" && campaign.id.length > 0, "campaign.id is missing");
   assertConfig(Array.isArray(campaign.frontOrder) && campaign.frontOrder.length > 0, "campaign.frontOrder must not be empty");
-  const regionIds = map.regions.map((region) => region.id);
 
   campaign.frontOrder.forEach((frontId) => {
     const front = campaign.fronts?.[frontId];
     assertConfig(front && front.id === frontId, `campaign front ${frontId} is missing`);
-    assertConfig(front.mapId === map.id, `campaign front ${frontId} references another map`);
+    const map = maps[front.mapId];
+    assertConfig(map, `campaign front ${frontId} references an unknown map ${front.mapId}`);
+    const regionIds = map.regions.map((region) => region.id);
     assertConfig(balance.campaign.enemyProfiles[front.enemyProfileId], `campaign front ${frontId} references an unknown enemy profile`);
     assertConfig(Array.isArray(front.phaseIds) && front.phaseIds.length > 0, `campaign front ${frontId} has no phases`);
     assertConfig(Array.isArray(front.targetCountryIds) && front.targetCountryIds.length > 0, `campaign front ${frontId} has no target countries`);
@@ -250,6 +251,12 @@ function validateCampaignData(campaign, map, countries, characters, factionIds, 
         assertConfig(typeof character.sprite === "string" && character.sprite.length > 0, `campaign phase ${phaseId} unit ${unit.id} has no character sprite`);
       });
       assertConfig(phase.initialUnits.some((unit) => unit.faction === "blue"), `campaign phase ${phaseId} has no player unit`);
+      const playerStartRegionIds = new Set(
+        phase.initialUnits
+          .filter((unit) => unit.faction === playerFactionId)
+          .map((unit) => unit.regionId),
+      );
+      assertConfig(playerStartRegionIds.size === 1, `campaign phase ${phaseId} must start the player in exactly one region`);
     });
   });
 }
@@ -331,6 +338,35 @@ function validateDifficultyBalance(difficulty, shopItems) {
       assertConfig(Number.isInteger(profile.upgradeCaps[itemKey]) && profile.upgradeCaps[itemKey] >= 0, `difficulty.profiles.${key}.upgradeCaps.${itemKey} must be a non-negative integer`);
     });
   });
+}
+
+export const MAP_REGION_COUNT_MIN = 10;
+export const MAP_REGION_COUNT_MAX = 15;
+
+function validateMapData(map, countries) {
+  assertConfig(map && typeof map === "object" && !Array.isArray(map), "map must be an object");
+  assertConfig(typeof map.id === "string" && map.id.trim().length > 0, "map.id must be a non-empty string");
+  assertConfig(typeof map.name === "string" && map.name.trim().length > 0, "map.name must be a non-empty string");
+  validateMapSource(map.source);
+  validateMapDecorations(map.decorations);
+  assertConfig(Array.isArray(map.regions) && map.regions.length >= MAP_REGION_COUNT_MIN && map.regions.length <= MAP_REGION_COUNT_MAX, `map ${map.id} must contain between ${MAP_REGION_COUNT_MIN} and ${MAP_REGION_COUNT_MAX} regions`);
+  const regionIds = map.regions.map((region) => region.id);
+  validateCountryMaster(countries, map.regions);
+  map.regions.forEach((region) => {
+    assertConfig(typeof region.id === "string" && region.id.length > 0, "Region ids must be non-empty strings");
+  });
+  assertConfig(new Set(regionIds).size === regionIds.length, "拠点IDが重複しています");
+  map.regions.forEach((region) => {
+    assertConfig(typeof region.name === "string" && region.name.length > 0, `拠点 ${region.id} に表示名がありません`);
+    assertConfig(typeof region.shortName === "string" && region.shortName.length > 0, `拠点 ${region.id} に短縮名がありません`);
+    validateRegionGeometry(region);
+  });
+
+  assertConfig(Array.isArray(map.roads), "マップに道路の配列がありません");
+  map.roadNeighbors = buildRoadNeighbors(regionIds, map.roads);
+  validateRoadDefinitions(map, regionIds);
+  validateInteractionPoints(map);
+  return regionIds;
 }
 
 function validateSpecialMoveBalance(specialMove) {
@@ -419,43 +455,47 @@ function validateBalance(balance, factionIds, regionIds) {
   validateCampaignBalance(balance.campaign);
 }
 
+function normalizeMapMaster(config) {
+  const maps = config.maps && typeof config.maps === "object" && !Array.isArray(config.maps)
+    ? { ...config.maps }
+    : {};
+  if (config.map && typeof config.map === "object" && typeof config.map.id === "string") {
+    maps[config.map.id] = config.map;
+  }
+  assertConfig(Object.keys(maps).length > 0, "マップがありません");
+
+  const defaultMapId = config.scenario?.mapId || config.map?.id || Object.keys(maps)[0];
+  assertConfig(maps[defaultMapId], `シナリオが参照するマップ ${defaultMapId} がありません`);
+  config.maps = maps;
+  config.map = maps[defaultMapId];
+}
+
 export function createGameConfig(source) {
   const config = cloneData(source);
   const factionIds = Object.keys(config.factions || {});
   assertConfig(factionIds.length >= 2, "勢力を2つ以上定義してください");
   factionIds.forEach((factionId) => validateFaction(factionId, config.factions[factionId]));
   validateCharacterMaster(config.characters, config.countries);
+  normalizeMapMaster(config);
 
-  assertConfig(config.map?.id === config.scenario?.mapId, "シナリオが別のマップを参照しています");
-  assertConfig(typeof config.map?.name === "string" && config.map.name.trim().length > 0, "map.name must be a non-empty string");
-  validateMapSource(config.map.source);
-  validateMapDecorations(config.map.decorations);
-  assertConfig(Array.isArray(config.map?.regions) && config.map.regions.length > 0, "拠点がありません");
-  const regionIds = config.map.regions.map((region) => region.id);
-  validateCountryMaster(config.countries, config.map.regions);
-  config.map.regions.forEach((region) => {
-    assertConfig(typeof region.id === "string" && region.id.length > 0, "Region ids must be non-empty strings");
-  });
-  assertConfig(new Set(regionIds).size === regionIds.length, "拠点IDが重複しています");
-  config.map.regions.forEach((region) => {
-    assertConfig(typeof region.name === "string" && region.name.length > 0, `拠点 ${region.id} に表示名がありません`);
-    assertConfig(typeof region.shortName === "string" && region.shortName.length > 0, `拠点 ${region.id} に短縮名がありません`);
-    validateRegionGeometry(region);
-  });
-
-  assertConfig(Array.isArray(config.map?.roads), "マップに道路の配列がありません");
-  config.map.roadNeighbors = buildRoadNeighbors(regionIds, config.map.roads);
-  validateRoadDefinitions(config.map, regionIds);
-  validateInteractionPoints(config.map);
+  const allRegionIds = new Set();
+  const regionIdsByMap = Object.fromEntries(Object.entries(config.maps).map(([mapId, map]) => {
+    assertConfig(map.id === mapId, `map ${mapId} has an inconsistent id`);
+    const regionIds = validateMapData(map, config.countries);
+    regionIds.forEach((regionId) => assertConfig(!allRegionIds.has(regionId), `拠点 ${regionId} が複数マップで重複しています`));
+    regionIds.forEach((regionId) => allRegionIds.add(regionId));
+    return [mapId, regionIds];
+  }));
+  const defaultRegionIds = regionIdsByMap[config.map.id];
   assertConfig(factionIds.includes(config.scenario.playerFactionId), "プレイヤー勢力が存在しません");
   assertConfig(factionIds.includes(config.scenario.activeAiFactionId), "AI勢力が存在しません");
   assertConfig(config.scenario.playerFactionId !== config.scenario.activeAiFactionId, "プレイヤー勢力とAI勢力は分けてください");
 
-  regionIds.forEach((regionId) => {
+  defaultRegionIds.forEach((regionId) => {
     const owner = config.scenario.territoryOwners?.[regionId];
     assertConfig(factionIds.includes(owner), `拠点 ${regionId} の初期所有勢力が不正です`);
   });
-  assertConfig(Object.keys(config.scenario.territoryOwners || {}).length === regionIds.length, "初期所有に未知または不足している拠点があります");
+  assertConfig(Object.keys(config.scenario.territoryOwners || {}).length === defaultRegionIds.length, "初期所有に未知または不足している拠点があります");
 
   assertConfig(Array.isArray(config.scenario.initialUnits), "initialUnits must be an array");
   const unitIds = new Set();
@@ -464,22 +504,23 @@ export function createGameConfig(source) {
     assertConfig(!unitIds.has(unit.id), `初期部隊ID ${unit.id} が重複しています`);
     unitIds.add(unit.id);
     assertConfig(factionIds.includes(unit.faction), `初期部隊 ${unit.id} の勢力が不正です`);
-    assertConfig(regionIds.includes(unit.regionId), `初期部隊 ${unit.id} の配置拠点が存在しません`);
+    assertConfig(defaultRegionIds.includes(unit.regionId), `初期部隊 ${unit.id} の配置拠点が存在しません`);
   });
   assertConfig([...unitIds].length > 0, "初期部隊がありません");
   assertConfig(config.scenario.initialUnits.some((unit) => unit.faction === config.scenario.playerFactionId), "プレイヤー初期部隊がありません");
 
-  validateBalance(config.balance, factionIds, regionIds);
+  validateBalance(config.balance, factionIds, defaultRegionIds);
   assertConfig(
     Object.hasOwn(config.balance.difficulty.profiles, config.campaign.defaultDifficultyId),
     `campaign.defaultDifficultyId ${config.campaign.defaultDifficultyId} is not defined in difficulty.profiles`,
   );
-  validateCampaignData(config.campaign, config.map, config.countries, config.characters, factionIds, config.balance, config.scenario.playerFactionId);
+  validateCampaignData(config.campaign, config.maps, config.countries, config.characters, factionIds, config.balance, config.scenario.playerFactionId);
   return deepFreeze(config);
 }
 
 export const GAME_CONFIG = createGameConfig({
   factions: FACTIONS,
+  maps: MAPS,
   map: MAP,
   scenario: SCENARIO,
   balance: BALANCE,
@@ -499,12 +540,14 @@ function regionCenter(region) {
 export function createRuntimeScenario(config = GAME_CONFIG, phaseId = config.scenario.phaseId, difficultyId = config.campaign.defaultDifficultyId) {
   const phase = config.campaign?.phases?.[phaseId];
   const front = config.campaign?.fronts?.[phase?.frontId || config.scenario.frontId];
+  const mapId = phase?.mapId || front?.mapId || config.scenario.mapId;
+  const map = config.maps?.[mapId] || config.map;
   const territoryOwners = phase?.territoryOwners || config.scenario.territoryOwners;
   const productionByRegion = phase?.productionByRegion || config.balance.territoryProduction;
   const enemyProfile = front ? config.balance.campaign.enemyProfiles[front.enemyProfileId] : null;
   const difficultyProfile = config.balance.difficulty.profiles[difficultyId]
     || config.balance.difficulty.profiles[config.campaign.defaultDifficultyId];
-  const regions = config.map.regions.map((region) => ({
+  const regions = map.regions.map((region) => ({
     ...cloneData(region),
     faction: territoryOwners[region.id],
     production: productionByRegion[region.id],
@@ -540,6 +583,7 @@ export function createRuntimeScenario(config = GAME_CONFIG, phaseId = config.sce
   });
 
   return {
+    mapId: map.id,
     frontId: phase?.frontId || config.scenario.frontId || null,
     phaseId: phase?.id || config.scenario.phaseId || null,
     enemyProfileId: front?.enemyProfileId || null,

@@ -1,8 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { GAME_CONFIG, createGameConfig, createRuntimeScenario } from "../src/config/game-config.js";
-import { MAP } from "../src/config/map.js";
+import {
+  GAME_CONFIG,
+  MAP_REGION_COUNT_MAX,
+  MAP_REGION_COUNT_MIN,
+  createGameConfig,
+  createRuntimeScenario,
+} from "../src/config/game-config.js";
+import { MAP, MAPS } from "../src/config/map.js";
 import { getCountryFlagOrigin, UNKNOWN_COUNTRY_FLAG_ORIGIN } from "../src/config/countries.js";
 
 function editableConfig() {
@@ -11,6 +17,8 @@ function editableConfig() {
 
 test("the compiled geographic front map is connected", () => {
   assert.equal(GAME_CONFIG.map.id, "korea-front");
+  assert.equal(GAME_CONFIG.map, GAME_CONFIG.maps[GAME_CONFIG.map.id]);
+  assert.deepEqual(Object.keys(GAME_CONFIG.maps), Object.keys(MAPS));
   const regionIds = GAME_CONFIG.map.regions.map((region) => region.id);
   const visited = new Set([regionIds[0]]);
   const queue = [regionIds[0]];
@@ -27,6 +35,7 @@ test("the compiled geographic front map is connected", () => {
   }
 
   assert.equal(visited.size, regionIds.length);
+  assert.ok(regionIds.length >= MAP_REGION_COUNT_MIN && regionIds.length <= MAP_REGION_COUNT_MAX);
   assert.equal(regionIds.length, 11);
   assert.equal(GAME_CONFIG.countries["south-korea"].fragmentIds.length, 6);
   assert.equal(GAME_CONFIG.countries["north-korea"].fragmentIds.length, 5);
@@ -99,6 +108,7 @@ test("runtime scenario uses phase production and rounds front-start enemy streng
   const phase = GAME_CONFIG.campaign.phases[GAME_CONFIG.scenario.phaseId];
 
   assert.equal(runtime.regions.length, GAME_CONFIG.map.regions.length);
+  assert.equal(runtime.mapId, GAME_CONFIG.scenario.mapId);
   assert.equal(runtime.units.length, phase.initialUnits.length);
   assert.equal(runtime.regions.filter((region) => region.faction === "blue").length, 1);
   assert.equal(runtime.units.filter((unit) => unit.faction === "blue").length, 1);
@@ -130,6 +140,23 @@ test("runtime scenario uses phase production and rounds front-start enemy streng
     assert.ok(GAME_CONFIG.characters[unit.characterId]);
     assert.match(GAME_CONFIG.characters[unit.characterId].sprite, /^\.\/assets\/units\/.*\.png$/);
   });
+});
+
+test("map rules keep the player in one starting region and enemies in their country", () => {
+  const runtime = createRuntimeScenario();
+  const playerStartRegionIds = new Set(
+    runtime.units
+      .filter((unit) => unit.faction === GAME_CONFIG.scenario.playerFactionId)
+      .map((unit) => unit.regionId),
+  );
+  assert.equal(playerStartRegionIds.size, 1);
+
+  runtime.units
+    .filter((unit) => GAME_CONFIG.factions[unit.faction].isEnemy)
+    .forEach((unit) => {
+      const region = runtime.regions.find((candidate) => candidate.id === unit.regionId);
+      assert.equal(GAME_CONFIG.characters[unit.characterId].countryId, region.countryId);
+    });
 });
 
 test("difficulty applies enemy strength and special move balance at campaign start", () => {
@@ -196,7 +223,7 @@ test("campaign phases cover the map and carry explicit objectives", () => {
 test("invalid campaign map references and road passability are rejected", () => {
   const invalidFront = editableConfig();
   invalidFront.campaign.fronts[invalidFront.scenario.frontId].mapId = "other-map";
-  assert.throws(() => createGameConfig(invalidFront), /another map/);
+  assert.throws(() => createGameConfig(invalidFront), /unknown map/);
 
   const invalidRoad = editableConfig();
   invalidRoad.map.roadDefinitions[0].passable = false;
@@ -232,4 +259,18 @@ test("invalid map geometry and decoration data are rejected", () => {
   const invalidLine = editableConfig();
   invalidLine.map.decorations.lines.push({ from: [0.2, 0.2], to: [0.62, Number.NaN] });
   assert.throws(() => createGameConfig(invalidLine), /decorations\.lines/);
+});
+
+test("maps outside the 10 to 15 region range are rejected", () => {
+  const tooSmall = editableConfig();
+  tooSmall.map.regions = tooSmall.map.regions.slice(0, MAP_REGION_COUNT_MIN - 1);
+  assert.throws(() => createGameConfig(tooSmall), /between 10 and 15 regions/);
+
+  const tooLarge = editableConfig();
+  tooLarge.map.regions = [
+    ...tooLarge.map.regions,
+    ...tooLarge.map.regions.slice(0, MAP_REGION_COUNT_MAX - tooLarge.map.regions.length + 1)
+      .map((region, index) => ({ ...region, id: `extra-${index}` })),
+  ];
+  assert.throws(() => createGameConfig(tooLarge), /between 10 and 15 regions/);
 });

@@ -1,6 +1,6 @@
 # Scenario and campaign configuration
 
-The active campaign is intentionally small while the front rules are being
+The active campaign is intentionally small while the map rules are being
 validated. The first playable operation is the Korea Front.
 
 ```text
@@ -13,7 +13,7 @@ campaign
     korea-front-opening
 ```
 
-The active map contains 11 strategic regions:
+The active Korea map contains 11 strategic regions:
 
 - South Korea: one player starting region and five enemy-owned regions
 - North Korea: five enemy-owned regions
@@ -30,7 +30,7 @@ factions can attack at the same time, the configured active AI faction (North
 Korea in this front) is selected first so an adjacent North Korean region does
 not get starved by another enemy warning.
 
-Small-country fronts use one phase. A phase defines the same map's objective,
+Small-country maps use one phase. A phase defines the same map's objective,
 territory owners, production, and initial deployment. Large-country operations
 may add multiple phases later without changing the runtime model.
 

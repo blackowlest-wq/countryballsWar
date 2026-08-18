@@ -144,6 +144,7 @@ const DIFFICULTY_IDS = Object.keys(DIFFICULTY_PROFILES);
 const BATTLE_DISTANCE = COMBAT_BALANCE.contactDistance;
 const BATTLE_TICK_INTERVAL = COMBAT_BALANCE.tickIntervalSeconds;
 let selectedFrontId = GAME_CONFIG.scenario.frontId;
+let activePhaseId = GAME_CONFIG.scenario.phaseId;
 
 function resolveDifficultyId(value) {
   return DIFFICULTY_IDS.includes(value) ? value : GAME_CONFIG.campaign.defaultDifficultyId;
@@ -157,6 +158,15 @@ function getSelectedFront() {
   return GAME_CONFIG.campaign.fronts[selectedFrontId]
     || GAME_CONFIG.campaign.fronts[GAME_CONFIG.scenario.frontId]
     || null;
+}
+
+function getMapById(mapId) {
+  return GAME_CONFIG.maps?.[mapId] || GAME_CONFIG.map;
+}
+
+function getActiveMap() {
+  const phase = GAME_CONFIG.campaign.phases[activePhaseId];
+  return getMapById(phase?.mapId || getSelectedFront()?.mapId || GAME_CONFIG.scenario.mapId);
 }
 
 function getActiveEnemyProfile() {
@@ -184,7 +194,7 @@ const COLORS = Object.fromEntries(
 
 function applyConfiguredDisplayNames() {
   const playerFactionName = GAME_CONFIG.factions[PLAYER_FACTION_ID].name;
-  ui.mapName.textContent = getSelectedFront()?.name || GAME_CONFIG.map.name;
+  ui.mapName.textContent = getSelectedFront()?.name || getActiveMap().name;
   ui.clearPlayerFactionName.textContent = playerFactionName;
 }
 
@@ -309,7 +319,6 @@ function cloneUnit(unit) {
   };
 }
 
-let activePhaseId = GAME_CONFIG.scenario.phaseId;
 const runtimeScenario = createRuntimeScenario(GAME_CONFIG, activePhaseId, persistentState.campaign.difficultyId);
 const regions = runtimeScenario.regions;
 const units = runtimeScenario.units;
@@ -375,7 +384,7 @@ function getRegion(id) {
 }
 
 function roadNeighbors(regionId) {
-  return GAME_CONFIG.map.roadNeighbors[regionId] || [];
+  return getActiveMap().roadNeighbors[regionId] || [];
 }
 
 function findRoadPath(startId, targetId) {
@@ -995,13 +1004,13 @@ function render() {
   ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
   ctx.clearRect(0, 0, view.width, view.height);
   drawBackground();
-  drawDecorationLabels(GAME_CONFIG.map.decorations?.labels);
+  drawDecorationLabels(getActiveMap().decorations?.labels);
   drawRegions();
   drawRoadNetwork();
   drawAttackMarkers();
   drawInvasionWarning();
   drawOccupationIndicators();
-  drawDecorationLines(GAME_CONFIG.map.decorations?.lines);
+  drawDecorationLines(getActiveMap().decorations?.lines);
   drawOrders();
   drawBattleEffects();
   units.forEach((unit) => drawUnit(unit, state.elapsed));
@@ -1561,7 +1570,7 @@ function regionAtWorldPoint(point) {
     regions,
     point,
     pointInRegion,
-    defaultHitRadius: GAME_CONFIG.map.interactionHitRadius || 0.02,
+    defaultHitRadius: getActiveMap().interactionHitRadius || 0.02,
     zoom: state.zoom,
   });
 }
@@ -2187,7 +2196,7 @@ function closeTitleScreen() {
 }
 
 function getFrontDisplayName(front) {
-  return front?.name || (front?.mapId === GAME_CONFIG.map.id ? GAME_CONFIG.map.name : front?.mapId || "未設定のマップ");
+  return front?.name || getMapById(front?.mapId)?.name || front?.mapId || "未設定のマップ";
 }
 
 function getFrontTargetNames(front) {

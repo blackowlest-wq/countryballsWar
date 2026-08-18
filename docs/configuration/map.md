@@ -5,17 +5,23 @@
 - Geographic source: `src/config/world-map.js`
 - Country master: `src/config/countries.js`
 - Compiler: `src/config/map-compiler.js`
-- Active runtime map: `src/config/map.js`
+- Runtime map master: `src/config/map.js`
 
-`map.js` is compiled from Natural Earth longitude/latitude data. The active
-map is a close-up projection of the Korean Peninsula. The extracted GeoJSON
-and the runtime subset are stored in `src/config/geodata/`.
+`map.js` compiles every entry in `WORLD_MAP.frontMaps` into `MAPS`. The
+currently selected map remains available as the compatibility alias `MAP` and
+`GAME_CONFIG.map`; new campaign fronts select a map through their `mapId`.
+The extracted GeoJSON and runtime subsets are stored in
+`src/config/geodata/`.
 
-The source is Natural Earth Admin 1 - States, Provinces, 1:10m, v5.1.1
+The Korea source is Natural Earth Admin 1 - States, Provinces, 1:10m, v5.1.1
 (commit `9380cca`, public domain). The map source metadata is exposed as
 `GAME_CONFIG.map.source` so a future data update must be explicit.
 
 ## Active front regions
+
+Every map must contain 10 to 15 strategic regions. The player starts from one
+region only. Enemy units must be deployed to a region whose `countryId`
+matches the country character shown by that unit's flag.
 
 The source contains 28 administrative features, but the game combines
 adjacent features into 11 strategic regions to keep the map readable and

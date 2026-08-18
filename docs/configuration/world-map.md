@@ -1,6 +1,7 @@
-# World map and geographic front data
+# World map and geographic map data
 
-The campaign map is split from the geographic source and compiled per front.
+Each campaign map is split from the geographic source and compiled as an
+independent runtime map.
 
 ```text
 world-map.js
@@ -15,11 +16,11 @@ map-compiler.js
         |
         v
 map.js
-  active runtime regions, roads, and decorations
+  runtime map master: regions, roads, and decorations per mapId
 ```
 
-`src/config/world-map.js` is the front-definition source of truth. The active
-Korea Front uses the checked-in Natural Earth Admin 1 - States, Provinces
+`src/config/world-map.js` is the geographic map-definition source of truth.
+The Korea map uses the checked-in Natural Earth Admin 1 - States, Provinces
 GeoJSON subset at 1:10m, pinned to v5.1.1 (`9380cca`). The 28 source features
 are combined into 11 larger strategic regions while preserving their actual
 geographic outlines.
@@ -36,8 +37,8 @@ Natural Earth is public domain. The source URL and license URL are carried in
 
 The playable unit is a strategic region. `countryId` identifies the country
 character for enemy units, while each region retains `sourceFragmentIds` for
-traceability. The player uses a separate white character and begins with one
-region. A country is completed only after every region listed in
+traceability. Every map contains 10 to 15 strategic regions. The player uses a
+separate white character and begins with one region. A country is completed only after every region listed in
 `src/config/countries.js` is player-controlled.
 
 Road validation covers explicit land and sea links. Strategic-region outer
