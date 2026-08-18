@@ -136,12 +136,20 @@ export function saveSpecialMove(storage, specialMove, balance) {
 
 export function resetPersistentState(storage, upgradeKeys) {
   const target = getStorage(storage);
+  let campaign = createDefaultCampaignState();
   if (target) {
     try {
+      const savedCampaign = JSON.parse(target.getItem(CAMPAIGN_STORAGE_KEY) || "null");
+      const normalizedCampaign = normalizeCampaignState(savedCampaign);
+      campaign = {
+        ...campaign,
+        completedFrontIds: normalizedCampaign.completedFrontIds,
+        lastCompletedFrontId: normalizedCampaign.lastCompletedFrontId,
+      };
       target.removeItem(GOLD_STORAGE_KEY);
       target.removeItem(UPGRADES_STORAGE_KEY);
       target.removeItem(SPECIAL_MOVE_STORAGE_KEY);
-      target.removeItem(CAMPAIGN_STORAGE_KEY);
+      target.setItem(CAMPAIGN_STORAGE_KEY, JSON.stringify(campaign));
     } catch {
       // Storage may be unavailable; return a clean in-memory state regardless.
     }
@@ -149,6 +157,6 @@ export function resetPersistentState(storage, upgradeKeys) {
   return {
     gold: 0,
     upgrades: createDefaultUpgrades(upgradeKeys),
-    campaign: createDefaultCampaignState(),
+    campaign,
   };
 }

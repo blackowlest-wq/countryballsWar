@@ -50,12 +50,17 @@ const EMPTY_CAMPAIGN = {
   lastCompletedFrontId: null,
 };
 
-test("resetPersistentState clears all persistent domains", () => {
+test("resetPersistentState clears resettable domains while preserving map acquisition", () => {
   const storage = createStorage({
     [GOLD_STORAGE_KEY]: "1234",
     [UPGRADES_STORAGE_KEY]: JSON.stringify({ logistics: 2, armor: 4, reserve: 1 }),
     [SPECIAL_MOVE_STORAGE_KEY]: JSON.stringify({ type: "allyBoost", name: "boost" }),
-    [CAMPAIGN_STORAGE_KEY]: JSON.stringify({ completedCountryIds: ["china"] }),
+    [CAMPAIGN_STORAGE_KEY]: JSON.stringify({
+      completedCountryIds: ["china"],
+      collectedCountryIds: ["china"],
+      completedFrontIds: ["korea-front", "asia-front"],
+      lastCompletedFrontId: "asia-front",
+    }),
   });
 
   const result = resetPersistentState(storage, UPGRADE_KEYS);
@@ -63,12 +68,16 @@ test("resetPersistentState clears all persistent domains", () => {
   assert.deepEqual(result, {
     gold: 0,
     upgrades: { logistics: 0, armor: 0, reserve: 0, speed: 0 },
-    campaign: EMPTY_CAMPAIGN,
+    campaign: {
+      ...EMPTY_CAMPAIGN,
+      completedFrontIds: ["asia-front", "korea-front"],
+      lastCompletedFrontId: "asia-front",
+    },
   });
   assert.equal(storage.has(GOLD_STORAGE_KEY), false);
   assert.equal(storage.has(UPGRADES_STORAGE_KEY), false);
   assert.equal(storage.has(SPECIAL_MOVE_STORAGE_KEY), false);
-  assert.equal(storage.has(CAMPAIGN_STORAGE_KEY), false);
+  assert.deepEqual(JSON.parse(storage.getItem(CAMPAIGN_STORAGE_KEY)), result.campaign);
 });
 
 test("corrupted saved values safely become a clean state", () => {
