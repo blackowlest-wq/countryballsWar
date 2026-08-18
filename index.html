@@ -20,7 +20,7 @@
   <body>
     <main class="game-shell" id="gameShell">
       <header class="topbar">
-        <div class="front-title" aria-label="戦線情報">
+        <div class="front-title" aria-label="マップ情報">
           <span class="caption-dot" aria-hidden="true"></span>
           <span class="front-title-copy">
             <strong id="mapName"></strong>
@@ -211,16 +211,16 @@
         <div class="dialog-heading">
           <div>
             <span class="panel-kicker">FRONT SELECT</span>
-            <h2 id="mapSelectionHeading">戦線を選択</h2>
+            <h2 id="mapSelectionHeading">マップを選択</h2>
           </div>
           <button class="dialog-close" id="mapSelectionBackButton" type="button" aria-label="タイトルへ戻る">×</button>
         </div>
         <p class="map-selection-description" id="mapSelectionDescription">
-          作戦を開始するマップを選択してください。クリア済みの戦線は再戦できます。
+          作戦を開始するマップを選択してください。クリア済みのマップは再戦できます。
         </p>
         <div class="map-selection-summary">
-          <span>選択可能な戦線</span>
-          <strong id="mapSelectionSummary">0 / 0 戦線を選択可能</strong>
+          <span>選択可能なマップ</span>
+          <strong id="mapSelectionSummary">0 / 0 マップを選択可能</strong>
         </div>
         <p class="map-selection-difficulty" id="mapSelectionDifficulty"></p>
         <div class="map-selection-grid" id="mapSelectionGrid"></div>
@@ -312,7 +312,7 @@
                 >外す</button>
               </div>
             </div>
-            <p class="country-detail-copy">国旗をモチーフにしたキャラクターとして、戦線に登場します。</p>
+            <p class="country-detail-copy">国旗をモチーフにしたキャラクターとして、マップに登場します。</p>
           </div>
         </section>
 
@@ -435,7 +435,7 @@
         <h2>クリア！</h2>
         <p>すべての領土を<span id="clearPlayerFactionName"></span>が制圧しました。</p>
         <strong class="clear-reward" id="clearReward">+0 GOLD</strong>
-        <button class="primary-action" id="clearRestartButton" type="button">戦線を選択</button>
+        <button class="primary-action" id="clearRestartButton" type="button">マップを選択</button>
       </div>
     </dialog>
 

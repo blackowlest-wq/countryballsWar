@@ -2187,7 +2187,7 @@ function closeTitleScreen() {
 }
 
 function getFrontDisplayName(front) {
-  return front?.name || (front?.mapId === GAME_CONFIG.map.id ? GAME_CONFIG.map.name : front?.mapId || "未設定の戦線");
+  return front?.name || (front?.mapId === GAME_CONFIG.map.id ? GAME_CONFIG.map.name : front?.mapId || "未設定のマップ");
 }
 
 function getFrontTargetNames(front) {
@@ -2236,7 +2236,7 @@ function updateMapSelectionDialog() {
   }
   if (ui.mapSelectionSummary) {
     const unlockedCount = entries.filter((entry) => entry.unlocked).length;
-    ui.mapSelectionSummary.textContent = `${unlockedCount} / ${entries.length} 戦線を選択可能`;
+    ui.mapSelectionSummary.textContent = `${unlockedCount} / ${entries.length} マップを選択可能`;
   }
 
   entries.forEach(({ frontId, front, index, completed, unlocked }) => {
@@ -2271,7 +2271,7 @@ function updateMapSelectionDialog() {
 
     const footer = document.createElement("span");
     footer.className = "map-selection-card-footer";
-    footer.textContent = `${front.phaseIds?.length || 0}局面 ・ ${front.type === "regionalSmall" ? "小国戦線" : "戦線"}`;
+    footer.textContent = `${front.phaseIds?.length || 0}局面 ・ ${front.type === "regionalSmall" ? "小国マップ" : "マップ"}`;
 
     card.append(header, title, target, footer);
     ui.mapSelectionGrid.append(card);
@@ -2280,7 +2280,7 @@ function updateMapSelectionDialog() {
   if (entries.length === 0) {
     const empty = document.createElement("p");
     empty.className = "map-selection-empty";
-    empty.textContent = "選択できる戦線がありません。";
+    empty.textContent = "選択できるマップがありません。";
     ui.mapSelectionGrid.append(empty);
   }
 }

@@ -212,7 +212,7 @@ export const WORLD_MAP = {
   frontMaps: {
     "korea-front": {
       id: "korea-front",
-      name: "朝鮮半島戦線",
+      name: "朝鮮半島マップ",
       bounds: { west: 124, east: 132, south: 32, north: 44 },
       interactionMinDistance: 0.045,
       interactionHitRadius: 0.018,

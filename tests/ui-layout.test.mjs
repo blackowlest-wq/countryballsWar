@@ -19,7 +19,7 @@ test("front title is rendered in the global header", () => {
 test("front title uses the Japanese front name", () => {
   const worldMap = readProjectFile("src/config/world-map.js");
 
-  assert.match(worldMap, /name: "朝鮮半島戦線"/);
+  assert.match(worldMap, /name: "朝鮮半島マップ"/);
 });
 
 test("title screen exposes the flag collection menu", () => {
@@ -48,7 +48,7 @@ test("title start opens a front selection dialog and clear returns to it", () =>
 
   assert.match(html, /id="mapSelectionDialog"/);
   assert.match(html, /id="mapSelectionGrid"/);
-  assert.match(html, /id="clearRestartButton"[^>]*>戦線を選択/);
+  assert.match(html, /id="clearRestartButton"[^>]*>マップを選択/);
   assert.match(main, /function openMapSelection/);
   assert.match(main, /startFromTitle\(\)[\s\S]*openMapSelection/);
   assert.match(main, /clearRestartButton.*openMapSelection/);
