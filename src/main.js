@@ -27,6 +27,7 @@ import {
   getSpecialMoveConfig,
 } from "./special-move.js";
 import { getAiAttackCandidates as collectAiAttackCandidates, chooseAiAttackCandidate } from "./campaign/ai.js";
+import { collectBattleGroups as getBattleGroups } from "./campaign/battle-groups.js";
 import { calculateGroupCombatDamage } from "./campaign/combat.js";
 import { collectCountryFlags } from "./campaign/flag-collection.js";
 import { getFrontSelectionEntries } from "./campaign/front-selection.js";
@@ -1258,58 +1259,6 @@ function isPlayerInvincible() {
   return state.invincibilityRemaining > 0;
 }
 
-function collectBattleGroups() {
-  const contacts = new Map(units.map((unit) => [unit.id, []]));
-  const enemyContacts = new Set();
-  for (let leftIndex = 0; leftIndex < units.length; leftIndex += 1) {
-    for (let rightIndex = leftIndex + 1; rightIndex < units.length; rightIndex += 1) {
-      const left = units[leftIndex];
-      const right = units[rightIndex];
-      if (distance(left, right) > BATTLE_DISTANCE) continue;
-      contacts.get(left.id).push(right.id);
-      contacts.get(right.id).push(left.id);
-      if (left.faction !== right.faction) {
-        enemyContacts.add(left.id);
-        enemyContacts.add(right.id);
-      }
-    }
-  }
-
-  const visited = new Set();
-  const groups = [];
-  units.forEach((unit) => {
-    if (visited.has(unit.id) || !enemyContacts.has(unit.id)) return;
-
-    const queue = [unit.id];
-    const memberIds = [];
-    visited.add(unit.id);
-    while (queue.length > 0) {
-      const currentId = queue.shift();
-      memberIds.push(currentId);
-      contacts.get(currentId).forEach((neighborId) => {
-        if (visited.has(neighborId)) return;
-        visited.add(neighborId);
-        queue.push(neighborId);
-      });
-    }
-
-    const sortedIds = memberIds.sort();
-    const sideMap = new Map();
-    sortedIds.forEach((memberId) => {
-      const member = units.find((candidate) => candidate.id === memberId);
-      if (!member) return;
-      if (!sideMap.has(member.faction)) sideMap.set(member.faction, []);
-      sideMap.get(member.faction).push(memberId);
-    });
-    groups.push({
-      id: sortedIds.join("::"),
-      unitIds: sortedIds,
-      sides: [...sideMap.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([faction, unitIds]) => ({ faction, unitIds })),
-    });
-  });
-  return groups;
-}
-
 function battleRepresentative(members) {
   return members.find((unit) => unit.arrived && unit.targetRegionId) || members.find((unit) => unit.targetRegionId) || members.find((unit) => unit.arrived) || members[0] || null;
 }
@@ -1318,7 +1267,11 @@ function updateBattles(dt) {
   const activeKeys = new Set();
   units.forEach((unit) => { unit.inBattle = false; });
 
-  collectBattleGroups().forEach((group) => {
+  getBattleGroups({
+    units,
+    battleDistance: BATTLE_DISTANCE,
+    getUnitRegionId: (unit) => regionForUnit(unit)?.id || unit.regionId || unit.targetRegionId || null,
+  }).forEach((group) => {
     const sides = group.sides
       .map((side) => ({ ...side, units: side.unitIds.map((unitId) => units.find((unit) => unit.id === unitId)).filter(Boolean) }))
       .filter((side) => side.units.length > 0);
