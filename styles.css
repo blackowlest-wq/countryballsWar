@@ -1861,6 +1861,12 @@ button:disabled {
   width: min(170px, 100%);
 }
 
+.country-character-actions {
+  display: grid;
+  width: 100%;
+  gap: 6px;
+}
+
 .country-character-preview {
   position: relative;
   flex: 0 0 auto;
@@ -1917,6 +1923,30 @@ button:disabled {
   border-color: #e0e5eb;
   background: #f4f5f7;
   box-shadow: 0 3px 0 #e5e8ed;
+}
+
+.country-character-remove {
+  width: 100%;
+  min-height: 30px;
+  padding: 6px 8px;
+  color: #9b4d59;
+  border-color: #e4bec4;
+  background: #fff6f7;
+  box-shadow: 0 3px 0 #efd9dc;
+  font-size: 8px;
+}
+
+.country-character-remove:hover:not(:disabled) {
+  color: #913841;
+  border-color: #d98b95;
+  background: #fff0f1;
+}
+
+.country-character-remove:disabled {
+  color: #a2aab5;
+  border-color: #e6e9ed;
+  background: #f6f7f8;
+  box-shadow: 0 3px 0 #e8ebee;
 }
 
 .country-character-ball {

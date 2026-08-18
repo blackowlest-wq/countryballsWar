@@ -254,13 +254,22 @@
           <div class="country-detail-character-row">
             <div class="country-character-display">
               <div class="country-character-preview" id="countryDetailCharacter" aria-hidden="true"></div>
-              <button
-                class="secondary-action country-character-toggle"
-                id="countryDetailCharacterToggle"
-                type="button"
-                aria-controls="countryDetailCharacter"
-                aria-pressed="false"
-              >利用キャラクターの絵に切り替える</button>
+              <div class="country-character-actions">
+                <button
+                  class="secondary-action country-character-toggle"
+                  id="countryDetailCharacterToggle"
+                  type="button"
+                  aria-controls="countryDetailCharacter"
+                  aria-pressed="false"
+                >利用キャラクターの絵に切り替える</button>
+                <button
+                  class="secondary-action country-character-remove"
+                  id="countryDetailCharacterRemove"
+                  type="button"
+                  aria-controls="countryDetailCharacter"
+                  disabled
+                >外す</button>
+              </div>
             </div>
             <p class="country-detail-copy">国旗をモチーフにしたキャラクターとして、戦線に登場します。</p>
           </div>

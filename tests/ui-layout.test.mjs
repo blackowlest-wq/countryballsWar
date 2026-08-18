@@ -54,6 +54,7 @@ test("country flag collection exposes a profile dialog with the requested sectio
     "countryDetailMap",
     "countryDetailCharacter",
     "countryDetailCharacterToggle",
+    "countryDetailCharacterRemove",
     "countryDetailFlagOrigin",
     "countryDetailTrivia",
     "countryDetailSources",
@@ -69,7 +70,10 @@ test("country profile can switch to the character image used in battle", () => {
 
   assert.match(html, /id="countryDetailCharacterToggle"/);
   assert.match(html, /利用キャラクターの絵に切り替える/);
+  assert.match(html, /id="countryDetailCharacterRemove"/);
+  assert.match(html, />外す</);
   assert.match(main, /function toggleCountryCharacterImage/);
+  assert.match(main, /function removeCountryCharacterImage/);
   assert.match(main, /countryDetailCharacterToggle[\s\S]*aria-pressed/);
   assert.match(main, /character\.sprite/);
 });
