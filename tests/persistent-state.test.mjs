@@ -44,17 +44,18 @@ const SPECIAL_MOVE_BALANCE = {
 };
 
 const EMPTY_CAMPAIGN = {
-  version: 4,
+  version: 5,
   campaignId: "regional-fronts-v1",
   difficultyId: "normal",
   difficultyLocked: false,
   completedCountryIds: [],
   collectedCountryIds: [],
   completedFrontIds: [],
+  unlockedFrontIds: [],
   lastCompletedFrontId: null,
 };
 
-test("resetPersistentState clears resettable domains while preserving map acquisition", () => {
+test("resetPersistentState clears completion while preserving map acquisition and flag collection", () => {
   const storage = createStorage({
     [GOLD_STORAGE_KEY]: "1234",
     [UPGRADES_STORAGE_KEY]: JSON.stringify({ logistics: 2, armor: 4, reserve: 1 }),
@@ -64,6 +65,7 @@ test("resetPersistentState clears resettable domains while preserving map acquis
       completedCountryIds: ["china"],
       collectedCountryIds: ["china"],
       completedFrontIds: ["korea-front", "asia-front"],
+      unlockedFrontIds: ["korea-front", "asia-front"],
       lastCompletedFrontId: "asia-front",
     }),
   });
@@ -75,8 +77,8 @@ test("resetPersistentState clears resettable domains while preserving map acquis
     upgrades: { logistics: 0, armor: 0, reserve: 0, speed: 0 },
     campaign: {
       ...EMPTY_CAMPAIGN,
-      completedFrontIds: ["asia-front", "korea-front"],
-      lastCompletedFrontId: "asia-front",
+      collectedCountryIds: ["china"],
+      unlockedFrontIds: ["asia-front", "korea-front"],
     },
   });
   assert.equal(storage.has(GOLD_STORAGE_KEY), false);
@@ -84,6 +86,23 @@ test("resetPersistentState clears resettable domains while preserving map acquis
   assert.equal(storage.has(SPECIAL_MOVE_STORAGE_KEY), false);
   assert.equal(storage.has(EQUIPPED_CHARACTER_STORAGE_KEY), false);
   assert.deepEqual(JSON.parse(storage.getItem(CAMPAIGN_STORAGE_KEY)), result.campaign);
+});
+
+test("reset migrates the next map unlock from legacy clear progress", () => {
+  const storage = createStorage({
+    [CAMPAIGN_STORAGE_KEY]: JSON.stringify({
+      completedFrontIds: ["korea-front"],
+      lastCompletedFrontId: "korea-front",
+    }),
+  });
+
+  const result = resetPersistentState(storage, UPGRADE_KEYS, {
+    frontOrder: ["korea-front", "japan-front"],
+  });
+
+  assert.deepEqual(result.campaign.unlockedFrontIds, ["japan-front", "korea-front"]);
+  assert.deepEqual(result.campaign.completedFrontIds, []);
+  assert.equal(result.campaign.lastCompletedFrontId, null);
 });
 
 test("equipped character is normalized, persisted, and resettable", () => {
@@ -155,6 +174,7 @@ test("saving and loading round trips campaign progress without phase state", () 
       completedCountryIds: ["japan", "china", "china"],
       collectedCountryIds: ["south-korea", "china", "south-korea"],
       completedFrontIds: ["korea-front", "korea-front"],
+      unlockedFrontIds: ["korea-front"],
       currentPhaseId: "korea-front-opening",
       lastCompletedFrontId: "korea-front",
     },
@@ -164,13 +184,14 @@ test("saving and loading round trips campaign progress without phase state", () 
     gold: 350,
     upgrades: { logistics: 1, armor: 2, reserve: 3, speed: 2 },
     campaign: {
-      version: 4,
+      version: 5,
       campaignId: "regional-fronts-v1",
       difficultyId: "hard",
       difficultyLocked: true,
       completedCountryIds: ["china", "japan"],
       collectedCountryIds: ["china", "south-korea"],
       completedFrontIds: ["korea-front"],
+      unlockedFrontIds: ["korea-front"],
       lastCompletedFrontId: "korea-front",
     },
   });

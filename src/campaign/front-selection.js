@@ -12,6 +12,12 @@ export function getCompletedFrontIds(campaignState = {}) {
   return completed;
 }
 
+export function getUnlockedFrontIds(campaignState = {}) {
+  const unlocked = toFrontIdSet(campaignState.unlockedFrontIds);
+  getCompletedFrontIds(campaignState).forEach((frontId) => unlocked.add(frontId));
+  return unlocked;
+}
+
 export function isFrontUnlocked(frontOrder, frontId, completedFrontIds = new Set()) {
   if (!Array.isArray(frontOrder)) return false;
   const frontIndex = frontOrder.indexOf(frontId);
@@ -25,11 +31,12 @@ export function getFrontSelectionEntries(campaign, campaignState = {}) {
   if (!campaign || !Array.isArray(campaign.frontOrder)) return [];
 
   const completed = getCompletedFrontIds(campaignState);
+  const unlocked = getUnlockedFrontIds(campaignState);
   return campaign.frontOrder.map((frontId, index) => ({
     frontId,
     front: campaign.fronts?.[frontId] || null,
     index,
     completed: completed.has(frontId),
-    unlocked: isFrontUnlocked(campaign.frontOrder, frontId, completed),
+    unlocked: unlocked.has(frontId) || isFrontUnlocked(campaign.frontOrder, frontId, completed),
   }));
 }

@@ -30,6 +30,7 @@ import { getAiAttackCandidates as collectAiAttackCandidates, chooseAiAttackCandi
 import { calculateGroupCombatDamage } from "./campaign/combat.js";
 import { collectCountryFlags } from "./campaign/flag-collection.js";
 import { getFrontSelectionEntries } from "./campaign/front-selection.js";
+import { getNextRouteAfterSpecialMove } from "./campaign/start-flow.js";
 import { getCountryWorldMapData, projectWorldMapPoint } from "./campaign/country-location.js";
 import { getCountryFlagOrigin } from "./config/countries.js";
 import { PLAYER_CHARACTER_ID } from "./config/characters.js";
@@ -212,6 +213,7 @@ const persistentState = loadPersistentState(undefined, upgradeKeys, {
   campaignId: GAME_CONFIG.campaign.id,
   difficultyId: GAME_CONFIG.campaign.defaultDifficultyId,
   difficultyIds: DIFFICULTY_IDS,
+  frontOrder: GAME_CONFIG.campaign.frontOrder,
 });
 const savedEquippedCharacterId = loadEquippedCharacter(undefined);
 const savedSpecialMove = loadSpecialMove(undefined, SPECIAL_MOVE_BALANCE);
@@ -2056,10 +2058,13 @@ function triggerClear() {
   state.paused = true;
   const front = getSelectedFront();
   const completedCountryIds = getCompletedCountryIds(regions, GAME_CONFIG.countries, PLAYER_FACTION_ID);
+  const frontIndex = GAME_CONFIG.campaign.frontOrder.indexOf(front.id);
+  const nextFrontId = frontIndex >= 0 ? GAME_CONFIG.campaign.frontOrder[frontIndex + 1] : null;
   state.campaign = {
     ...state.campaign,
     completedCountryIds: [...new Set([...state.campaign.completedCountryIds, ...completedCountryIds, ...front.targetCountryIds])].sort(),
     completedFrontIds: [...new Set([...(state.campaign.completedFrontIds || []), front.id])].sort(),
+    unlockedFrontIds: [...new Set([...(state.campaign.unlockedFrontIds || []), front.id, nextFrontId].filter(Boolean))].sort(),
     lastCompletedFrontId: front.id,
   };
   savePersistentProgress();
@@ -2688,6 +2693,10 @@ function confirmSpecialMoveSetup(event) {
 
   state.specialMove = saveSpecialMove(undefined, settings, SPECIAL_MOVE_BALANCE);
   ui.specialMoveDialog?.close();
+  if (getNextRouteAfterSpecialMove({ difficultyLocked: state.campaign.difficultyLocked }) === "difficulty-selection") {
+    openDifficultySelection();
+    return;
+  }
   restartGame();
   closeTitleScreen();
 }
@@ -2709,12 +2718,20 @@ function closeDataResetDialog(nextFocus = ui.titleReset) {
 }
 
 function confirmPersistentDataReset() {
-  const clean = resetPersistentState(undefined, upgradeKeys);
+  const clean = resetPersistentState(undefined, upgradeKeys, {
+    campaignId: GAME_CONFIG.campaign.id,
+    difficultyId: GAME_CONFIG.campaign.defaultDifficultyId,
+    difficultyIds: DIFFICULTY_IDS,
+    frontOrder: GAME_CONFIG.campaign.frontOrder,
+  });
+  selectedFrontId = GAME_CONFIG.scenario.frontId;
+  activePhaseId = GAME_CONFIG.scenario.phaseId;
   state.gold = clean.gold;
   state.upgrades = clean.upgrades;
   state.campaign = clean.campaign;
   state.equippedCharacterId = null;
   state.specialMove = null;
+  applyConfiguredDisplayNames();
   restartGame({ announce: false });
   updateShopDialog();
   updateFlagCollectionDialog();

@@ -39,3 +39,13 @@ test("front selection entries preserve order and expose completion state", () =>
   assert.deepEqual(entries.map(({ completed }) => completed), [true, true, false]);
   assert.deepEqual(entries.map(({ unlocked }) => unlocked), [true, true, true]);
 });
+
+test("unlocked maps remain selectable after their clear status is reset", () => {
+  const entries = getFrontSelectionEntries(campaign, {
+    completedFrontIds: [],
+    unlockedFrontIds: ["front-a", "front-b"],
+  });
+
+  assert.deepEqual(entries.map(({ completed }) => completed), [false, false, false]);
+  assert.deepEqual(entries.map(({ unlocked }) => unlocked), [true, true, false]);
+});

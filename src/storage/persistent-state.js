@@ -5,7 +5,7 @@ export const UPGRADES_STORAGE_KEY = "countryfronts.upgrades";
 export const SPECIAL_MOVE_STORAGE_KEY = "countryfronts.specialMove";
 export const EQUIPPED_CHARACTER_STORAGE_KEY = "countryfronts.equippedCharacter";
 export const CAMPAIGN_STORAGE_KEY = "countryfronts.campaign";
-export const CAMPAIGN_STATE_VERSION = 4;
+export const CAMPAIGN_STATE_VERSION = 5;
 export const DEFAULT_CAMPAIGN_ID = "regional-fronts-v1";
 
 function getStorage(storage) {
@@ -50,6 +50,7 @@ export function createDefaultCampaignState({
     completedCountryIds: [],
     collectedCountryIds: [],
     completedFrontIds: [],
+    unlockedFrontIds: [],
     lastCompletedFrontId: null,
   };
 }
@@ -67,9 +68,24 @@ export function normalizeCampaignState(value, defaults = {}) {
   const lastCompletedFrontId = typeof value.lastCompletedFrontId === "string" && value.lastCompletedFrontId.trim().length > 0
     ? value.lastCompletedFrontId
     : null;
+  const unlockedFrontIdValues = [
+    ...(Array.isArray(value.unlockedFrontIds) ? value.unlockedFrontIds : []),
+    ...completedFrontIds,
+    ...(lastCompletedFrontId ? [lastCompletedFrontId] : []),
+  ];
+  if (Array.isArray(defaults.frontOrder)) {
+    [...completedFrontIds, ...(lastCompletedFrontId ? [lastCompletedFrontId] : [])].forEach((frontId) => {
+      const frontIndex = defaults.frontOrder.indexOf(frontId);
+      if (frontIndex >= 0 && frontIndex + 1 < defaults.frontOrder.length) {
+        unlockedFrontIdValues.push(defaults.frontOrder[frontIndex + 1]);
+      }
+    });
+  }
+  const unlockedFrontIds = normalizeStringList(unlockedFrontIdValues);
   const hasProgress = completedCountryIds.length > 0
     || normalizedCollectedCountryIds.length > 0
     || completedFrontIds.length > 0
+    || unlockedFrontIds.length > 0
     || lastCompletedFrontId !== null;
   const difficultyId = typeof value.difficultyId === "string" && value.difficultyId.trim().length > 0
     ? value.difficultyId
@@ -85,6 +101,7 @@ export function normalizeCampaignState(value, defaults = {}) {
     completedCountryIds,
     collectedCountryIds: normalizedCollectedCountryIds,
     completedFrontIds,
+    unlockedFrontIds,
     lastCompletedFrontId,
   };
 }
@@ -184,17 +201,17 @@ export function saveSpecialMove(storage, specialMove, balance) {
   return normalized;
 }
 
-export function resetPersistentState(storage, upgradeKeys) {
+export function resetPersistentState(storage, upgradeKeys, campaignDefaults = {}) {
   const target = getStorage(storage);
-  let campaign = createDefaultCampaignState();
+  let campaign = createDefaultCampaignState(campaignDefaults);
   if (target) {
     try {
       const savedCampaign = JSON.parse(target.getItem(CAMPAIGN_STORAGE_KEY) || "null");
-      const normalizedCampaign = normalizeCampaignState(savedCampaign);
+      const normalizedCampaign = normalizeCampaignState(savedCampaign, campaignDefaults);
       campaign = {
         ...campaign,
-        completedFrontIds: normalizedCampaign.completedFrontIds,
-        lastCompletedFrontId: normalizedCampaign.lastCompletedFrontId,
+        collectedCountryIds: normalizedCampaign.collectedCountryIds,
+        unlockedFrontIds: normalizedCampaign.unlockedFrontIds,
       };
       target.removeItem(GOLD_STORAGE_KEY);
       target.removeItem(UPGRADES_STORAGE_KEY);

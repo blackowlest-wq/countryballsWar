@@ -65,6 +65,7 @@ test("title start exposes a fixed campaign difficulty before map selection", () 
   assert.match(main, /function openDifficultySelection/);
   assert.match(main, /difficultyLocked/);
   assert.match(main, /if \(state\.campaign\.difficultyLocked\) openMapSelection/);
+  assert.match(main, /function confirmSpecialMoveSetup[\s\S]*?getNextRouteAfterSpecialMove[\s\S]*?openDifficultySelection/);
   assert.match(balance, /label: "やさしい"[\s\S]*specialMoveUsesPerOperation: 3/);
   assert.match(balance, /label: "ふつう"[\s\S]*specialMoveUsesPerOperation: 1/);
   assert.match(balance, /label: "むずかしい"[\s\S]*specialMoveUsesPerOperation: 0/);
