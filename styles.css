@@ -2117,12 +2117,26 @@ button:disabled {
 .country-character-ball {
   position: absolute;
   inset: 0;
+  overflow: hidden;
   border-radius: 50%;
+}
+
+.country-character-flag {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.country-character-flag svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .country-character-face {
   position: absolute;
   inset: 0;
+  z-index: 1;
 }
 
 .country-character-eye {

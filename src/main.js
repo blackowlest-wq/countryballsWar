@@ -2450,7 +2450,10 @@ function renderCountryCharacter(country) {
   } else {
     const ball = document.createElement("span");
     ball.className = "country-character-ball";
-    ball.style.background = countryFlagBackground(country);
+    const flag = document.createElement("span");
+    flag.className = "country-character-flag";
+    renderCountryFlag(country, flag);
+    ball.append(flag);
     const face = document.createElement("span");
     face.className = `country-character-face is-${character?.eyeStyle || "round"}`;
     ["left", "right"].forEach((side) => {

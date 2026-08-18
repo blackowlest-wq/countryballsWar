@@ -78,6 +78,15 @@ test("country profile can switch to the character image used in battle", () => {
   assert.match(main, /character\.sprite/);
 });
 
+test("country character previews use the full country flag renderer", () => {
+  const main = readProjectFile("src/main.js");
+  const renderCharacter = main.match(/function renderCountryCharacter\(country\) \{[\s\S]*?\n\}\n\nfunction toggleCountryCharacterImage/)?.[0] || "";
+
+  assert.match(renderCharacter, /className = "country-character-flag"/);
+  assert.match(renderCharacter, /renderCountryFlag\(country, flag\)/);
+  assert.doesNotMatch(renderCharacter, /ball\.style\.background = countryFlagBackground\(country\)/);
+});
+
 test("toast uses a left message lane instead of the centered lane", () => {
   const styles = readProjectFile("styles.css");
   const toast = styles.match(/\.toast \{[\s\S]*?\n\}/)?.[0] || "";
