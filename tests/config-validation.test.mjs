@@ -75,6 +75,8 @@ test("the Japan map uses eleven connected geographic regions without Okinawa", (
   assert.equal(japanMap.regions.some((region) => region.id === "japan-okinawa"), false);
   assert.equal(japanMap.regions.find((region) => region.id === "japan-kyushu-south").interactionRadius, undefined);
   assert.equal(japanMap.projection.bounds.west, 129.3);
+  assert.equal(japanMap.viewport.initialZoom, 1.25);
+  assert.equal(japanMap.viewport.initialFocusRegionId, "japan-kyushu-south");
   assert.equal(japanMap.roadDefinitions.length, 13);
   assert.equal(japanMap.roadDefinitions.filter((road) => road.kind === "land").length, 8);
   assert.equal(japanMap.roadDefinitions.filter((road) => road.kind === "sea").length, 5);
@@ -85,6 +87,8 @@ test("the Japan map uses eleven connected geographic regions without Okinawa", (
   assert.equal(openingRuntime.mapId, "japan-front");
   assert.equal(openingRuntime.regions.length, 11);
   assert.equal(openingRuntime.units.find((unit) => unit.faction === "blue").regionId, "japan-kyushu-south");
+  assert.equal(openingRuntime.units.find((unit) => unit.faction === "blue").movementState, "stationed");
+  assert.equal(openingRuntime.units.find((unit) => unit.faction === "blue").stationedRegionId, "japan-kyushu-south");
   assert.equal(new Set(openingRuntime.units.filter((unit) => unit.faction === "blue").map((unit) => unit.regionId)).size, 1);
   assert.ok(openingRuntime.units.some((unit) => unit.faction === "red" && unit.characterId === "japan"));
   openingRuntime.units.filter((unit) => unit.faction === "red").forEach((unit) => {

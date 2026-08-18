@@ -388,6 +388,13 @@ export const WORLD_MAP = {
       // archipelago without large empty ocean margins.
       bounds: { west: 129.3, east: 146.1, south: 30.7, north: 45.8 },
       displayOffset: { x: 0, y: 0 },
+      viewport: {
+        initialZoom: 1.25,
+        minZoom: 0.82,
+        maxZoom: 1.42,
+        initialFocusRegionId: "japan-kyushu-south",
+        focusAnchor: [0.5, 0.72],
+      },
       interactionMinDistance: 0.045,
       interactionHitRadius: 0.018,
       fragmentIds: JAPAN_REGION_GROUPS.map((group) => group.id),

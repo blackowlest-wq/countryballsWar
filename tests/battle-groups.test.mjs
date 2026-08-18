@@ -15,6 +15,8 @@ test("a home unit is not pulled into a moving group's battle before the attacker
       regionId: "player-origin",
       targetRegionId: "enemy-home",
       arrived: false,
+      movementState: "moving",
+      stationedRegionId: null,
     },
     {
       id: "enemy-moving",
@@ -24,6 +26,8 @@ test("a home unit is not pulled into a moving group's battle before the attacker
       regionId: "enemy-origin",
       targetRegionId: "player-destination",
       arrived: false,
+      movementState: "moving",
+      stationedRegionId: null,
     },
     {
       id: "enemy-home",
@@ -33,6 +37,8 @@ test("a home unit is not pulled into a moving group's battle before the attacker
       regionId: "enemy-home",
       targetRegionId: null,
       arrived: true,
+      movementState: "stationed",
+      stationedRegionId: "enemy-home",
     },
   ];
 
@@ -51,6 +57,8 @@ test("a home unit joins when an enemy has arrived to attack its region", () => {
       regionId: "player-origin",
       targetRegionId: "enemy-home",
       arrived: true,
+      movementState: "stationed",
+      stationedRegionId: "enemy-home",
     },
     {
       id: "enemy-home",
@@ -60,10 +68,43 @@ test("a home unit joins when an enemy has arrived to attack its region", () => {
       regionId: "enemy-home",
       targetRegionId: null,
       arrived: true,
+      movementState: "stationed",
+      stationedRegionId: "enemy-home",
     },
   ];
 
   const groups = collectBattleGroups({ units, battleDistance });
 
   assert.deepEqual(groups.map((group) => group.unitIds), [["enemy-home", "player-attacker"]]);
+});
+
+test("a stationed unit after a completed move does not join a nearby unrelated battle", () => {
+  const units = [
+    {
+      id: "player-moving",
+      faction: "blue",
+      x: 0,
+      y: 0,
+      regionId: "player-origin",
+      targetRegionId: "enemy-station",
+      arrived: false,
+      movementState: "moving",
+      stationedRegionId: null,
+    },
+    {
+      id: "enemy-stationed",
+      faction: "red",
+      x: 0.018,
+      y: 0,
+      regionId: "enemy-station",
+      targetRegionId: "enemy-station",
+      arrived: true,
+      movementState: "stationed",
+      stationedRegionId: "enemy-station",
+    },
+  ];
+
+  const groups = collectBattleGroups({ units, battleDistance });
+
+  assert.deepEqual(groups, []);
 });

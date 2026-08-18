@@ -1,3 +1,5 @@
+import { isUnitMoving, isUnitStationed } from "./unit-state.js";
+
 function distance(left, right) {
   return Math.hypot(left.x - right.x, left.y - right.y);
 }
@@ -7,22 +9,24 @@ function addContact(contacts, leftId, rightId) {
   contacts.get(rightId).push(leftId);
 }
 
-function isHomeUnit(unit) {
-  return unit.arrived && !unit.targetRegionId;
-}
-
 function canJoinBattleContact(unit, opponent, getUnitRegionId) {
-  if (!isHomeUnit(unit)) return true;
-  const homeRegionId = getUnitRegionId(unit);
-  return Boolean(homeRegionId && opponent.arrived && opponent.targetRegionId === homeRegionId);
+  if (isUnitMoving(unit)) return true;
+  if (!isUnitStationed(unit)) return false;
+
+  const stationedRegionId = unit.stationedRegionId || getUnitRegionId(unit);
+  return Boolean(
+    stationedRegionId
+      && isUnitStationed(opponent)
+      && (opponent.stationedRegionId || getUnitRegionId(opponent)) === stationedRegionId,
+  );
 }
 
 export function collectBattleGroups({ units, battleDistance, getUnitRegionId = (unit) => unit.regionId || unit.targetRegionId || null }) {
   const contacts = new Map(units.map((unit) => [unit.id, []]));
   const activeUnitIds = new Set();
 
-  // First establish only valid cross-faction contacts. A unit that has never
-  // left its home region can enter through this pass only as a defender.
+  // First establish only valid cross-faction contacts. A stationed unit can
+  // enter through this pass only when the battle is at its own region.
   for (let leftIndex = 0; leftIndex < units.length; leftIndex += 1) {
     for (let rightIndex = leftIndex + 1; rightIndex < units.length; rightIndex += 1) {
       const left = units[leftIndex];
@@ -38,7 +42,7 @@ export function collectBattleGroups({ units, battleDistance, getUnitRegionId = (
   }
 
   // Same-faction edges may connect units that are already in a valid battle,
-  // but an uninvolved home unit must not become a bridge into that group.
+  // but an uninvolved stationed unit must not become a bridge into that group.
   for (let leftIndex = 0; leftIndex < units.length; leftIndex += 1) {
     for (let rightIndex = leftIndex + 1; rightIndex < units.length; rightIndex += 1) {
       const left = units[leftIndex];

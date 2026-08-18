@@ -5,6 +5,7 @@ import { COUNTRIES } from "./countries.js";
 import { FACTIONS } from "./factions.js";
 import { MAP, MAPS } from "./map.js";
 import { SCENARIO } from "./scenario.js";
+import { UNIT_MOVEMENT_STATES } from "../campaign/unit-state.js";
 
 function assertConfig(condition, message) {
   if (!condition) throw new Error(`Game config: ${message}`);
@@ -60,6 +61,17 @@ function validateRegionGeometry(region) {
     assertConfig(Array.isArray(polygon) && polygon.length > 0, `Region ${region.id}.polygons #${polygonIndex + 1} must contain a ring`);
     polygon.forEach((ring, ringIndex) => validateRing(ring, `Region ${region.id}.polygons #${polygonIndex + 1} ring #${ringIndex + 1}`));
   });
+}
+
+function validateMapViewport(viewport, regionIds) {
+  if (viewport === undefined) return;
+  assertConfig(viewport && typeof viewport === "object" && !Array.isArray(viewport), "map.viewport must be an object");
+  assertConfig(isPositiveNumber(viewport.initialZoom), "map.viewport.initialZoom must be positive");
+  assertConfig(isPositiveNumber(viewport.minZoom), "map.viewport.minZoom must be positive");
+  assertConfig(isPositiveNumber(viewport.maxZoom) && viewport.maxZoom >= viewport.minZoom, "map.viewport.maxZoom must be greater than or equal to minZoom");
+  assertConfig(viewport.initialZoom >= viewport.minZoom && viewport.initialZoom <= viewport.maxZoom, "map.viewport.initialZoom must be within the zoom range");
+  assertConfig(viewport.initialFocusRegionId === null || regionIds.includes(viewport.initialFocusRegionId), "map.viewport.initialFocusRegionId must reference a region");
+  assertConfig(isNormalizedPoint(viewport.focusAnchor), "map.viewport.focusAnchor must contain two coordinates from 0 to 1");
 }
 
 function validateMapDecorations(decorations) {
@@ -361,6 +373,7 @@ function validateMapData(map, countries) {
     assertConfig(typeof region.shortName === "string" && region.shortName.length > 0, `拠点 ${region.id} に短縮名がありません`);
     validateRegionGeometry(region);
   });
+  validateMapViewport(map.viewport, regionIds);
 
   assertConfig(Array.isArray(map.roads), "マップに道路の配列がありません");
   map.roadNeighbors = buildRoadNeighbors(regionIds, map.roads);
@@ -576,6 +589,8 @@ export function createRuntimeScenario(config = GAME_CONFIG, phaseId = config.sce
       routeIndex: 0,
       targetRegionId: null,
       arrived: true,
+      movementState: UNIT_MOVEMENT_STATES.STATIONED,
+      stationedRegionId: deployment.regionId,
       stationCenter: { ...center },
       arrivalResolved: false,
       inBattle: false,

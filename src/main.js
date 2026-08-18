@@ -28,6 +28,7 @@ import {
 } from "./special-move.js";
 import { getAiAttackCandidates as collectAiAttackCandidates, chooseAiAttackCandidate } from "./campaign/ai.js";
 import { collectBattleGroups as getBattleGroups } from "./campaign/battle-groups.js";
+import { UNIT_MOVEMENT_STATES } from "./campaign/unit-state.js";
 import { calculateGroupCombatDamage } from "./campaign/combat.js";
 import { collectCountryFlags } from "./campaign/flag-collection.js";
 import { getFrontSelectionEntries } from "./campaign/front-selection.js";
@@ -36,7 +37,11 @@ import { getCountryWorldMapData, projectWorldMapPoint } from "./campaign/country
 import { getCountryFlagOrigin } from "./config/countries.js";
 import { PLAYER_CHARACTER_ID } from "./config/characters.js";
 import { findRegionAtWorldPoint } from "./render/region-targeting.js";
-import { screenPointFromWorld, worldPointFromScreen as mapWorldPointFromScreen } from "./render/map-viewport.js";
+import {
+  createInitialMapCamera,
+  screenPointFromWorld,
+  worldPointFromScreen as mapWorldPointFromScreen,
+} from "./render/map-viewport.js";
 import {
   createCharacterSpriteImage,
   getCharacterSpriteSource,
@@ -146,6 +151,7 @@ const DIFFICULTY_PROFILES = BALANCE.difficulty.profiles;
 const DIFFICULTY_IDS = Object.keys(DIFFICULTY_PROFILES);
 const BATTLE_DISTANCE = COMBAT_BALANCE.contactDistance;
 const BATTLE_TICK_INTERVAL = COMBAT_BALANCE.tickIntervalSeconds;
+const CAMERA_DRAG_THRESHOLD = 4;
 let selectedFrontId = GAME_CONFIG.scenario.frontId;
 let activePhaseId = GAME_CONFIG.scenario.phaseId;
 
@@ -283,6 +289,16 @@ const dragState = {
   pointerId: null,
 };
 
+const cameraDragState = {
+  active: false,
+  startX: 0,
+  startY: 0,
+  lastX: 0,
+  lastY: 0,
+  moved: false,
+  pointerId: null,
+};
+
 function cloneRegion(region) {
   return {
     ...region,
@@ -359,6 +375,7 @@ function transitionToPhase(phaseId) {
   state.aiReinforcements = createAiFactionState(getActiveAiBalance().reinforcementLimit);
   state.invasionWarning = null;
   state.battles.clear();
+  resetMapCamera();
 }
 
 const view = { width: 0, height: 0 };
@@ -377,6 +394,18 @@ function resizeCanvas() {
   canvas.style.height = `${view.height}px`;
   state.width = view.width;
   state.height = view.height;
+}
+
+function resetMapCamera() {
+  const camera = createInitialMapCamera({
+    map: getActiveMap(),
+    regions,
+    width: view.width,
+    height: view.height,
+  });
+  state.zoom = camera.zoom;
+  state.panX = camera.panX;
+  state.panY = camera.panY;
 }
 
 function clamp(value, min, max) {
@@ -1079,9 +1108,13 @@ function moveUnit(unit, dt) {
     unit.routeIndex = 0;
     unit.target = null;
     unit.arrived = true;
+    unit.movementState = UNIT_MOVEMENT_STATES.STATIONED;
     if (unit.targetRegionId) unit.regionId = unit.targetRegionId;
     const stationRegion = getRegion(unit.targetRegionId) || regionForUnit(unit);
-    if (stationRegion) unit.stationCenter = regionCenter(stationRegion);
+    if (stationRegion) {
+      unit.stationCenter = regionCenter(stationRegion);
+      unit.stationedRegionId = stationRegion.id;
+    }
     onUnitArrived(unit);
     return;
   }
@@ -1131,6 +1164,8 @@ function completeOccupation(unit, region) {
   region.occupation = null;
   unit.regionId = region.id;
   unit.arrived = true;
+  unit.movementState = UNIT_MOVEMENT_STATES.STATIONED;
+  unit.stationedRegionId = region.id;
   unit.stationCenter = regionCenter(region);
   unit.arrivalResolved = true;
   const occupationMessage = `${region.name}を占領しました`;
@@ -1360,6 +1395,8 @@ function createUnit(faction, regionId, targetRegionId = null) {
     regionId: region.id,
     targetRegionId,
     arrived: !targetRegionId,
+    movementState: targetRegionId ? UNIT_MOVEMENT_STATES.MOVING : UNIT_MOVEMENT_STATES.STATIONED,
+    stationedRegionId: targetRegionId ? null : region.id,
     stationCenter: targetRegionId ? null : { ...center },
     arrivalResolved: false,
     inBattle: false,
@@ -1427,6 +1464,9 @@ function updateInvasionWarning(dt) {
 }
 
 function regionForUnit(unit) {
+  if (unit.movementState === UNIT_MOVEMENT_STATES.STATIONED && unit.stationedRegionId) {
+    return getRegion(unit.stationedRegionId);
+  }
   const containingRegion = [...regions].reverse().find((region) => pointInRegion([unit.x, unit.y], region));
   return containingRegion || (unit.regionId ? getRegion(unit.regionId) : null) || (unit.targetRegionId ? getRegion(unit.targetRegionId) : null);
 }
@@ -1442,6 +1482,8 @@ function snapUnitToRoadNode(unit, regionId = null) {
   unit.route = null;
   unit.routeIndex = 0;
   unit.arrived = true;
+  unit.movementState = UNIT_MOVEMENT_STATES.STATIONED;
+  unit.stationedRegionId = region.id;
   unit.stationCenter = { ...center };
   return region;
 }
@@ -2033,9 +2075,7 @@ function triggerClear() {
 function restartGame({ announce = true } = {}) {
   resetRuntimeToPhase(getFirstPhaseId(GAME_CONFIG.campaign, selectedFrontId));
   setupInitialUnits();
-  state.zoom = 1;
-  state.panX = 0;
-  state.panY = 0;
+  resetMapCamera();
   state.paused = !state.specialMove;
   state.speed = 1;
   state.elapsed = 0;
@@ -2061,6 +2101,13 @@ function restartGame({ announce = true } = {}) {
   dragState.invalidTarget = false;
   dragState.moved = false;
   dragState.pointerId = null;
+  cameraDragState.active = false;
+  cameraDragState.startX = 0;
+  cameraDragState.startY = 0;
+  cameraDragState.lastX = 0;
+  cameraDragState.lastY = 0;
+  cameraDragState.moved = false;
+  cameraDragState.pointerId = null;
   ui.eventFeed.replaceChildren();
   ui.dispatchHint.classList.remove("is-hidden");
   ui.defeatDialog?.close();
@@ -2723,7 +2770,17 @@ function beginDispatch(event) {
   if (event.pointerType === "mouse" && event.button !== 0) return;
   const point = mapPointFromPointer(event);
   const sourceUnit = unitAtScreenPoint(point.screenX, point.screenY);
-  if (!sourceUnit) return;
+  if (!sourceUnit) {
+    cameraDragState.active = true;
+    cameraDragState.startX = point.screenX;
+    cameraDragState.startY = point.screenY;
+    cameraDragState.lastX = point.screenX;
+    cameraDragState.lastY = point.screenY;
+    cameraDragState.moved = false;
+    cameraDragState.pointerId = event.pointerId;
+    canvas.setPointerCapture?.(event.pointerId);
+    return;
+  }
 
   dragState.active = true;
   dragState.sourceUnit = sourceUnit;
@@ -2737,6 +2794,22 @@ function beginDispatch(event) {
 }
 
 function updateDispatch(event) {
+  if (cameraDragState.active) {
+    if (event.pointerId !== cameraDragState.pointerId) return;
+    const rect = canvas.getBoundingClientRect();
+    const screenX = event.clientX - rect.left;
+    const screenY = event.clientY - rect.top;
+    const deltaX = screenX - cameraDragState.lastX;
+    const deltaY = screenY - cameraDragState.lastY;
+    cameraDragState.lastX = screenX;
+    cameraDragState.lastY = screenY;
+    state.panX += deltaX;
+    state.panY += deltaY;
+    cameraDragState.moved = cameraDragState.moved
+      || Math.hypot(screenX - cameraDragState.startX, screenY - cameraDragState.startY) >= CAMERA_DRAG_THRESHOLD;
+    render();
+    return;
+  }
   if (!dragState.active || event.pointerId !== dragState.pointerId) return;
   const point = mapPointFromPointer(event);
   dragState.currentPoint = { x: point.x, y: point.y };
@@ -2767,6 +2840,8 @@ function dispatchUnitToRegion(unit, region) {
   cancelOccupationForUnit(unit);
   unit.targetRegionId = region.id;
   unit.arrived = false;
+  unit.movementState = UNIT_MOVEMENT_STATES.MOVING;
+  unit.stationedRegionId = null;
   unit.stationCenter = null;
   unit.arrivalResolved = false;
   ui.dispatchHint.classList.add("is-hidden");
@@ -2775,6 +2850,21 @@ function dispatchUnitToRegion(unit, region) {
 }
 
 function endDispatch(event) {
+  if (cameraDragState.active) {
+    if (event.pointerId !== cameraDragState.pointerId) return;
+    const wasDrag = cameraDragState.moved;
+    cameraDragState.active = false;
+    cameraDragState.startX = 0;
+    cameraDragState.startY = 0;
+    cameraDragState.lastX = 0;
+    cameraDragState.lastY = 0;
+    cameraDragState.moved = false;
+    cameraDragState.pointerId = null;
+    canvas.releasePointerCapture?.(event.pointerId);
+    if (wasDrag) state.suppressNextClick = true;
+    render();
+    return;
+  }
   if (!dragState.active || event.pointerId !== dragState.pointerId) return;
   const sourceUnit = dragState.sourceUnit;
   const targetRegion = dragState.targetRegion;
@@ -2813,7 +2903,10 @@ function handleMapClick(event) {
 }
 
 function setZoom(nextZoom) {
-  state.zoom = clamp(nextZoom, 0.82, 1.42);
+  const viewport = getActiveMap().viewport || {};
+  const minZoom = Number.isFinite(viewport.minZoom) ? viewport.minZoom : 0.82;
+  const maxZoom = Number.isFinite(viewport.maxZoom) ? viewport.maxZoom : 1.42;
+  state.zoom = clamp(nextZoom, minZoom, maxZoom);
   render();
 }
 
@@ -2933,6 +3026,7 @@ setupInitialUnits();
 updateShopDialog();
 updateFlagCollectionDialog();
 resizeCanvas();
+resetMapCamera();
 updateSelectedPanel();
 updateHud();
 openTitleScreen();
