@@ -34,7 +34,11 @@ import { getCountryWorldMapData, projectWorldMapPoint } from "./campaign/country
 import { getCountryFlagOrigin } from "./config/countries.js";
 import { PLAYER_CHARACTER_ID } from "./config/characters.js";
 import { findRegionAtWorldPoint } from "./render/region-targeting.js";
-import { getCharacterSpriteSource, getCharacterSpriteSources } from "./render/character-sprite.js";
+import {
+  createCharacterSpriteImage,
+  getCharacterSpriteSource,
+  getCharacterSpriteSources,
+} from "./render/character-sprite.js";
 
 const canvas = document.querySelector("#mapCanvas");
 const ctx = canvas.getContext("2d");
@@ -112,6 +116,10 @@ const ui = {
   specialMoveError: document.querySelector("#specialMoveError"),
 };
 
+ui.specialMoveCutInCharacter.addEventListener("load", () => {
+  ui.specialMoveCutInCharacter.hidden = false;
+});
+
 const BALANCE = GAME_CONFIG.balance;
 const PLAYER_FACTION_ID = GAME_CONFIG.scenario.playerFactionId;
 const ACTIVE_AI_FACTION_ID = GAME_CONFIG.scenario.activeAiFactionId;
@@ -170,10 +178,7 @@ const CHARACTER_SPRITE_SOURCES = getCharacterSpriteSources(GAME_CONFIG.character
 
 const CHARACTER_SPRITES = Object.fromEntries(
   Object.entries(CHARACTER_SPRITE_SOURCES).map(([characterId, source]) => {
-    const image = new Image();
-    image.decoding = "async";
-    image.src = source;
-    return [characterId, image];
+    return [characterId, createCharacterSpriteImage(source, () => requestAnimationFrame(() => render()))];
   }),
 );
 
@@ -1870,9 +1875,12 @@ function showSpecialMoveCutIn(name) {
   const { label, source } = getSpecialMoveCutInCharacter();
   if (ui.specialMoveCutInName) ui.specialMoveCutInName.textContent = name;
   if (ui.specialMoveCutInCharacter) {
-    ui.specialMoveCutInCharacter.hidden = !source;
+    ui.specialMoveCutInCharacter.hidden = true;
     ui.specialMoveCutInCharacter.alt = label;
-    if (source) ui.specialMoveCutInCharacter.src = source;
+    if (source) {
+      ui.specialMoveCutInCharacter.src = source;
+      ui.specialMoveCutInCharacter.hidden = !(ui.specialMoveCutInCharacter.complete && ui.specialMoveCutInCharacter.naturalWidth > 0);
+    }
   }
 
   if (specialMoveCutInTimeout) window.clearTimeout(specialMoveCutInTimeout);

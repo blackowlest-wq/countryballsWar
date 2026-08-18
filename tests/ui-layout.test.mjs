@@ -84,6 +84,15 @@ test("country profiles keep real-character outfit actions", () => {
   assert.match(main, /resetCountryCharacter/);
 });
 
+test("real character sprites trigger a redraw after loading", () => {
+  const main = readProjectFile("src/main.js");
+  const sprites = readProjectFile("src/render/character-sprite.js");
+
+  assert.match(main, /createCharacterSpriteImage/);
+  assert.match(sprites, /addEventListener\("load"/);
+  assert.match(main, /specialMoveCutInCharacter\.addEventListener\("load"/);
+});
+
 test("toast uses a left message lane instead of the centered lane", () => {
   const styles = readProjectFile("styles.css");
   const toast = styles.match(/\.toast \{[\s\S]*?\n\}/)?.[0] || "";
