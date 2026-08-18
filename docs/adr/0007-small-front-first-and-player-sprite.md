@@ -15,7 +15,8 @@ Geographic polygons are pinned to Natural Earth
 v5.1.1 (`9380cca`), and the source subset is retained for reproducible map
 builds.
 
-Player units use the separate white player-character sprite. Enemy units use
+Player units use the separate white player-character sprite by default and can
+equip a real country-character sprite from the country profile. Enemy units use
 the country-specific character sprite. The same character-ID image resolver is
 used by map units, country profiles, and special-move cut-ins. Deployed
 characters must have an image asset; there is no generated flag/eye character

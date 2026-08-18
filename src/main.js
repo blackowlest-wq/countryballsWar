@@ -9,8 +9,10 @@ import {
 } from "./campaign/phase-runtime.js";
 import {
   loadPersistentState,
+  loadEquippedCharacter,
   loadSpecialMove,
   resetPersistentState,
+  saveEquippedCharacter,
   savePersistentState,
   saveSpecialMove,
 } from "./storage/persistent-state.js";
@@ -30,6 +32,7 @@ import { collectCountryFlags } from "./campaign/flag-collection.js";
 import { getFrontSelectionEntries } from "./campaign/front-selection.js";
 import { getCountryWorldMapData, projectWorldMapPoint } from "./campaign/country-location.js";
 import { getCountryFlagOrigin } from "./config/countries.js";
+import { PLAYER_CHARACTER_ID } from "./config/characters.js";
 import { findRegionAtWorldPoint } from "./render/region-targeting.js";
 import { getCharacterSpriteSource, getCharacterSpriteSources } from "./render/character-sprite.js";
 
@@ -95,6 +98,8 @@ const ui = {
   countryDetailMap: document.querySelector("#countryDetailMap"),
   countryDetailLocation: document.querySelector("#countryDetailLocation"),
   countryDetailCharacter: document.querySelector("#countryDetailCharacter"),
+  countryDetailCharacterEquip: document.querySelector("#countryDetailCharacterEquip"),
+  countryDetailCharacterReset: document.querySelector("#countryDetailCharacterReset"),
   countryDetailFlagOrigin: document.querySelector("#countryDetailFlagOrigin"),
   countryDetailTrivia: document.querySelector("#countryDetailTrivia"),
   countryDetailSources: document.querySelector("#countryDetailSources"),
@@ -178,6 +183,7 @@ const persistentState = loadPersistentState(undefined, upgradeKeys, {
   campaignId: GAME_CONFIG.campaign.id,
   difficultyId: GAME_CONFIG.campaign.defaultDifficultyId,
 });
+const savedEquippedCharacterId = loadEquippedCharacter(undefined);
 const savedSpecialMove = loadSpecialMove(undefined, SPECIAL_MOVE_BALANCE);
 
 function savePersistentProgress() {
@@ -186,6 +192,7 @@ function savePersistentProgress() {
     upgrades: state.upgrades,
     campaign: state.campaign,
   });
+  saveEquippedCharacter(undefined, state.equippedCharacterId);
 }
 
 const state = {
@@ -201,6 +208,7 @@ const state = {
   gold: persistentState.gold,
   upgrades: persistentState.upgrades,
   campaign: persistentState.campaign,
+  equippedCharacterId: savedEquippedCharacterId,
   specialMove: savedSpecialMove,
   specialMoveUsesRemaining: 0,
   invincibilityRemaining: 0,
@@ -725,11 +733,25 @@ function drawOccupationIndicators() {
   });
 }
 
+function getEquippedPlayerCharacterId() {
+  const characterId = state.equippedCharacterId;
+  return getCharacterSpriteSource(characterId, GAME_CONFIG.characters)
+    ? characterId
+    : PLAYER_CHARACTER_ID;
+}
+
+function getDisplayedCharacterId(unit) {
+  return !unit || unit.faction === PLAYER_FACTION_ID
+    ? getEquippedPlayerCharacterId()
+    : unit?.characterId || null;
+}
+
 function drawUnit(unit, time) {
   const point = screenPoint([unit.x, unit.y]);
   const scale = clamp(view.width * 0.021, 15, 25) * (state.zoom > 1 ? 1.07 : 1);
-  const spriteSource = getCharacterSpriteSource(unit.characterId, GAME_CONFIG.characters);
-  const sprite = spriteSource ? CHARACTER_SPRITES[unit.characterId] : null;
+  const characterId = getDisplayedCharacterId(unit);
+  const spriteSource = getCharacterSpriteSource(characterId, GAME_CONFIG.characters);
+  const sprite = spriteSource ? CHARACTER_SPRITES[characterId] : null;
   if (!sprite?.complete || sprite.naturalWidth <= 0) return;
   const bob = state.motion ? Math.sin(time * 2.6 + unit.pulse) * 1.8 : 0;
   const y = point.y + bob;
@@ -1332,7 +1354,7 @@ function createUnit(faction, regionId, targetRegionId = null) {
   const unit = {
     id: `${faction}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     faction,
-    characterId: region.countryId,
+    characterId: faction === PLAYER_FACTION_ID ? getEquippedPlayerCharacterId() : region.countryId,
     x: center.x,
     y: center.y,
     strength: maxStrength,
@@ -1827,7 +1849,7 @@ function getSelectedPlayerUnit() {
 
 function getSpecialMoveCutInCharacter() {
   const unit = getSelectedPlayerUnit();
-  const characterId = unit?.characterId || "player";
+  const characterId = getDisplayedCharacterId(unit);
   const source = getCharacterSpriteSource(characterId, GAME_CONFIG.characters);
   const character = GAME_CONFIG.characters[characterId];
   const label = character?.countryId
@@ -2289,9 +2311,27 @@ function renderCountryCharacter(country) {
   if (!ui.countryDetailCharacter) return;
 
   const spriteSource = getCharacterSpriteSource(country.id, GAME_CONFIG.characters);
+  const isEquipped = state.equippedCharacterId === country.id;
   ui.countryDetailCharacter.className = "country-character-preview";
   ui.countryDetailCharacter.replaceChildren();
   ui.countryDetailCharacter.setAttribute("aria-hidden", String(!spriteSource));
+
+  if (ui.countryDetailCharacterEquip) {
+    ui.countryDetailCharacterEquip.disabled = !spriteSource || isEquipped;
+    ui.countryDetailCharacterEquip.textContent = isEquipped ? "装着中" : "着替え";
+    ui.countryDetailCharacterEquip.setAttribute("aria-pressed", String(isEquipped));
+    ui.countryDetailCharacterEquip.title = isEquipped
+      ? "現在このキャラクターを装着中です"
+      : spriteSource
+        ? "プレイヤーキャラクターをこの絵に着替えます"
+        : "この国のキャラクター画像は未登録です";
+  }
+  if (ui.countryDetailCharacterReset) {
+    ui.countryDetailCharacterReset.disabled = !state.equippedCharacterId;
+    ui.countryDetailCharacterReset.title = state.equippedCharacterId
+      ? "標準の自軍キャラクターに戻します"
+      : "標準の自軍キャラクターを使用中です";
+  }
 
   if (!spriteSource) {
     ui.countryDetailCharacter.classList.add("is-unavailable");
@@ -2306,6 +2346,28 @@ function renderCountryCharacter(country) {
   image.src = spriteSource;
   image.alt = `${countryDisplayName(country)}のキャラクター`;
   ui.countryDetailCharacter.append(image);
+}
+
+function equipCountryCharacter() {
+  const country = GAME_CONFIG.countries[activeCountryDetailId];
+  if (!country || !getCharacterSpriteSource(country.id, GAME_CONFIG.characters)) return;
+
+  state.equippedCharacterId = country.id;
+  savePersistentProgress();
+  renderCountryCharacter(country);
+  render();
+  showToast(`${countryDisplayName(country)}に着替えました`);
+}
+
+function resetCountryCharacter() {
+  if (!state.equippedCharacterId) return;
+
+  state.equippedCharacterId = null;
+  savePersistentProgress();
+  const country = GAME_CONFIG.countries[activeCountryDetailId];
+  if (country) renderCountryCharacter(country);
+  render();
+  showToast("標準の自軍キャラクターに戻しました");
 }
 
 function renderCountryDetailSources(country) {
@@ -2526,6 +2588,7 @@ function confirmPersistentDataReset() {
   state.gold = clean.gold;
   state.upgrades = clean.upgrades;
   state.campaign = clean.campaign;
+  state.equippedCharacterId = null;
   state.specialMove = null;
   restartGame({ announce: false });
   updateShopDialog();
@@ -2721,6 +2784,8 @@ ui.flagCollectionDialog?.addEventListener("cancel", (event) => {
   ui.flagCollectionDialog.close();
 });
 ui.countryDetailBack?.addEventListener("click", () => ui.countryDetailDialog?.close());
+ui.countryDetailCharacterEquip?.addEventListener("click", equipCountryCharacter);
+ui.countryDetailCharacterReset?.addEventListener("click", resetCountryCharacter);
 ui.countryDetailDialog?.addEventListener("close", restoreFlagCollectionAfterCountryDetail);
 ui.countryDetailDialog?.addEventListener("cancel", (event) => {
   event.preventDefault();

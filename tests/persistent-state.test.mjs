@@ -2,12 +2,15 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   CAMPAIGN_STORAGE_KEY,
+  EQUIPPED_CHARACTER_STORAGE_KEY,
   GOLD_STORAGE_KEY,
   SPECIAL_MOVE_STORAGE_KEY,
   UPGRADES_STORAGE_KEY,
+  loadEquippedCharacter,
   loadSpecialMove,
   loadPersistentState,
   resetPersistentState,
+  saveEquippedCharacter,
   savePersistentState,
   saveSpecialMove,
 } from "../src/storage/persistent-state.js";
@@ -55,6 +58,7 @@ test("resetPersistentState clears resettable domains while preserving map acquis
     [GOLD_STORAGE_KEY]: "1234",
     [UPGRADES_STORAGE_KEY]: JSON.stringify({ logistics: 2, armor: 4, reserve: 1 }),
     [SPECIAL_MOVE_STORAGE_KEY]: JSON.stringify({ type: "allyBoost", name: "boost" }),
+    [EQUIPPED_CHARACTER_STORAGE_KEY]: "south-korea",
     [CAMPAIGN_STORAGE_KEY]: JSON.stringify({
       completedCountryIds: ["china"],
       collectedCountryIds: ["china"],
@@ -77,7 +81,18 @@ test("resetPersistentState clears resettable domains while preserving map acquis
   assert.equal(storage.has(GOLD_STORAGE_KEY), false);
   assert.equal(storage.has(UPGRADES_STORAGE_KEY), false);
   assert.equal(storage.has(SPECIAL_MOVE_STORAGE_KEY), false);
+  assert.equal(storage.has(EQUIPPED_CHARACTER_STORAGE_KEY), false);
   assert.deepEqual(JSON.parse(storage.getItem(CAMPAIGN_STORAGE_KEY)), result.campaign);
+});
+
+test("equipped character is normalized, persisted, and resettable", () => {
+  const storage = createStorage({ [EQUIPPED_CHARACTER_STORAGE_KEY]: "  south-korea  " });
+
+  assert.equal(loadEquippedCharacter(storage), "south-korea");
+  assert.equal(saveEquippedCharacter(storage, " north-korea "), "north-korea");
+  assert.equal(loadEquippedCharacter(storage), "north-korea");
+  assert.equal(saveEquippedCharacter(storage, null), null);
+  assert.equal(loadEquippedCharacter(storage), null);
 });
 
 test("corrupted saved values safely become a clean state", () => {

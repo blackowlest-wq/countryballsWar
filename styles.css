@@ -2004,6 +2004,20 @@ button:disabled {
   gap: 14px;
 }
 
+.country-character-display {
+  display: grid;
+  flex: 0 0 auto;
+  justify-items: center;
+  gap: 8px;
+  width: min(170px, 100%);
+}
+
+.country-character-actions {
+  display: grid;
+  width: 100%;
+  gap: 6px;
+}
+
 .country-character-preview {
   position: relative;
   flex: 0 0 auto;
@@ -2040,6 +2054,56 @@ button:disabled {
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+
+.country-character-equip,
+.country-character-reset {
+  width: 100%;
+  min-height: 34px;
+  padding: 7px 8px;
+  font-size: 8px;
+  line-height: 1.35;
+}
+
+.country-character-equip {
+  color: #49627f;
+  border-color: #c8d4e2;
+  background: #f4f7fa;
+  box-shadow: 0 3px 0 #d7e0ea;
+}
+
+.country-character-equip:hover:not(:disabled) {
+  color: var(--blue-deep);
+  border-color: #8eadd2;
+  background: #edf5ff;
+}
+
+.country-character-equip[aria-pressed="true"] {
+  color: #39734b;
+  border-color: #b9dfbe;
+  background: #effaf0;
+  box-shadow: 0 3px 0 #d2ead5;
+}
+
+.country-character-reset {
+  color: #9b4d59;
+  border-color: #e4bec4;
+  background: #fff6f7;
+  box-shadow: 0 3px 0 #efd9dc;
+}
+
+.country-character-reset:hover:not(:disabled) {
+  color: #913841;
+  border-color: #d98b95;
+  background: #fff0f1;
+}
+
+.country-character-equip:disabled,
+.country-character-reset:disabled {
+  color: #a2aab5;
+  border-color: #e6e9ed;
+  background: #f6f7f8;
+  box-shadow: 0 3px 0 #e8ebed;
 }
 
 .country-detail-trivia,

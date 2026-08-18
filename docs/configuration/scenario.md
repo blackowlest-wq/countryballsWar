@@ -36,8 +36,9 @@ may add multiple phases later without changing the runtime model.
 
 `faction` is the side that owns a unit or region. `countryId` and
 `characterId` identify the displayed country character for enemy units; the
-player uses the separate white `player` character. There is no neutral
-faction; every non-player faction is an enemy.
+player uses the separate white `player` character by default and can equip a
+real country character from the flag collection. There is no neutral faction;
+every non-player faction is an enemy.
 
 On defeat, the current operation restarts from its first phase. Only completed
 front country IDs are persistent campaign progress. Gold and upgrades are

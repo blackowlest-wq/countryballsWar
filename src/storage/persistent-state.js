@@ -3,6 +3,7 @@ import { normalizeSpecialMoveSettings } from "../special-move.js";
 export const GOLD_STORAGE_KEY = "countryfronts.gold";
 export const UPGRADES_STORAGE_KEY = "countryfronts.upgrades";
 export const SPECIAL_MOVE_STORAGE_KEY = "countryfronts.specialMove";
+export const EQUIPPED_CHARACTER_STORAGE_KEY = "countryfronts.equippedCharacter";
 export const CAMPAIGN_STORAGE_KEY = "countryfronts.campaign";
 export const CAMPAIGN_STATE_VERSION = 3;
 export const DEFAULT_CAMPAIGN_ID = "regional-fronts-v1";
@@ -30,6 +31,10 @@ function toLevel(value) {
 function normalizeStringList(value) {
   if (!Array.isArray(value)) return [];
   return [...new Set(value.filter((entry) => typeof entry === "string" && entry.trim().length > 0))].sort();
+}
+
+function normalizeCharacterId(value) {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }
 
 export function createDefaultCampaignState({ campaignId = DEFAULT_CAMPAIGN_ID, difficultyId = "normal" } = {}) {
@@ -109,6 +114,31 @@ export function savePersistentState(storage, persistentState) {
   return campaign;
 }
 
+export function loadEquippedCharacter(storage) {
+  const target = getStorage(storage);
+  if (!target) return null;
+
+  try {
+    return normalizeCharacterId(target.getItem(EQUIPPED_CHARACTER_STORAGE_KEY));
+  } catch {
+    return null;
+  }
+}
+
+export function saveEquippedCharacter(storage, characterId) {
+  const target = getStorage(storage);
+  const normalized = normalizeCharacterId(characterId);
+  if (!target) return normalized;
+
+  try {
+    if (normalized) target.setItem(EQUIPPED_CHARACTER_STORAGE_KEY, normalized);
+    else target.removeItem(EQUIPPED_CHARACTER_STORAGE_KEY);
+  } catch {
+    // Storage may be unavailable in private browsing; the session still works.
+  }
+  return normalized;
+}
+
 export function loadSpecialMove(storage, balance) {
   const target = getStorage(storage);
   if (!target) return null;
@@ -149,6 +179,7 @@ export function resetPersistentState(storage, upgradeKeys) {
       target.removeItem(GOLD_STORAGE_KEY);
       target.removeItem(UPGRADES_STORAGE_KEY);
       target.removeItem(SPECIAL_MOVE_STORAGE_KEY);
+      target.removeItem(EQUIPPED_CHARACTER_STORAGE_KEY);
       target.setItem(CAMPAIGN_STORAGE_KEY, JSON.stringify(campaign));
     } catch {
       // Storage may be unavailable; return a clean in-memory state regardless.

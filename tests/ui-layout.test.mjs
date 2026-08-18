@@ -74,6 +74,16 @@ test("character images use one real-sprite path without generated flag character
   assert.doesNotMatch(styles, /country-character-(ball|flag|face|eye)/);
 });
 
+test("country profiles keep real-character outfit actions", () => {
+  const html = readProjectFile("index.html");
+  const main = readProjectFile("src/main.js");
+
+  assert.match(html, /id="countryDetailCharacterEquip"[\s\S]*?>着替え<\/button>/);
+  assert.match(html, /id="countryDetailCharacterReset"[\s\S]*?>外す<\/button>/);
+  assert.match(main, /equipCountryCharacter/);
+  assert.match(main, /resetCountryCharacter/);
+});
+
 test("toast uses a left message lane instead of the centered lane", () => {
   const styles = readProjectFile("styles.css");
   const toast = styles.match(/\.toast \{[\s\S]*?\n\}/)?.[0] || "";
