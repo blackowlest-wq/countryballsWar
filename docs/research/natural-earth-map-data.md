@@ -8,8 +8,9 @@ at 1:10m, pinned to v5.1.1 (`9380cca`). The source is public domain under the
 Natural Earth terms of use.
 
 The runtime keeps only the 28 Korea features required by the front in
-`src/config/geodata/natural-earth-korea-admin-1.js`. The extracted audit copy
-is `src/config/geodata/ne_10m_admin_1_korea.geojson`.
+`src/config/geodata/natural-earth-korea-admin-1.js`. The active map groups
+those source features into 11 larger strategic regions. The extracted audit
+copy is `src/config/geodata/ne_10m_admin_1_korea.geojson`.
 
 ## Sources
 
@@ -22,10 +23,13 @@ is `src/config/geodata/ne_10m_admin_1_korea.geojson`.
 ## Implementation notes
 
 - The 17 South Korean and 11 North Korean Admin 1 features preserve their
-  original Polygon/MultiPolygon geometry.
-- Roads are based on the extracted administrative adjacency graph: 46 land
-  links plus one sea link for Jeju to South Jeolla.
+  original Polygon/MultiPolygon geometry before grouping.
+- Roads are based on the extracted administrative adjacency graph and then
+  collapsed to 18 strategic-region links: 17 land links plus one sea link for
+  Jeju to the Southwestern Region.
+- Group boundaries are derived by removing shared source edges, so internal
+  administrative borders do not become separate targets or visible map lines.
 - The active map uses a close-up equirectangular projection and validated
-  interaction-point spacing so the small regions remain selectable.
+  interaction-point spacing so the larger regions remain selectable.
 - The older 1:110m Admin 0 source is retained for future country-level fronts,
   but is not used for the active Korea Front.

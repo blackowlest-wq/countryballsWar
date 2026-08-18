@@ -9,7 +9,8 @@ geometry and source properties.
 `natural-earth-korea-admin-1.js` is the compact runtime subset used by
 `src/config/world-map.js`. It keeps the source feature ID, country mapping,
 English region name, label point, ISO codes, and geometry needed by the map
-compiler.
+compiler. `world-map.js` combines these source features into 11 larger
+strategic regions and derives an outer border for each group.
 
 The previous country-level source remains available as
 `ne_110m_admin_0_countries.geojson` with its runtime subset

@@ -200,6 +200,7 @@ function cloneRegion(region) {
     occupation: null,
     points: region.points.map(([x, y]) => [x, y]),
     polygons: cloneRegionPolygons(region),
+    borderPolygons: cloneRegionBorderPolygons(region),
   };
 }
 
@@ -209,12 +210,18 @@ function cloneRegionState(region) {
     occupation: region.occupation ? { ...region.occupation } : null,
     points: region.points.map(([x, y]) => [x, y]),
     polygons: cloneRegionPolygons(region),
+    borderPolygons: cloneRegionBorderPolygons(region),
     interactionPoint: region.interactionPoint ? [...region.interactionPoint] : region.interactionPoint,
   };
 }
 
 function cloneRegionPolygons(region) {
   return (region.polygons || [[region.points]]).map((polygon) => polygon.map((ring) => ring.map(([x, y]) => [x, y])));
+}
+
+function cloneRegionBorderPolygons(region) {
+  return (region.borderPolygons || region.polygons || [[region.points]])
+    .map((polygon) => polygon.map((ring) => ring.map(([x, y]) => [x, y])));
 }
 
 function cloneUnit(unit) {
@@ -402,6 +409,10 @@ function regionPolygons(region) {
   return region.polygons || [[region.points]];
 }
 
+function regionBorderPolygons(region) {
+  return region.borderPolygons || regionPolygons(region);
+}
+
 function pathForPoints(points) {
   ctx.beginPath();
   points.forEach((point, index) => {
@@ -453,6 +464,7 @@ function drawRegions() {
     ctx.fill("evenodd");
 
     const selected = region.id === state.selectedRegionId;
+    pathForPolygons(regionBorderPolygons(region));
     ctx.lineWidth = selected ? 4 : 2;
     ctx.strokeStyle = selected ? "#fff" : palette.territoryBorder;
     ctx.shadowColor = selected ? "rgba(36, 76, 134, 0.35)" : "transparent";

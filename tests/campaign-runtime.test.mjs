@@ -60,7 +60,7 @@ test("phase transition carries player units and occupation but resets enemies", 
   carriedUnit.x = 0.123;
   carriedUnit.y = 0.456;
   carriedUnit.strength = 7;
-  const carriedRegion = current.regions.find((region) => region.id === "kr-11");
+  const carriedRegion = current.regions.find((region) => region.id === "south-capital");
   carriedRegion.faction = "blue";
   carriedRegion.occupation = { faction: "blue", remaining: 2.5 };
 
@@ -74,8 +74,8 @@ test("phase transition carries player units and occupation but resets enemies", 
   assert.equal(resultUnit.x, 0.123);
   assert.equal(resultUnit.y, 0.456);
   assert.equal(resultUnit.strength, 7);
-  assert.equal(result.regions.find((region) => region.id === "kr-11").faction, "blue");
-  assert.deepEqual(result.regions.find((region) => region.id === "kr-11").occupation, { faction: "blue", remaining: 2.5 });
+  assert.equal(result.regions.find((region) => region.id === "south-capital").faction, "blue");
+  assert.deepEqual(result.regions.find((region) => region.id === "south-capital").occupation, { faction: "blue", remaining: 2.5 });
   assert.deepEqual(
     result.units.filter((unit) => unit.faction !== "blue").map((unit) => unit.id).sort(),
     next.units.filter((unit) => unit.faction !== "blue").map((unit) => unit.id).sort(),

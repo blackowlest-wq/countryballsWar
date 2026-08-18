@@ -45,6 +45,11 @@ function fragmentPolygons(fragment, bounds) {
   throw new Error(`Map compiler: fragment ${fragment.id} has no geometry`);
 }
 
+function fragmentBorderPolygons(fragment, bounds) {
+  if (fragment.borderGeometry) return projectGeometry(fragment.borderGeometry, bounds);
+  return fragmentPolygons(fragment, bounds);
+}
+
 export function compileWorldFrontMap(worldMap, frontMap, countries) {
   const bounds = frontMap.bounds || worldMap.projection.bounds;
   const regions = frontMap.fragmentIds.map((fragmentId) => {
@@ -52,6 +57,7 @@ export function compileWorldFrontMap(worldMap, frontMap, countries) {
     const country = countries[fragment?.countryId];
     if (!fragment || !country) throw new Error(`Map compiler: missing fragment or country for ${fragmentId}`);
     const polygons = fragmentPolygons(fragment, bounds);
+    const borderPolygons = fragmentBorderPolygons(fragment, bounds);
     const points = polygons[0][0];
     return {
       id: fragment.id,
@@ -61,9 +67,11 @@ export function compileWorldFrontMap(worldMap, frontMap, countries) {
       shortName: fragment.shortName || country.shortName,
       points,
       polygons,
+      borderPolygons,
       interactionPoint: projectGeoPoint(fragment.interactionPoint || fragment.centroid, bounds),
       sourceCoordinates: cloneData(fragment.geometry?.coordinates || fragment.points),
       sourceGeometry: cloneData(fragment.geometry),
+      sourceFeature: cloneData(fragment.sourceFeature),
       sourceCentroid: cloneData(fragment.centroid),
       isMajor: country.isMajor,
     };

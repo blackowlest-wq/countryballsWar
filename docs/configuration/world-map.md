@@ -4,7 +4,10 @@ The campaign map is split from the geographic source and compiled per front.
 
 ```text
 world-map.js
-  geographic fragments (longitude / latitude)
+  Natural Earth Admin 1 features (longitude / latitude)
+        |
+        v
+  strategic region grouping + outer-border extraction
         |
         v
 map-compiler.js
@@ -17,8 +20,9 @@ map.js
 
 `src/config/world-map.js` is the front-definition source of truth. The active
 Korea Front uses the checked-in Natural Earth Admin 1 - States, Provinces
-GeoJSON subset at 1:10m, pinned to v5.1.1 (`9380cca`). It selects 28 actual
-first-order administrative features: 17 South Korean and 11 North Korean.
+GeoJSON subset at 1:10m, pinned to v5.1.1 (`9380cca`). The 28 source features
+are combined into 11 larger strategic regions while preserving their actual
+geographic outlines.
 
 The source subset is retained in
 `src/config/geodata/ne_10m_admin_1_korea.geojson`; the compact runtime data is
@@ -30,10 +34,11 @@ Natural Earth is public domain. The source URL and license URL are carried in
 `WORLD_MAP.source`, and the extraction details are documented in
 `src/config/geodata/README.md`.
 
-The playable unit is a country fragment. `countryId` identifies the country
-character and `fragmentId` identifies a split piece of territory. A country is
-completed only after every fragment listed in `src/config/countries.js` is
-player-controlled.
+The playable unit is a strategic region. `countryId` identifies the country
+character, while each region retains `sourceFragmentIds` for traceability. A
+country is completed only after every region listed in
+`src/config/countries.js` is player-controlled.
 
-Road validation covers explicit land and sea links. Interaction-point distance
+Road validation covers explicit land and sea links. Strategic-region outer
+borders hide internal source-administration lines, and interaction-point
 validation prevents nearby targets from sharing a touch hit area.
