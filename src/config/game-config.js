@@ -87,13 +87,11 @@ function validateFaction(factionId, faction) {
   assertConfig(typeof faction?.isEnemy === "boolean", `Faction ${factionId} is missing isEnemy`);
   assertConfig(faction && faction.id === factionId, `勢力 ${factionId} のidが一致していません`);
   assertConfig(typeof faction.name === "string" && faction.name.length > 0, `勢力 ${factionId} に表示名がありません`);
-  assertConfig(typeof faction.unitSprite === "string" && faction.unitSprite.length > 0, `勢力 ${factionId} に画像がありません`);
-  assertConfig(typeof faction.unitStyle === "string" && faction.unitStyle.length > 0, `勢力 ${factionId} の部隊スタイルがありません`);
   assertConfig(typeof faction.panelClass === "string" && faction.panelClass.length > 0, `Faction ${factionId} is missing panelClass`);
   assertConfig(typeof faction.statusText === "string" && faction.statusText.length > 0, `Faction ${factionId} is missing statusText`);
   assertConfig(typeof faction.threatText === "string" && faction.threatText.length > 0, `Faction ${factionId} is missing threatText`);
   assertConfig(faction.palette && typeof faction.palette === "object", `勢力 ${factionId} に配色がありません`);
-  ["territory", "territoryDark", "territoryBorder", "territoryLabel", "unit", "flag", "occupation"].forEach((key) => {
+  ["territory", "territoryDark", "territoryBorder", "territoryLabel", "occupation"].forEach((key) => {
     assertConfig(typeof faction.palette[key] === "string" && faction.palette[key].length > 0, `Faction ${factionId} is missing palette.${key}`);
   });
 }
@@ -148,7 +146,7 @@ function validateCountryMaster(countries, mapRegions) {
   });
 }
 
-function validateCharacterMaster(characters, countries, factionIds) {
+function validateCharacterMaster(characters, countries) {
   assertConfig(characters && typeof characters === "object" && !Array.isArray(characters), "characters must be an object");
   Object.entries(characters).forEach(([characterId, character]) => {
     assertConfig(character && character.id === characterId, `Character ${characterId} has an invalid id`);
@@ -158,9 +156,6 @@ function validateCharacterMaster(characters, countries, factionIds) {
       assertConfig(typeof character.countryId === "string" && countries[character.countryId], `Character ${characterId} has an unknown countryId`);
     }
     assertConfig(character.sprite === null || (typeof character.sprite === "string" && character.sprite.length > 0), `Character ${characterId} has invalid sprite`);
-    assertConfig(factionIds.includes(character.fallbackFactionId), `Character ${characterId} has an unknown fallback faction`);
-    assertConfig(character.eyeStyle === "sharp" || character.eyeStyle === "round", `Character ${characterId} has invalid eyeStyle`);
-    assertConfig(character.flag && typeof character.flag === "object", `Character ${characterId} is missing flag data`);
   });
   Object.keys(countries).forEach((countryId) => {
     assertConfig(characters[countryId]?.countryId === countryId, `Country ${countryId} is missing its character binding`);
@@ -248,8 +243,11 @@ function validateCampaignData(campaign, map, countries, characters, factionIds, 
         assertConfig(factionIds.includes(unit.faction), `campaign phase ${phaseId} unit ${unit.id} has an invalid faction`);
         assertConfig(regionIds.includes(unit.regionId), `campaign phase ${phaseId} unit ${unit.id} has an invalid region`);
         const region = map.regions.find((candidate) => candidate.id === unit.regionId);
-        const isPlayerCharacter = unit.faction === playerFactionId && characters[unit.characterId]?.isPlayerCharacter === true;
-        assertConfig(isPlayerCharacter || characters[unit.characterId]?.countryId === region.countryId, `campaign phase ${phaseId} unit ${unit.id} has an invalid character binding`);
+        const characterId = unit.characterId || region.countryId;
+        const character = characters[characterId];
+        const isPlayerCharacter = unit.faction === playerFactionId && character?.isPlayerCharacter === true;
+        assertConfig(character && (isPlayerCharacter || character.countryId === region.countryId), `campaign phase ${phaseId} unit ${unit.id} has an invalid character binding`);
+        assertConfig(typeof character.sprite === "string" && character.sprite.length > 0, `campaign phase ${phaseId} unit ${unit.id} has no character sprite`);
       });
       assertConfig(phase.initialUnits.some((unit) => unit.faction === "blue"), `campaign phase ${phaseId} has no player unit`);
     });
@@ -407,7 +405,7 @@ export function createGameConfig(source) {
   const factionIds = Object.keys(config.factions || {});
   assertConfig(factionIds.length >= 2, "勢力を2つ以上定義してください");
   factionIds.forEach((factionId) => validateFaction(factionId, config.factions[factionId]));
-  validateCharacterMaster(config.characters, config.countries, factionIds);
+  validateCharacterMaster(config.characters, config.countries);
 
   assertConfig(config.map?.id === config.scenario?.mapId, "シナリオが別のマップを参照しています");
   assertConfig(typeof config.map?.name === "string" && config.map.name.trim().length > 0, "map.name must be a non-empty string");
@@ -498,12 +496,10 @@ export function createRuntimeScenario(config = GAME_CONFIG, phaseId = config.sce
     return {
       ...cloneData(deployment),
       characterId: deployment.characterId || regionById[deployment.regionId].countryId,
-      eyeStyle: config.characters[deployment.characterId || regionById[deployment.regionId].countryId].eyeStyle,
       x: center.x,
       y: center.y,
       strength: maxStrength,
       maxStrength,
-      style: config.factions[deployment.faction].unitStyle,
       target: null,
       route: null,
       routeIndex: 0,

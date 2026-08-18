@@ -13,30 +13,25 @@ import {
 import { calculateGroupCombatDamage } from "../src/campaign/combat.js";
 import { chooseAiAttackCandidate, getAiAttackCandidates } from "../src/campaign/ai.js";
 import { findRegionAtWorldPoint } from "../src/render/region-targeting.js";
-import { selectUnitSpriteKey } from "../src/render/unit-sprite.js";
+import { getCharacterSpriteSource, getCharacterSpriteSources } from "../src/render/character-sprite.js";
 
-test("player units use the white faction sprite while enemies use country sprites", () => {
-  assert.equal(selectUnitSpriteKey({
-    playerFactionId: "blue",
-    faction: "blue",
-    characterId: "player",
-    characters: {
-      player: { sprite: null, isPlayerCharacter: true },
-      "south-korea": { sprite: "./assets/units/enemy-korea.png" },
-    },
-  }), "blue");
-  assert.equal(selectUnitSpriteKey({
-    playerFactionId: "blue",
-    faction: "gray",
-    characterId: "south-korea",
-    characters: { "south-korea": { sprite: "./assets/units/enemy-korea.png" } },
-  }), "south-korea");
-  assert.equal(selectUnitSpriteKey({
-    playerFactionId: "blue",
-    faction: "red",
-    characterId: "north-korea",
-    characters: { "north-korea": { sprite: "./assets/units/enemy-north-korea.png" } },
-  }), "north-korea");
+test("all character image consumers resolve the registered real sprite by character ID", () => {
+  const characters = {
+    player: { sprite: "./assets/units/player-red-circle.png" },
+    "south-korea": { sprite: "./assets/units/enemy-korea.png" },
+    "north-korea": { sprite: "./assets/units/enemy-north-korea.png" },
+    japan: { sprite: null },
+  };
+
+  assert.equal(getCharacterSpriteSource("player", characters), "./assets/units/player-red-circle.png");
+  assert.equal(getCharacterSpriteSource("south-korea", characters), "./assets/units/enemy-korea.png");
+  assert.equal(getCharacterSpriteSource("north-korea", characters), "./assets/units/enemy-north-korea.png");
+  assert.equal(getCharacterSpriteSource("japan", characters), null);
+  assert.deepEqual(getCharacterSpriteSources(characters), {
+    player: "./assets/units/player-red-circle.png",
+    "south-korea": "./assets/units/enemy-korea.png",
+    "north-korea": "./assets/units/enemy-north-korea.png",
+  });
 });
 
 test("enemy strength is rounded once from the front profile", () => {

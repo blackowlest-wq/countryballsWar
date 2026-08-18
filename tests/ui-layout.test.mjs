@@ -53,8 +53,6 @@ test("country flag collection exposes a profile dialog with the requested sectio
     "countryDetailOverview",
     "countryDetailMap",
     "countryDetailCharacter",
-    "countryDetailCharacterToggle",
-    "countryDetailCharacterRemove",
     "countryDetailFlagOrigin",
     "countryDetailTrivia",
     "countryDetailSources",
@@ -64,36 +62,16 @@ test("country flag collection exposes a profile dialog with the requested sectio
   assert.match(main, /ne_110m_admin_0_countries\.geojson/);
 });
 
-test("country profile can switch to the character image used in battle", () => {
+test("character images use one real-sprite path without generated flag characters", () => {
   const html = readProjectFile("index.html");
   const main = readProjectFile("src/main.js");
+  const styles = readProjectFile("styles.css");
 
-  assert.match(html, /id="countryDetailCharacterToggle"/);
-  assert.match(html, /利用キャラクターの絵に切り替える/);
-  assert.match(html, /id="countryDetailCharacterRemove"/);
-  assert.match(html, />外す</);
-  assert.match(main, /function toggleCountryCharacterImage/);
-  assert.match(main, /function removeCountryCharacterImage/);
-  assert.match(main, /countryDetailCharacterToggle[\s\S]*aria-pressed/);
-  assert.match(main, /character\.sprite/);
-});
-
-test("country character previews use the full country flag renderer", () => {
-  const main = readProjectFile("src/main.js");
-  const renderCharacter = main.match(/function renderCountryCharacter\(country\) \{[\s\S]*?\n\}\n\nfunction toggleCountryCharacterImage/)?.[0] || "";
-
-  assert.match(renderCharacter, /className = "country-character-flag"/);
-  assert.match(renderCharacter, /renderCountryFlag\(country, flag\)/);
-  assert.doesNotMatch(renderCharacter, /ball\.style\.background = countryFlagBackground\(country\)/);
-});
-
-test("country profile defaults to the equipped character image", () => {
-  const main = readProjectFile("src/main.js");
-
-  assert.match(
-    main,
-    /activeCountryDetailId = country\.id;\s*showUsedCharacterImage = Boolean\(GAME_CONFIG\.characters\[country\.id\]\?\.sprite\);/,
-  );
+  assert.doesNotMatch(html, /countryDetailCharacterToggle|countryDetailCharacterRemove/);
+  assert.doesNotMatch(html, /specialMoveCutInCharacterFallback/);
+  assert.match(main, /getCharacterSpriteSource/);
+  assert.doesNotMatch(main, /function drawCharacterFlag|drawCharacterFlag\(/);
+  assert.doesNotMatch(styles, /country-character-(ball|flag|face|eye)/);
 });
 
 test("toast uses a left message lane instead of the centered lane", () => {
@@ -114,6 +92,7 @@ test("special move includes a character cut-in with the configured name", () => 
   assert.match(html, /id="specialMoveCutIn"/);
   assert.match(html, /id="specialMoveCutInCharacter"/);
   assert.match(html, /id="specialMoveCutInName"/);
+  assert.doesNotMatch(html, /specialMoveCutInCharacterFallback/);
   assert.match(main, /function showSpecialMoveCutIn/);
   assert.match(main, /showSpecialMoveCutIn\(name\)/);
   assert.match(styles, /\.special-move-cut-in-panel/);

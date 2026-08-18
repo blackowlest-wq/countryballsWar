@@ -32,7 +32,8 @@ first phase.
 - Map geometry can be upgraded from the compact seed to a licensed GeoJSON
   dataset without changing gameplay code.
 - Road validation must cover land and explicit sea links.
-- Character asset files can be added by country ID while keeping a faction
-  fallback during asset production.
+- Character asset files are resolved by character ID and shared by the map,
+  country profiles, and special-move cut-ins. Deployed characters must have an
+  image asset; no flag-based character fallback is used.
 - Campaign UI can show front, phase, and completed-country progress without
   encoding geography into the simulation loop.

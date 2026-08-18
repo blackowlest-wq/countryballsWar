@@ -15,11 +15,11 @@ Geographic polygons are pinned to Natural Earth
 v5.1.1 (`9380cca`), and the source subset is retained for reproducible map
 builds.
 
-Player units use the separate white player-character/faction sprite. Enemy
-units use the country-specific character sprite whenever one is available. If
-an enemy character sprite is unavailable, the unit falls back to its
-faction/flag renderer. Controllability is determined by faction, not by the
-selected sprite.
+Player units use the separate white player-character sprite. Enemy units use
+the country-specific character sprite. The same character-ID image resolver is
+used by map units, country profiles, and special-move cut-ins. Deployed
+characters must have an image asset; there is no generated flag/eye character
+fallback. Controllability is determined by faction, not by the selected sprite.
 
 ## Consequences
 

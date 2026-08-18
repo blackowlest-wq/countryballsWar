@@ -15,7 +15,7 @@
     <title>COUNTRYFRONTS — リアルタイム戦略</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./assets/icons/icon-192.png" />
-    <link rel="stylesheet" href="./styles.css?v=35" />
+    <link rel="stylesheet" href="./styles.css?v=36" />
   </head>
   <body>
     <main class="game-shell" id="gameShell">
@@ -141,7 +141,6 @@
       <div class="special-move-cut-in-panel">
         <div class="special-move-cut-in-character" aria-hidden="true">
           <img id="specialMoveCutInCharacter" alt="" />
-          <span id="specialMoveCutInCharacterFallback">●</span>
         </div>
         <div class="special-move-cut-in-copy">
           <span class="special-move-cut-in-kicker">SPECIAL MOVE</span>
@@ -272,25 +271,7 @@
             <h3 id="countryDetailCharacterHeading">国キャラクター</h3>
           </div>
           <div class="country-detail-character-row">
-            <div class="country-character-display">
-              <div class="country-character-preview" id="countryDetailCharacter" aria-hidden="true"></div>
-              <div class="country-character-actions">
-                <button
-                  class="secondary-action country-character-toggle"
-                  id="countryDetailCharacterToggle"
-                  type="button"
-                  aria-controls="countryDetailCharacter"
-                  aria-pressed="false"
-                >利用キャラクターの絵に切り替える</button>
-                <button
-                  class="secondary-action country-character-remove"
-                  id="countryDetailCharacterRemove"
-                  type="button"
-                  aria-controls="countryDetailCharacter"
-                  disabled
-                >外す</button>
-              </div>
-            </div>
+            <div class="country-character-preview" id="countryDetailCharacter" aria-hidden="true"></div>
             <p class="country-detail-copy">国旗をモチーフにしたキャラクターとして、戦線に登場します。</p>
           </div>
         </section>
@@ -466,6 +447,6 @@
       </div>
     </dialog>
 
-    <script type="module" src="./src/main.js?v=36"></script>
+    <script type="module" src="./src/main.js?v=37"></script>
   </body>
 </html>

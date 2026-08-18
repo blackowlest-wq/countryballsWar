@@ -62,8 +62,8 @@ test("roads remain the source of the runtime adjacency table and every road is p
 test("countries own fragments and major countries can require multiple fragments", () => {
   assert.deepEqual(GAME_CONFIG.countries.russia.fragmentIds, ["russia-east", "russia-far-east"]);
   assert.deepEqual(GAME_CONFIG.countries.china.fragmentIds, ["china-north", "china-central", "china-south"]);
-  assert.equal(GAME_CONFIG.characters.china.eyeStyle, "sharp");
-  assert.equal(GAME_CONFIG.characters.vietnam.eyeStyle, "round");
+  assert.equal(GAME_CONFIG.characters.china.sprite, "./assets/units/enemy-china.png");
+  assert.equal(GAME_CONFIG.characters.player.sprite, "./assets/units/player-red-circle.png");
   assert.equal(GAME_CONFIG.characters.player.isPlayerCharacter, true);
   GAME_CONFIG.map.regions.forEach((region) => {
     assert.equal(GAME_CONFIG.countries[region.countryId].fragmentIds.includes(region.fragmentId), true);
@@ -128,6 +128,7 @@ test("runtime scenario uses phase production and rounds front-start enemy streng
     assert.equal(unit.maxStrength, expected);
     assert.equal(unit.strength, expected);
     assert.ok(GAME_CONFIG.characters[unit.characterId]);
+    assert.match(GAME_CONFIG.characters[unit.characterId].sprite, /^\.\/assets\/units\/.*\.png$/);
   });
 });
 

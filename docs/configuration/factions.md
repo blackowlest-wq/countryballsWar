@@ -9,7 +9,8 @@ The source is `src/config/factions.js`.
 | `gray` | Gray enemy coalition | Yes |
 | `pink` | Pink enemy coalition | Yes |
 
-Faction data owns side-level palette, UI text, movement, and fallback unit
-appearance. A faction does not identify the displayed country character. Unit
-deployments carry `characterId`, which resolves through
-`src/config/characters.js`.
+Faction data owns side-level palette, UI text, and movement. A faction does not
+identify the displayed country character. Unit deployments carry `characterId`,
+which resolves to the real image in `src/config/characters.js`. Character image
+consumers do not generate a flag-based fallback; a deployed character must have
+an image asset.

@@ -31,7 +31,7 @@ import { getFrontSelectionEntries } from "./campaign/front-selection.js";
 import { getCountryWorldMapData, projectWorldMapPoint } from "./campaign/country-location.js";
 import { getCountryFlagOrigin } from "./config/countries.js";
 import { findRegionAtWorldPoint } from "./render/region-targeting.js";
-import { selectUnitSpriteKey } from "./render/unit-sprite.js";
+import { getCharacterSpriteSource, getCharacterSpriteSources } from "./render/character-sprite.js";
 
 const canvas = document.querySelector("#mapCanvas");
 const ctx = canvas.getContext("2d");
@@ -71,7 +71,6 @@ const ui = {
   specialMoveButton: document.querySelector("#specialMoveButton"),
   specialMoveCutIn: document.querySelector("#specialMoveCutIn"),
   specialMoveCutInCharacter: document.querySelector("#specialMoveCutInCharacter"),
-  specialMoveCutInCharacterFallback: document.querySelector("#specialMoveCutInCharacterFallback"),
   specialMoveCutInName: document.querySelector("#specialMoveCutInName"),
   titleDialog: document.querySelector("#titleDialog"),
   titleStart: document.querySelector("#titleStartButton"),
@@ -96,8 +95,6 @@ const ui = {
   countryDetailMap: document.querySelector("#countryDetailMap"),
   countryDetailLocation: document.querySelector("#countryDetailLocation"),
   countryDetailCharacter: document.querySelector("#countryDetailCharacter"),
-  countryDetailCharacterToggle: document.querySelector("#countryDetailCharacterToggle"),
-  countryDetailCharacterRemove: document.querySelector("#countryDetailCharacterRemove"),
   countryDetailFlagOrigin: document.querySelector("#countryDetailFlagOrigin"),
   countryDetailTrivia: document.querySelector("#countryDetailTrivia"),
   countryDetailSources: document.querySelector("#countryDetailSources"),
@@ -157,9 +154,6 @@ function createAiFactionState(value) {
 const COLORS = Object.fromEntries(
   Object.entries(GAME_CONFIG.factions).map(([factionId, faction]) => [factionId, faction.palette]),
 );
-const UNIT_SPRITE_SOURCES = Object.fromEntries(
-  Object.entries(GAME_CONFIG.factions).map(([factionId, faction]) => [factionId, faction.unitSprite]),
-);
 
 function applyConfiguredDisplayNames() {
   const playerFactionName = GAME_CONFIG.factions[PLAYER_FACTION_ID].name;
@@ -167,18 +161,14 @@ function applyConfiguredDisplayNames() {
   ui.clearPlayerFactionName.textContent = playerFactionName;
 }
 
-const CHARACTER_SPRITE_SOURCES = Object.fromEntries(
-  Object.entries(GAME_CONFIG.characters)
-    .filter(([, character]) => character.sprite)
-    .map(([characterId, character]) => [characterId, character.sprite]),
-);
+const CHARACTER_SPRITE_SOURCES = getCharacterSpriteSources(GAME_CONFIG.characters);
 
-const UNIT_SPRITES = Object.fromEntries(
-  [...Object.entries(UNIT_SPRITE_SOURCES), ...Object.entries(CHARACTER_SPRITE_SOURCES)].map(([key, source]) => {
+const CHARACTER_SPRITES = Object.fromEntries(
+  Object.entries(CHARACTER_SPRITE_SOURCES).map(([characterId, source]) => {
     const image = new Image();
     image.decoding = "async";
     image.src = source;
-    return [key, image];
+    return [characterId, image];
   }),
 );
 
@@ -735,61 +725,12 @@ function drawOccupationIndicators() {
   });
 }
 
-function drawFlag(x, y, color, scale) {
-  ctx.save();
-  ctx.lineWidth = Math.max(1.2, scale * 0.08);
-  ctx.strokeStyle = "#1d2536";
-  ctx.beginPath();
-  ctx.moveTo(x, y - scale * 0.9);
-  ctx.lineTo(x, y + scale * 0.65);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(x, y - scale * 0.88);
-  ctx.lineTo(x + scale * 0.66, y - scale * 0.67);
-  ctx.lineTo(x, y - scale * 0.42);
-  ctx.closePath();
-  ctx.fillStyle = color;
-  ctx.fill();
-  ctx.stroke();
-  ctx.restore();
-}
-
-function drawCharacterFlag(character, x, y, radius) {
-  const flag = character?.flag;
-  if (!flag?.colors?.length) return;
-  const colors = flag.colors;
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(x, y, radius, 0, Math.PI * 2);
-  ctx.clip();
-  if (flag.type === "vertical") {
-    const width = (radius * 2) / colors.length;
-    colors.forEach((color, index) => {
-      ctx.fillStyle = color;
-      ctx.fillRect(x - radius + index * width, y - radius, width + 1, radius * 2);
-    });
-  } else if (flag.type === "field") {
-    ctx.fillStyle = colors[0];
-    ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
-    ctx.fillStyle = colors[1];
-    ctx.beginPath();
-    ctx.arc(x, y, radius * 0.28, 0, Math.PI * 2);
-    ctx.fill();
-  } else {
-    const height = (radius * 2) / colors.length;
-    colors.forEach((color, index) => {
-      ctx.fillStyle = color;
-      ctx.fillRect(x - radius, y - radius + index * height, radius * 2, height + 1);
-    });
-  }
-  ctx.restore();
-}
-
 function drawUnit(unit, time) {
   const point = screenPoint([unit.x, unit.y]);
   const scale = clamp(view.width * 0.021, 15, 25) * (state.zoom > 1 ? 1.07 : 1);
-  const palette = COLORS[unit.faction];
-  const character = GAME_CONFIG.characters[unit.characterId];
+  const spriteSource = getCharacterSpriteSource(unit.characterId, GAME_CONFIG.characters);
+  const sprite = spriteSource ? CHARACTER_SPRITES[unit.characterId] : null;
+  if (!sprite?.complete || sprite.naturalWidth <= 0) return;
   const bob = state.motion ? Math.sin(time * 2.6 + unit.pulse) * 1.8 : 0;
   const y = point.y + bob;
   const battleJitter = unit.inBattle && state.motion ? Math.sin(time * 24 + unit.pulse) * 2.2 : 0;
@@ -805,86 +746,9 @@ function drawUnit(unit, time) {
   ctx.fill();
   ctx.restore();
 
-  const spriteKey = selectUnitSpriteKey({
-    playerFactionId: PLAYER_FACTION_ID,
-    faction: unit.faction,
-    characterId: unit.characterId,
-    characters: GAME_CONFIG.characters,
-  });
-  const sprite = spriteKey ? UNIT_SPRITES[spriteKey] : null;
-  const spriteReady = Boolean(sprite?.complete && sprite.naturalWidth > 0);
-  if (spriteReady) {
-    const spriteSize = scale * 2.42;
-    ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(sprite, point.x - spriteSize / 2, y - spriteSize / 2, spriteSize, spriteSize);
-  } else {
-    if (!character) drawFlag(point.x + scale * 0.72, y - scale * 0.2, palette.flag, scale * 0.75);
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(point.x, y, scale, 0, Math.PI * 2);
-    ctx.fillStyle = palette.unit;
-    ctx.fill();
-    drawCharacterFlag(GAME_CONFIG.characters[unit.characterId], point.x, y, scale * 0.94);
-    ctx.lineWidth = Math.max(1.5, scale * 0.1);
-    ctx.strokeStyle = "#222b3d";
-    ctx.stroke();
-
-    if (!character && unit.style === "visor") {
-      ctx.fillStyle = "#d94f58";
-      ctx.beginPath();
-      ctx.arc(point.x, y, scale * 0.62, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = "#fff";
-      ctx.lineWidth = Math.max(1, scale * 0.05);
-      ctx.stroke();
-    } else if (!character && unit.style === "cap") {
-      ctx.fillStyle = "#ffd75d";
-      ctx.beginPath();
-      ctx.moveTo(point.x - scale * 0.86, y - scale * 0.54);
-      ctx.lineTo(point.x, y - scale * 1.13);
-      ctx.lineTo(point.x + scale * 0.86, y - scale * 0.54);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-    } else if (!character && unit.faction === "pink") {
-      ctx.fillStyle = "#ec5461";
-      ctx.fillRect(point.x - scale * 0.83, y - scale * 0.12, scale * 1.66, scale * 0.28);
-    }
-
-    const eyeY = y - scale * 0.13;
-    const eyeOffset = scale * 0.39;
-    ctx.fillStyle = "#fff";
-    if (unit.eyeStyle === "sharp") {
-      const eyeWidth = scale * 0.3;
-      const eyeHeight = scale * 0.19;
-      [point.x - eyeOffset, point.x + eyeOffset].forEach((eyeX) => {
-        ctx.beginPath();
-        ctx.moveTo(eyeX - eyeWidth, eyeY);
-        ctx.lineTo(eyeX, eyeY - eyeHeight);
-        ctx.lineTo(eyeX + eyeWidth, eyeY);
-        ctx.lineTo(eyeX, eyeY + eyeHeight);
-        ctx.closePath();
-        ctx.fill();
-      });
-    } else {
-      ctx.beginPath();
-      ctx.arc(point.x - eyeOffset, eyeY, scale * 0.21, 0, Math.PI * 2);
-      ctx.arc(point.x + eyeOffset, eyeY, scale * 0.21, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.fillStyle = "#1c2334";
-    ctx.beginPath();
-    ctx.arc(point.x - eyeOffset, eyeY, scale * 0.1, 0, Math.PI * 2);
-    ctx.arc(point.x + eyeOffset, eyeY, scale * 0.1, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = "#1c2334";
-    ctx.lineWidth = Math.max(1, scale * 0.055);
-    ctx.beginPath();
-    ctx.arc(point.x, y + scale * 0.13, scale * 0.25, 0.1, Math.PI - 0.1);
-    ctx.stroke();
-    ctx.restore();
-  }
+  const spriteSize = scale * 2.42;
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(sprite, point.x - spriteSize / 2, y - spriteSize / 2, spriteSize, spriteSize);
 
   ctx.save();
   ctx.font = `900 ${clamp(scale * 0.62, 10, 14)}px Inter, sans-serif`;
@@ -1469,12 +1333,10 @@ function createUnit(faction, regionId, targetRegionId = null) {
     id: `${faction}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     faction,
     characterId: region.countryId,
-    eyeStyle: GAME_CONFIG.characters[region.countryId].eyeStyle,
     x: center.x,
     y: center.y,
     strength: maxStrength,
     maxStrength,
-    style: GAME_CONFIG.factions[faction]?.unitStyle || "plain",
     target: null,
     route: null,
     routeIndex: 0,
@@ -1965,14 +1827,9 @@ function getSelectedPlayerUnit() {
 
 function getSpecialMoveCutInCharacter() {
   const unit = getSelectedPlayerUnit();
-  const spriteKey = selectUnitSpriteKey({
-    playerFactionId: PLAYER_FACTION_ID,
-    faction: unit?.faction || PLAYER_FACTION_ID,
-    characterId: unit?.characterId || "player",
-    characters: GAME_CONFIG.characters,
-  });
-  const source = spriteKey ? GAME_CONFIG.factions[spriteKey]?.unitSprite : null;
-  const character = unit?.characterId ? GAME_CONFIG.characters[unit.characterId] : null;
+  const characterId = unit?.characterId || "player";
+  const source = getCharacterSpriteSource(characterId, GAME_CONFIG.characters);
+  const character = GAME_CONFIG.characters[characterId];
   const label = character?.countryId
     ? `${countryDisplayName(GAME_CONFIG.countries[character.countryId])}のキャラクター`
     : "自軍キャラクター";
@@ -1994,9 +1851,6 @@ function showSpecialMoveCutIn(name) {
     ui.specialMoveCutInCharacter.hidden = !source;
     ui.specialMoveCutInCharacter.alt = label;
     if (source) ui.specialMoveCutInCharacter.src = source;
-  }
-  if (ui.specialMoveCutInCharacterFallback) {
-    ui.specialMoveCutInCharacterFallback.hidden = Boolean(source);
   }
 
   if (specialMoveCutInTimeout) window.clearTimeout(specialMoveCutInTimeout);
@@ -2398,7 +2252,6 @@ let returnToFlagCollectionAfterCountryDetail = false;
 let returnToTitleAfterCountryDetail = false;
 let suppressFlagCollectionRestore = false;
 let activeCountryDetailId = null;
-let showUsedCharacterImage = false;
 let countryWorldMapPromise = null;
 
 function openFlagCollection({ returnToTitle = Boolean(ui.titleDialog?.open) } = {}) {
@@ -2435,72 +2288,24 @@ function restoreTitleAfterFlagCollection() {
 function renderCountryCharacter(country) {
   if (!ui.countryDetailCharacter) return;
 
-  const character = GAME_CONFIG.characters[country.id];
-  const hasUsedCharacterImage = Boolean(character?.sprite);
-  const shouldShowUsedCharacterImage = showUsedCharacterImage && hasUsedCharacterImage;
+  const spriteSource = getCharacterSpriteSource(country.id, GAME_CONFIG.characters);
   ui.countryDetailCharacter.className = "country-character-preview";
   ui.countryDetailCharacter.replaceChildren();
+  ui.countryDetailCharacter.setAttribute("aria-hidden", String(!spriteSource));
 
-  if (shouldShowUsedCharacterImage) {
-    ui.countryDetailCharacter.classList.add("has-sprite");
-    const image = document.createElement("img");
-    image.src = character.sprite;
-    image.alt = `${countryDisplayName(country)}の利用キャラクター`;
-    ui.countryDetailCharacter.append(image);
-  } else {
-    const ball = document.createElement("span");
-    ball.className = "country-character-ball";
-    const flag = document.createElement("span");
-    flag.className = "country-character-flag";
-    renderCountryFlag(country, flag);
-    ball.append(flag);
-    const face = document.createElement("span");
-    face.className = `country-character-face is-${character?.eyeStyle || "round"}`;
-    ["left", "right"].forEach((side) => {
-      const eye = document.createElement("span");
-      eye.className = "country-character-eye";
-      eye.dataset.side = side;
-      face.append(eye);
-    });
-    ball.append(face);
-    ui.countryDetailCharacter.append(ball);
+  if (!spriteSource) {
+    ui.countryDetailCharacter.classList.add("is-unavailable");
+    const message = document.createElement("span");
+    message.textContent = "キャラクター画像未登録";
+    ui.countryDetailCharacter.append(message);
+    return;
   }
 
-  if (ui.countryDetailCharacterToggle) {
-    ui.countryDetailCharacterToggle.disabled = !hasUsedCharacterImage;
-    ui.countryDetailCharacterToggle.setAttribute("aria-pressed", String(shouldShowUsedCharacterImage));
-    ui.countryDetailCharacterToggle.classList.toggle("is-active", shouldShowUsedCharacterImage);
-    ui.countryDetailCharacterToggle.textContent = shouldShowUsedCharacterImage
-      ? "利用中"
-      : hasUsedCharacterImage
-        ? "利用キャラクターの絵に切り替える"
-        : "利用キャラクターの絵は未登録";
-    ui.countryDetailCharacterToggle.title = hasUsedCharacterImage
-      ? shouldShowUsedCharacterImage
-        ? "現在このキャラクター画像を表示中です"
-        : "戦場で利用するキャラクター画像へ切り替えます"
-      : "この国の利用キャラクター画像は未登録です";
-  }
-  if (ui.countryDetailCharacterRemove) {
-    ui.countryDetailCharacterRemove.disabled = !shouldShowUsedCharacterImage;
-    ui.countryDetailCharacterRemove.title = shouldShowUsedCharacterImage
-      ? "利用キャラクターの画像を外して国旗デザインに戻します"
-      : "利用キャラクターの画像を表示していません";
-  }
-}
-
-function toggleCountryCharacterImage() {
-  const country = GAME_CONFIG.countries[activeCountryDetailId];
-  if (!country || !GAME_CONFIG.characters[country.id]?.sprite) return;
-  showUsedCharacterImage = !showUsedCharacterImage;
-  renderCountryCharacter(country);
-}
-
-function removeCountryCharacterImage() {
-  if (!showUsedCharacterImage) return;
-  showUsedCharacterImage = false;
-  const country = GAME_CONFIG.countries[activeCountryDetailId];
-  if (country) renderCountryCharacter(country);
+  ui.countryDetailCharacter.classList.add("has-sprite");
+  const image = document.createElement("img");
+  image.src = spriteSource;
+  image.alt = `${countryDisplayName(country)}のキャラクター`;
+  ui.countryDetailCharacter.append(image);
 }
 
 function renderCountryDetailSources(country) {
@@ -2618,7 +2423,6 @@ function openCountryDetail(countryId) {
   if (!country || !ui.countryDetailDialog || ui.countryDetailDialog.open) return;
 
   activeCountryDetailId = country.id;
-  showUsedCharacterImage = Boolean(GAME_CONFIG.characters[country.id]?.sprite);
   returnToFlagCollectionAfterCountryDetail = Boolean(ui.flagCollectionDialog?.open);
   returnToTitleAfterCountryDetail = returnToTitleAfterFlagCollection;
   renderCountryDetail(country);
@@ -2917,8 +2721,6 @@ ui.flagCollectionDialog?.addEventListener("cancel", (event) => {
   ui.flagCollectionDialog.close();
 });
 ui.countryDetailBack?.addEventListener("click", () => ui.countryDetailDialog?.close());
-ui.countryDetailCharacterToggle?.addEventListener("click", toggleCountryCharacterImage);
-ui.countryDetailCharacterRemove?.addEventListener("click", removeCountryCharacterImage);
 ui.countryDetailDialog?.addEventListener("close", restoreFlagCollectionAfterCountryDetail);
 ui.countryDetailDialog?.addEventListener("cancel", (event) => {
   event.preventDefault();
