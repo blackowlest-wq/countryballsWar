@@ -69,6 +69,7 @@ export function compileWorldFrontMap(worldMap, frontMap, countries) {
       polygons,
       borderPolygons,
       interactionPoint: projectGeoPoint(fragment.interactionPoint || fragment.centroid, bounds),
+      interactionRadius: fragment.interactionRadius,
       sourceCoordinates: cloneData(fragment.geometry?.coordinates || fragment.points),
       sourceGeometry: cloneData(fragment.geometry),
       sourceFeature: cloneData(fragment.sourceFeature),

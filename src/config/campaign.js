@@ -2,7 +2,7 @@ import { COUNTRIES } from "./countries.js";
 
 const SOUTH_KOREA_FRAGMENT_IDS = COUNTRIES["south-korea"].fragmentIds;
 const NORTH_KOREA_FRAGMENT_IDS = COUNTRIES["north-korea"].fragmentIds;
-const STARTING_REGION_ID = "south-capital";
+const STARTING_REGION_ID = "south-jeju";
 const SOUTH_KOREA_ENEMY_REGION_IDS = SOUTH_KOREA_FRAGMENT_IDS.filter((regionId) => regionId !== STARTING_REGION_ID);
 const KOREA_FRONT_OBJECTIVE_REGION_IDS = [...SOUTH_KOREA_ENEMY_REGION_IDS, ...NORTH_KOREA_FRAGMENT_IDS];
 

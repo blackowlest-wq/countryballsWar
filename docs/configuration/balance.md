@@ -19,8 +19,12 @@ At front start, enemy strength is resolved once:
 enemyMaxStrength = round(baseMaxStrengthByFaction * strengthMultiplier)
 ```
 
-Authored map strength is not read. The active production values are `2` for
-South Korea and `1` for North Korea.
+Authored map strength is not read. Active production values are stored in the
+phase configuration. Combat now gives strength the primary weight
+(`strengthDamageFactor: 0.2`), keeps production as a smaller contribution
+(`productionDamageFactor: 0.2`), and allows one-point minimum damage. This
+prevents a small production difference from defeating a clearly larger direct
+force.
 
 ## Future data
 

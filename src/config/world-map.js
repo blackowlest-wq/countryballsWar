@@ -62,6 +62,7 @@ const FRONT_REGION_GROUPS = [
     name: "Jeju",
     shortName: "JEJU",
     labelPoint: [126.557, 33.3741],
+    interactionRadius: 0.035,
     sourceFragmentIds: ["kr-49"],
   },
   {
@@ -185,9 +186,10 @@ const fragments = Object.fromEntries(FRONT_REGION_GROUPS.map((group) => [group.i
   id: group.id,
   countryId: group.countryId,
   name: group.name,
-  shortName: group.shortName,
-  centroid: group.labelPoint,
-  geometry: {
+    shortName: group.shortName,
+    centroid: group.labelPoint,
+    interactionRadius: group.interactionRadius,
+    geometry: {
     type: "MultiPolygon",
     coordinates: group.sourceFragmentIds.flatMap(sourcePolygons),
   },

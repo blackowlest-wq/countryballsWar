@@ -10,6 +10,9 @@ import {
   resolveEnemyStrength,
   transitionPhase,
 } from "../src/campaign/phase-runtime.js";
+import { calculateGroupCombatDamage } from "../src/campaign/combat.js";
+import { chooseAiAttackCandidate, getAiAttackCandidates } from "../src/campaign/ai.js";
+import { findRegionAtWorldPoint } from "../src/render/region-targeting.js";
 import { selectUnitSpriteKey } from "../src/render/unit-sprite.js";
 
 test("player units use the white faction sprite while enemies use country sprites", () => {
@@ -40,6 +43,51 @@ test("enemy strength is rounded once from the front profile", () => {
   assert.equal(resolveEnemyStrength(12, 0.95), 11);
   assert.equal(resolveEnemyStrength(12, 1.05), 13);
   assert.equal(resolveEnemyStrength(1, 0.1, 1), 1);
+});
+
+test("a larger direct force is not overpowered by a small production difference", () => {
+  const playerDamage = calculateGroupCombatDamage({
+    totalStrength: 6,
+    totalProduction: 2,
+    balance: GAME_CONFIG.balance.combat,
+  });
+  const northKoreaDamage = calculateGroupCombatDamage({
+    totalStrength: 5,
+    totalProduction: 3,
+    balance: GAME_CONFIG.balance.combat,
+  });
+
+  assert.ok(playerDamage >= northKoreaDamage);
+});
+
+test("North Korean regions produce an attack candidate against an adjacent player region", () => {
+  const runtime = createRuntimeScenario(GAME_CONFIG);
+  runtime.regions.find((region) => region.id === "south-capital").faction = "blue";
+  const redCandidates = getAiAttackCandidates({
+    regions: runtime.regions,
+    units: runtime.units,
+    factionId: "red",
+    playerFactionId: "blue",
+    areNeighbors: (source, target) => GAME_CONFIG.map.roadNeighbors[source.id].includes(target.id),
+  });
+
+  assert.ok(redCandidates.some(({ source, target }) => source.id === "north-east-central" && target.id === "south-capital"));
+  assert.equal(chooseAiAttackCandidate([
+    { factionId: "gray", target: { id: "south-capital" } },
+    { factionId: "red", target: { id: "south-capital" } },
+  ], "red", () => 0)?.factionId, "red");
+});
+
+test("small island interaction points keep a forgiving release target", () => {
+  const jeju = GAME_CONFIG.map.regions.find((region) => region.id === "south-jeju");
+  const point = [jeju.interactionPoint[0] + 0.03, jeju.interactionPoint[1]];
+
+  assert.equal(findRegionAtWorldPoint({
+    regions: [jeju],
+    point,
+    pointInRegion: () => false,
+    defaultHitRadius: GAME_CONFIG.map.interactionHitRadius,
+  })?.id, "south-jeju");
 });
 
 test("split-country completion requires every fragment", () => {

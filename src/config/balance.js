@@ -44,9 +44,9 @@ export const BALANCE = {
     contactDistance: 0.055,
     tickIntervalSeconds: 0.72,
     initialTickDelaySeconds: 0.2,
-    strengthDamageFactor: 0.1,
-    productionDamageFactor: 0.6,
-    minimumDamage: 2,
+    strengthDamageFactor: 0.2,
+    productionDamageFactor: 0.2,
+    minimumDamage: 1,
   },
   specialMove: {
     usesPerOperation: 3,

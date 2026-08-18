@@ -164,13 +164,19 @@ function validateInteractionPoints(map) {
   assertConfig(isPositiveNumber(hitRadius) && hitRadius * 2 <= minDistance, "map.interactionHitRadius must not overlap adjacent interaction points");
   map.regions.forEach((region) => {
     assertConfig(Array.isArray(region.interactionPoint) && isNormalizedPoint(region.interactionPoint), `Region ${region.id} has an invalid interactionPoint`);
+    assertConfig(region.interactionRadius === undefined || isPositiveNumber(region.interactionRadius), `Region ${region.id} has an invalid interactionRadius`);
   });
   for (let leftIndex = 0; leftIndex < map.regions.length; leftIndex += 1) {
     for (let rightIndex = leftIndex + 1; rightIndex < map.regions.length; rightIndex += 1) {
-      const left = map.regions[leftIndex].interactionPoint;
-      const right = map.regions[rightIndex].interactionPoint;
+      const leftRegion = map.regions[leftIndex];
+      const rightRegion = map.regions[rightIndex];
+      const left = leftRegion.interactionPoint;
+      const right = rightRegion.interactionPoint;
       const distance = Math.hypot(left[0] - right[0], left[1] - right[1]);
-      assertConfig(distance >= minDistance, `interaction points for ${map.regions[leftIndex].id} and ${map.regions[rightIndex].id} are too close`);
+      assertConfig(distance >= minDistance, `interaction points for ${leftRegion.id} and ${rightRegion.id} are too close`);
+      const leftRadius = leftRegion.interactionRadius || hitRadius;
+      const rightRadius = rightRegion.interactionRadius || hitRadius;
+      assertConfig(leftRadius + rightRadius <= distance, `interaction targets for ${leftRegion.id} and ${rightRegion.id} overlap`);
     }
   }
 }

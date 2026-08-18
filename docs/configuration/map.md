@@ -23,12 +23,12 @@ reduce accidental taps: six in South Korea and five in North Korea.
 
 | Region | Combined source areas | Country | Starting owner |
 |---|---|---|---|
-| `south-capital` | Seoul, Incheon, Gyeonggi | South Korea | Player start |
+| `south-capital` | Seoul, Incheon, Gyeonggi | South Korea | Enemy |
 | `south-gangwon` | Gangwon | South Korea | Enemy |
 | `south-central` | South/North Chungcheong, Daejeon, Sejong | South Korea | Enemy |
 | `south-west` | North/South Jeolla, Gwangju | South Korea | Enemy |
 | `south-east` | North/South Gyeongsang, Daegu, Busan, Ulsan | South Korea | Enemy |
-| `south-jeju` | Jeju | South Korea | Enemy |
+| `south-jeju` | Jeju | South Korea | Player start |
 | `north-central` | Pyongyang, South Pyongan | North Korea | Enemy |
 | `north-west` | North Pyongan, Chagang, Ryanggang | North Korea | Enemy |
 | `north-hwanghae` | North/South Hwanghae | North Korea | Enemy |
@@ -37,7 +37,7 @@ reduce accidental taps: six in South Korea and five in North Korea.
 
 Country completion is evaluated against these strategic regions. South Korea
 requires all six `south-*` regions and North Korea requires all five `north-*`
-regions. The player starts with only `south-capital`; South Korea remains an
+regions. The player starts with only `south-jeju`; South Korea remains an
 enemy country until every South Korean region is controlled.
 
 ## Roads and interaction safety
@@ -49,7 +49,10 @@ Southwestern Region. Validation checks unknown endpoints, self-links, duplicate
 reverse links, non-passable edges, invalid kinds, and graph connectivity.
 
 Each strategic region uses a source label point as its `interactionPoint`.
-`interactionMinDistance` is `0.045` and `interactionHitRadius` is `0.018`,
-which leaves a larger gap between fallback hit areas than the previous
-administrative-region map. The polygon is tested first, followed by the
-nearest interaction point.
+`interactionMinDistance` is `0.045` and the default `interactionHitRadius` is
+`0.018`, which leaves a larger gap between fallback hit areas than the previous
+administrative-region map. Small regions may define their own
+`interactionRadius`; Jeju uses `0.035` so a finger release slightly outside
+the island still selects it. Validation checks that custom hit areas do not
+overlap another region's interaction target. The polygon is tested first,
+followed by the nearest interaction point.

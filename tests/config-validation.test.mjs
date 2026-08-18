@@ -39,6 +39,7 @@ test("the compiled geographic front map is connected", () => {
   assert.ok(GAME_CONFIG.map.regions.every((region) => region.polygons.length > 0));
   assert.ok(GAME_CONFIG.map.regions.every((region) => region.borderPolygons.length > 0));
   assert.equal(GAME_CONFIG.map.interactionMinDistance, 0.045);
+  assert.equal(GAME_CONFIG.map.regions.find((region) => region.id === "south-jeju").interactionRadius, 0.035);
 });
 
 test("roads remain the source of the runtime adjacency table and every road is passable", () => {
@@ -79,9 +80,10 @@ test("runtime scenario uses phase production and rounds front-start enemy streng
   assert.equal(runtime.units.find((unit) => unit.faction === "blue").characterId, "player");
   assert.ok(runtime.units.some((unit) => unit.faction === "gray" && unit.characterId === "south-korea"));
   assert.ok(runtime.units.some((unit) => unit.faction === "red" && unit.characterId === "north-korea"));
-  assert.equal(phase.territoryOwners["south-capital"], "blue");
+  assert.equal(phase.territoryOwners["south-jeju"], "blue");
+  assert.equal(runtime.units.find((unit) => unit.faction === "blue").regionId, "south-jeju");
   GAME_CONFIG.countries["south-korea"].fragmentIds
-    .filter((regionId) => regionId !== "south-capital")
+    .filter((regionId) => regionId !== "south-jeju")
     .forEach((regionId) => assert.equal(phase.territoryOwners[regionId], "gray"));
   GAME_CONFIG.countries["north-korea"].fragmentIds
     .forEach((regionId) => assert.equal(phase.territoryOwners[regionId], "red"));

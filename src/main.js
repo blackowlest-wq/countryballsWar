@@ -24,6 +24,9 @@ import {
   createSpecialMoveSettings,
   getSpecialMoveConfig,
 } from "./special-move.js";
+import { getAiAttackCandidates as collectAiAttackCandidates, chooseAiAttackCandidate } from "./campaign/ai.js";
+import { calculateGroupCombatDamage } from "./campaign/combat.js";
+import { findRegionAtWorldPoint } from "./render/region-targeting.js";
 import { selectUnitSpriteKey } from "./render/unit-sprite.js";
 
 const canvas = document.querySelector("#mapCanvas");
@@ -334,17 +337,13 @@ function areRoadNeighbors(sourceRegion, targetRegion) {
 }
 
 function getAiAttackCandidates(factionId) {
-  const candidates = [];
-  const aiRegions = regions.filter((region) => region.faction === factionId && (!region.occupation || region.occupation.faction !== PLAYER_FACTION_ID));
-
-  aiRegions.forEach((source) => {
-    regions
-      .filter((region) => region.faction === PLAYER_FACTION_ID && areRoadNeighbors(source, region))
-      .filter((target) => !units.some((unit) => unit.faction === factionId && unit.targetRegionId === target.id))
-      .forEach((target) => candidates.push({ factionId, source, target }));
+  return collectAiAttackCandidates({
+    regions,
+    units,
+    factionId,
+    playerFactionId: PLAYER_FACTION_ID,
+    areNeighbors: areRoadNeighbors,
   });
-
-  return candidates;
 }
 
 function hasRoadPath(sourceRegion, targetRegion) {
@@ -1225,13 +1224,11 @@ function groupProduction(members) {
 }
 
 function groupCombatDamage(members) {
-  const totalStrength = groupStrength(members);
-  if (totalStrength <= 0) return 0;
-
-  // A group deals one shared hit per tick. Strength makes the hit stronger,
-  // while production keeps the existing recovery-focused balance relevant.
-  const damage = Math.ceil(totalStrength * COMBAT_BALANCE.strengthDamageFactor + groupProduction(members) * COMBAT_BALANCE.productionDamageFactor);
-  return Math.min(totalStrength, Math.max(COMBAT_BALANCE.minimumDamage, damage));
+  return calculateGroupCombatDamage({
+    totalStrength: groupStrength(members),
+    totalProduction: groupProduction(members),
+    balance: COMBAT_BALANCE,
+  });
 }
 
 function redistributeGroupStrength(members, totalStrength) {
@@ -1461,7 +1458,7 @@ function runAi(dt) {
     candidates.push(...getAiAttackCandidates(factionId));
   });
 
-  const candidate = candidates[Math.floor(Math.random() * candidates.length)];
+  const candidate = chooseAiAttackCandidate(candidates, ACTIVE_AI_FACTION_ID);
   if (!candidate) return;
 
   state.invasionWarning = {
@@ -1592,15 +1589,13 @@ function pointInRegion(point, region) {
 }
 
 function regionAtWorldPoint(point) {
-  const containingRegion = [...regions].reverse().find((region) => pointInRegion(point, region));
-  if (containingRegion) return containingRegion;
-
-  const radius = (GAME_CONFIG.map.interactionHitRadius || 0.02) / state.zoom;
-  return regions
-    .map((region) => ({ region, center: regionCenter(region) }))
-    .map(({ region, center }) => ({ region, distance: Math.hypot(center.x - point[0], center.y - point[1]) }))
-    .filter(({ distance }) => distance <= radius)
-    .sort((left, right) => left.distance - right.distance)[0]?.region || null;
+  return findRegionAtWorldPoint({
+    regions,
+    point,
+    pointInRegion,
+    defaultHitRadius: GAME_CONFIG.map.interactionHitRadius || 0.02,
+    zoom: state.zoom,
+  });
 }
 
 function selectRegion(region) {
