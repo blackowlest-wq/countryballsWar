@@ -1634,10 +1634,12 @@ button:disabled {
 
 .map-selection-form {
   display: grid;
-  gap: 14px;
+  gap: 10px;
   max-height: calc(100dvh - 24px);
   overflow: auto;
-  padding: 22px;
+  overscroll-behavior: contain;
+  padding: 16px;
+  touch-action: pan-y;
 }
 
 .map-selection-form .dialog-heading {
@@ -1661,7 +1663,7 @@ button:disabled {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 12px;
+  padding: 8px 10px;
   color: #4f6686;
   border: 1px solid rgba(79, 130, 202, 0.26);
   border-radius: 10px;
@@ -1678,7 +1680,7 @@ button:disabled {
 
 .map-selection-difficulty {
   margin: -3px 0 0;
-  padding: 9px 11px;
+  padding: 7px 9px;
   color: #526c8e;
   border: 1px solid rgba(120, 144, 173, 0.2);
   border-radius: 10px;
@@ -1701,15 +1703,17 @@ button:disabled {
 
 .map-selection-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  touch-action: pan-y;
 }
 
 .map-selection-card {
   display: grid;
   min-width: 0;
-  gap: 7px;
-  padding: 13px;
+  min-height: 78px;
+  gap: 5px;
+  padding: 10px;
   color: var(--ink);
   border: 1px solid #d8e0eb;
   border-radius: 13px;
@@ -1752,8 +1756,7 @@ button:disabled {
   outline-offset: 3px;
 }
 
-.map-selection-card-header,
-.map-selection-card-footer {
+.map-selection-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1794,14 +1797,6 @@ button:disabled {
   line-height: 1.5;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.map-selection-card-footer {
-  padding-top: 6px;
-  color: #7085a1;
-  border-top: 1px solid rgba(120, 144, 173, 0.2);
-  font-size: 8px;
-  font-weight: 800;
 }
 
 .map-selection-empty {
@@ -2805,7 +2800,7 @@ button:disabled {
   }
 
   .map-selection-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .country-detail-form {

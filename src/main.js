@@ -2318,11 +2318,7 @@ function updateMapSelectionDialog() {
     target.className = "map-selection-card-target";
     target.textContent = getFrontTargetNames(front) || "対象国データ準備中";
 
-    const footer = document.createElement("span");
-    footer.className = "map-selection-card-footer";
-    footer.textContent = `${front.phaseIds?.length || 0}局面 ・ ${front.type === "regionalSmall" ? "小国マップ" : "マップ"}`;
-
-    card.append(header, title, target, footer);
+    card.append(header, title, target);
     ui.mapSelectionGrid.append(card);
   });
 
@@ -2337,6 +2333,28 @@ function updateMapSelectionDialog() {
 let returnToTitleAfterMapSelection = false;
 let suppressMapSelectionRestore = false;
 let suppressDifficultySelectionRestore = false;
+let mapSelectionPointerStart = null;
+let suppressNextMapSelectionClick = false;
+
+function trackMapSelectionPointerDown(event) {
+  if (!event.isPrimary || (event.pointerType === "mouse" && event.button !== 0)) return;
+  mapSelectionPointerStart = { x: event.clientX, y: event.clientY };
+  suppressNextMapSelectionClick = false;
+}
+
+function trackMapSelectionPointerMove(event) {
+  if (!mapSelectionPointerStart || !event.isPrimary) return;
+  const distance = Math.hypot(
+    event.clientX - mapSelectionPointerStart.x,
+    event.clientY - mapSelectionPointerStart.y,
+  );
+  if (distance >= 8) suppressNextMapSelectionClick = true;
+}
+
+function trackMapSelectionPointerCancel() {
+  if (mapSelectionPointerStart) suppressNextMapSelectionClick = true;
+  mapSelectionPointerStart = null;
+}
 
 function openDifficultySelection() {
   if (!ui.difficultySelectionDialog) {
@@ -2454,6 +2472,13 @@ function restoreTitleAfterMapSelection() {
 }
 
 function handleMapSelectionClick(event) {
+  mapSelectionPointerStart = null;
+  if (suppressNextMapSelectionClick) {
+    suppressNextMapSelectionClick = false;
+    event.preventDefault();
+    return;
+  }
+
   const card = event.target?.closest?.("[data-front-id]");
   if (!card || card.disabled) return;
 
@@ -3044,6 +3069,9 @@ ui.difficultySelectionDialog?.addEventListener("cancel", (event) => {
   event.preventDefault();
   ui.difficultySelectionDialog.close();
 });
+ui.mapSelectionGrid?.addEventListener("pointerdown", trackMapSelectionPointerDown);
+ui.mapSelectionGrid?.addEventListener("pointermove", trackMapSelectionPointerMove);
+ui.mapSelectionGrid?.addEventListener("pointercancel", trackMapSelectionPointerCancel);
 ui.mapSelectionGrid?.addEventListener("click", handleMapSelectionClick);
 ui.mapSelectionBack?.addEventListener("click", () => ui.mapSelectionDialog?.close());
 ui.mapSelectionDialog?.addEventListener("close", restoreTitleAfterMapSelection);
