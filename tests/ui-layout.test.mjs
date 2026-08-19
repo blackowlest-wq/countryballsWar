@@ -54,6 +54,16 @@ test("title start opens a front selection dialog and clear returns to it", () =>
   assert.match(main, /clearRestartButton.*openMapSelection/);
 });
 
+test("map selection exposes the shop and the game route returns there on browser back", () => {
+  const html = readProjectFile("index.html");
+  const main = readProjectFile("src/main.js");
+
+  assert.match(html, /id="mapSelectionShopButton"/);
+  assert.match(main, /mapSelectionShopButton[\s\S]*openShop/);
+  assert.match(main, /addEventListener\("popstate", handleAppPopState\)/);
+  assert.match(main, /openMapSelection\(\{ returnToTitle: true, fromHistory: true \}\)/);
+});
+
 test("title start exposes a fixed campaign difficulty before map selection", () => {
   const html = readProjectFile("index.html");
   const main = readProjectFile("src/main.js");

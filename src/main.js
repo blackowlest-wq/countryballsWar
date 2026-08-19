@@ -96,6 +96,7 @@ const ui = {
   difficultySelectionGrid: document.querySelector("#difficultySelectionGrid"),
   mapSelectionDialog: document.querySelector("#mapSelectionDialog"),
   mapSelectionBack: document.querySelector("#mapSelectionBackButton"),
+  mapSelectionShop: document.querySelector("#mapSelectionShopButton"),
   mapSelectionGrid: document.querySelector("#mapSelectionGrid"),
   mapSelectionSummary: document.querySelector("#mapSelectionSummary"),
   mapSelectionDifficulty: document.querySelector("#mapSelectionDifficulty"),
@@ -225,6 +226,13 @@ const persistentState = loadPersistentState(undefined, upgradeKeys, {
 });
 const savedEquippedCharacterId = loadEquippedCharacter(undefined);
 const savedSpecialMove = loadSpecialMove(undefined, SPECIAL_MOVE_BALANCE);
+const APP_ROUTE_KEY = "countryfrontsRoute";
+const APP_ROUTES = Object.freeze({
+  TITLE: "title",
+  MAP_SELECTION: "map-selection",
+  GAME: "game",
+});
+let currentAppRoute = APP_ROUTES.TITLE;
 
 function savePersistentProgress() {
   savePersistentState(undefined, {
@@ -2174,7 +2182,7 @@ function purchaseUpgrade(key) {
 }
 
 function openShop() {
-  if (!ui.shopDialog) return;
+  if (!ui.shopDialog || ui.shopDialog.open) return;
   state.shopWasPaused = state.paused;
   state.shopOpen = true;
   state.paused = true;
@@ -2190,7 +2198,31 @@ function finishShop() {
   updateHud();
 }
 
-function openTitleScreen() {
+function updateAppHistory(route, { replace = false } = {}) {
+  if (typeof window === "undefined" || !window.history?.pushState) {
+    currentAppRoute = route;
+    return;
+  }
+  if (!replace && currentAppRoute === route) return;
+  const nextState = { ...(window.history.state || {}), [APP_ROUTE_KEY]: route };
+  if (replace) window.history.replaceState(nextState, "", window.location.href);
+  else window.history.pushState(nextState, "", window.location.href);
+  currentAppRoute = route;
+}
+
+function initializeAppHistory() {
+  if (typeof window !== "undefined" && window.history?.replaceState) {
+    window.history.replaceState(
+      { ...(window.history.state || {}), [APP_ROUTE_KEY]: APP_ROUTES.TITLE },
+      "",
+      window.location.href,
+    );
+  }
+  currentAppRoute = APP_ROUTES.TITLE;
+}
+
+function openTitleScreen({ fromHistory = false } = {}) {
+  if (!fromHistory) updateAppHistory(APP_ROUTES.TITLE, { replace: true });
   state.started = false;
   state.paused = true;
   updateFlagCollectionDialog();
@@ -2348,15 +2380,18 @@ function handleDifficultySelectionClick(event) {
   openMapSelection({ returnToTitle: true });
 }
 
-function openMapSelection({ returnToTitle = true } = {}) {
+function openMapSelection({ returnToTitle = true, fromHistory = false } = {}) {
   if (!ui.mapSelectionDialog) return;
 
+  if (fromHistory) currentAppRoute = APP_ROUTES.MAP_SELECTION;
+  else updateAppHistory(APP_ROUTES.MAP_SELECTION);
   state.started = false;
   state.paused = true;
   returnToTitleAfterMapSelection = returnToTitle;
   updateMapSelectionDialog();
   if (ui.titleDialog?.open) ui.titleDialog.close();
   if (ui.clearDialog?.open) ui.clearDialog.close();
+  if (ui.defeatDialog?.open) ui.defeatDialog.close();
 
   try {
     ui.mapSelectionDialog.showModal();
@@ -2366,6 +2401,44 @@ function openMapSelection({ returnToTitle = true } = {}) {
     return;
   }
   requestAnimationFrame(() => ui.mapSelectionGrid?.querySelector(".map-selection-card:not(:disabled)")?.focus());
+}
+
+function enterGameRoute() {
+  updateAppHistory(APP_ROUTES.GAME);
+}
+
+function handleAppPopState(event) {
+  const route = event.state?.[APP_ROUTE_KEY] || APP_ROUTES.TITLE;
+  currentAppRoute = route;
+
+  if (route === APP_ROUTES.MAP_SELECTION) {
+    if (ui.shopDialog?.open) ui.shopDialog.close();
+    if (ui.specialMoveDialog?.open) ui.specialMoveDialog.close();
+    openMapSelection({ returnToTitle: true, fromHistory: true });
+    return;
+  }
+
+  if (route === APP_ROUTES.GAME) {
+    if (!state.started) {
+      restartGame();
+      closeTitleScreen();
+    }
+    return;
+  }
+
+  if (ui.shopDialog?.open) ui.shopDialog.close();
+  if (ui.specialMoveDialog?.open) ui.specialMoveDialog.close();
+  if (ui.mapSelectionDialog?.open) {
+    suppressMapSelectionRestore = true;
+    ui.mapSelectionDialog.close();
+  }
+  if (ui.difficultySelectionDialog?.open) {
+    suppressDifficultySelectionRestore = true;
+    ui.difficultySelectionDialog.close();
+  }
+  if (ui.clearDialog?.open) ui.clearDialog.close();
+  if (ui.defeatDialog?.open) ui.defeatDialog.close();
+  openTitleScreen({ fromHistory: true });
 }
 
 function restoreTitleAfterMapSelection() {
@@ -2397,6 +2470,7 @@ function handleMapSelectionClick(event) {
     return;
   }
   restartGame();
+  enterGameRoute();
   closeTitleScreen();
 }
 
@@ -2701,6 +2775,7 @@ function confirmSpecialMoveSetup(event) {
     return;
   }
   restartGame();
+  enterGameRoute();
   closeTitleScreen();
 }
 
@@ -2938,6 +3013,7 @@ canvas.addEventListener("pointermove", updateDispatch);
 canvas.addEventListener("pointerup", endDispatch);
 canvas.addEventListener("pointercancel", endDispatch);
 canvas.addEventListener("click", handleMapClick);
+window.addEventListener("popstate", handleAppPopState);
 window.addEventListener("resize", () => {
   resizeCanvas();
   render();
@@ -2948,6 +3024,7 @@ document.querySelector("#zoomOutButton").addEventListener("click", () => setZoom
 ui.territoryClose?.addEventListener("click", () => selectRegion(null));
 
 document.querySelector("#shopButton").addEventListener("click", openShop);
+ui.mapSelectionShop?.addEventListener("click", openShop);
 ui.shopButtons.forEach((button) => {
   button.addEventListener("click", () => purchaseUpgrade(button.dataset.shopUpgrade));
 });
@@ -3025,6 +3102,7 @@ applyConfiguredDisplayNames();
 setupInitialUnits();
 updateShopDialog();
 updateFlagCollectionDialog();
+initializeAppHistory();
 resizeCanvas();
 resetMapCamera();
 updateSelectedPanel();

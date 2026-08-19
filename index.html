@@ -15,7 +15,7 @@
     <title>COUNTRYFRONTS — リアルタイム戦略</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./assets/icons/icon-192.png" />
-    <link rel="stylesheet" href="./styles.css?v=40" />
+    <link rel="stylesheet" href="./styles.css?v=41" />
   </head>
   <body>
     <main class="game-shell" id="gameShell">
@@ -223,6 +223,12 @@
           <strong id="mapSelectionSummary">0 / 0 マップを選択可能</strong>
         </div>
         <p class="map-selection-difficulty" id="mapSelectionDifficulty"></p>
+        <div class="map-selection-actions">
+          <button class="header-tool header-tool-shop map-selection-shop-button" id="mapSelectionShopButton" type="button" aria-label="ショップを開く">
+            <span class="header-tool-icon" aria-hidden="true">▤</span>
+            <span class="header-tool-label">ショップ</span>
+          </button>
+        </div>
         <div class="map-selection-grid" id="mapSelectionGrid"></div>
       </div>
     </dialog>
@@ -487,6 +493,6 @@
       </div>
     </dialog>
 
-    <script type="module" src="./src/main.js?v=45"></script>
+    <script type="module" src="./src/main.js?v=46"></script>
   </body>
 </html>
