@@ -278,6 +278,7 @@ const state = {
   battles: new Map(),
   suppressNextClick: false,
 };
+let selectedGameSpeed = 1;
 
 function getActiveDifficulty() {
   return getDifficultyProfile(state.campaign.difficultyId);
@@ -2085,7 +2086,7 @@ function restartGame({ announce = true } = {}) {
   setupInitialUnits();
   resetMapCamera();
   state.paused = !state.specialMove;
-  state.speed = 1;
+  state.speed = selectedGameSpeed;
   state.elapsed = 0;
   state.selectedRegionId = null;
   state.aiTimers = createAiFactionState(getActiveAiBalance().initialDelaySeconds);
@@ -3027,7 +3028,8 @@ ui.pause.addEventListener("click", () => {
 
 document.querySelectorAll("[data-speed]").forEach((button) => {
   button.addEventListener("click", () => {
-    state.speed = Number(button.dataset.speed);
+    selectedGameSpeed = Number(button.dataset.speed);
+    state.speed = selectedGameSpeed;
     document.querySelectorAll("[data-speed]").forEach((candidate) => candidate.classList.toggle("is-active", candidate === button));
     showToast(`ゲーム速度を×${state.speed}に変更しました`);
   });

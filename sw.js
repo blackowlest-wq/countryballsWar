@@ -1,10 +1,10 @@
-const CACHE_NAME = "countryfronts-shell-v51";
+const CACHE_NAME = "countryfronts-shell-v52";
 
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css?v=43",
-  "./src/main.js?v=47",
+  "./src/main.js?v=48",
   "./src/special-move.js",
   "./src/economy/rewards.js",
   "./src/config/balance.js",

@@ -71,6 +71,14 @@ test("map selection exposes the shop and the game route returns there on browser
   assert.match(styles, /@media[\s\S]*\.map-selection-grid[\s\S]*grid-template-columns: repeat\(2/);
 });
 
+test("operation restart reapplies the selected game speed", () => {
+  const main = readProjectFile("src/main.js");
+
+  assert.match(main, /let selectedGameSpeed = 1/);
+  assert.match(main, /state\.speed = selectedGameSpeed/);
+  assert.match(main, /selectedGameSpeed = Number\(button\.dataset\.speed\)/);
+});
+
 test("title start exposes a fixed campaign difficulty before map selection", () => {
   const html = readProjectFile("index.html");
   const main = readProjectFile("src/main.js");
