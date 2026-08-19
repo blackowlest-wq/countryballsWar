@@ -13,10 +13,10 @@ currently selected map remains available as the compatibility alias `MAP` and
 The extracted GeoJSON and runtime subsets are stored in
 `src/config/geodata/`.
 
-The Korea and Japan sources are Natural Earth Admin 1 - States, Provinces,
-1:10m, v5.1.1 (commit `9380cca`, public domain). Each compiled map exposes its
-own source metadata as `GAME_CONFIG.maps[mapId].source`; the compatibility alias
-`GAME_CONFIG.map.source` points to the initial Korea map.
+The Korea, Japan, and China sources are Natural Earth Admin 1 - States,
+Provinces, 1:10m, v5.1.1 (commit `9380cca`, public domain). Each compiled map
+exposes its own source metadata as `GAME_CONFIG.maps[mapId].source`; the
+compatibility alias `GAME_CONFIG.map.source` points to the initial Korea map.
 
 ## Korea map regions
 
@@ -73,21 +73,55 @@ carrying player occupation and units forward.
 
 Japan is completed only after all eleven `japan-*` regions are controlled.
 
+## China map regions
+
+The checked-in China source contains 32 Natural Earth features. The playable
+map excludes the remote Paracel Islands feature (`cn-x01`) and combines the
+remaining 31 provincial-level features into 14 strategic regions. Small
+offshore polygons attached to coastal provinces are omitted from the playable
+geometry so the camera can keep the continental front and Hainan readable.
+Hainan is the single player-owned starting region.
+
+| Region | Combined source areas | Starting owner | Production |
+|---|---|---|---:|
+| `china-hainan` | Hainan | Player start | 3 |
+| `china-south-coast` | Guangdong, Guangxi | Enemy | 5 |
+| `china-southeast-coast` | Fujian, Zhejiang | Enemy | 4 |
+| `china-lower-yangtze` | Shanghai, Jiangsu, Anhui | Enemy | 6 |
+| `china-central` | Jiangxi, Hunan, Hubei | Enemy | 5 |
+| `china-southwest` | Yunnan, Guizhou | Enemy | 3 |
+| `china-sichuan-basin` | Sichuan, Chongqing | Enemy | 5 |
+| `china-plateau` | Xizang, Qinghai | Enemy | 2 |
+| `china-xinjiang` | Xinjiang | Enemy | 3 |
+| `china-northwest` | Gansu, Ningxia, Shaanxi | Enemy | 3 |
+| `china-central-plains` | Henan, Shanxi | Enemy | 5 |
+| `china-north-coast` | Shandong, Hebei, Beijing, Tianjin | Enemy | 6 |
+| `china-northern-frontier` | Inner Mongolia | Enemy | 3 |
+| `china-northeast` | Liaoning, Jilin, Heilongjiang | Enemy | 5 |
+
+China is completed only after all fourteen `china-*` regions are controlled.
+Its first phase advances from Hainan through six southern and central regions;
+the second phase requires the complete map while carrying the player's first-
+phase occupation forward.
+
 ## Roads and interaction safety
 
 Roads are authored once in `WORLD_MAP.frontMaps[*].roads` and compiled to the
 runtime `roads` array plus `roadDefinitions` metadata. The Korea map has 18
 passable adjacency links: 17 land links and one sea link from Jeju to the
 Southwestern Region. The Japan map has 13 links: 8 land links and 5 sea links
-for the island crossings; the Okinawa connection is not included. Validation checks unknown endpoints, self-links,
-duplicate reverse links, non-passable edges, invalid kinds, and graph
-connectivity.
+for the island crossings; the Okinawa connection is not included. The China
+map has 22 links: 21 land links and one sea link from Hainan to the Southern
+Coast. Validation checks unknown endpoints, self-links, duplicate reverse
+links, non-passable edges, invalid kinds, and graph connectivity.
 
 Each strategic region uses a source label point as its `interactionPoint`.
 `interactionMinDistance` is `0.045` and the default `interactionHitRadius` is
 `0.018`, which leaves a larger gap between fallback hit areas than the previous
 administrative-region map. Small regions may define their own
 `interactionRadius`; Jeju uses `0.035` so a finger release slightly outside
-the island still selects it. Validation checks that custom hit areas do not
-overlap another region's interaction target. The polygon is tested first,
-followed by the nearest interaction point.
+the island still selects it. China uses `0.065`, `0.024`, and a Hainan radius
+of `0.038` because its strategic-region centers are farther apart. Validation
+checks that custom hit areas do not overlap another region's interaction
+target. The polygon is tested first, followed by the nearest interaction
+point.

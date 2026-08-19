@@ -58,3 +58,34 @@ test("Japan map starts focused on the southern Kyushu starting region", () => {
   assert.ok(Math.abs(screen.x - 200) < 0.000001);
   assert.ok(Math.abs(screen.y - 576) < 0.000001);
 });
+
+test("China map keeps playable geometry within bounds and focuses Hainan", () => {
+  const chinaMap = GAME_CONFIG.maps["china-front"];
+  const sourcePoints = chinaMap.regions.flatMap((region) => coordinatePoints(region.sourceGeometry?.coordinates));
+  const longitudes = sourcePoints.map(([longitude]) => longitude);
+  const latitudes = sourcePoints.map(([, latitude]) => latitude);
+
+  assert.deepEqual(chinaMap.projection.bounds, { west: 72.5, east: 135.5, south: 17.5, north: 54.5 });
+  assert.ok(Math.min(...longitudes) >= chinaMap.projection.bounds.west);
+  assert.ok(Math.max(...longitudes) <= chinaMap.projection.bounds.east);
+  assert.ok(Math.min(...latitudes) >= chinaMap.projection.bounds.south);
+  assert.ok(Math.max(...latitudes) <= chinaMap.projection.bounds.north);
+
+  const camera = createInitialMapCamera({
+    map: chinaMap,
+    regions: chinaMap.regions,
+    width: 400,
+    height: 800,
+  });
+  const startRegion = chinaMap.regions.find((region) => region.id === "china-hainan");
+  const screen = screenPointFromWorld(startRegion.interactionPoint, {
+    ...camera,
+    width: 400,
+    height: 800,
+    displayOffset: chinaMap.displayOffset,
+  });
+
+  assert.equal(camera.zoom, 1.15);
+  assert.ok(Math.abs(screen.x - 200) < 0.000001);
+  assert.ok(Math.abs(screen.y - 624) < 0.000001);
+});

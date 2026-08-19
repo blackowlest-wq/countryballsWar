@@ -79,11 +79,62 @@ const JAPAN_FRONT_LATE_UNITS = [
   { id: "japan-red-6", faction: "red", regionId: "japan-kanto", characterId: "japan", pulse: 2.7 },
 ];
 
+const CHINA_FRAGMENT_IDS = COUNTRIES.china.fragmentIds;
+const CHINA_STARTING_REGION_ID = "china-hainan";
+const CHINA_ENEMY_REGION_IDS = CHINA_FRAGMENT_IDS.filter((regionId) => regionId !== CHINA_STARTING_REGION_ID);
+const CHINA_FRONT_OPENING_OBJECTIVE_REGION_IDS = [
+  "china-south-coast",
+  "china-southwest",
+  "china-sichuan-basin",
+  "china-central",
+  "china-southeast-coast",
+  "china-lower-yangtze",
+];
+
+const CHINA_FRONT_OWNERS = Object.fromEntries([
+  [CHINA_STARTING_REGION_ID, "blue"],
+  ...CHINA_ENEMY_REGION_IDS.map((regionId) => [regionId, "red"]),
+]);
+
+const CHINA_FRONT_PRODUCTION = {
+  "china-hainan": 3,
+  "china-south-coast": 5,
+  "china-southeast-coast": 4,
+  "china-lower-yangtze": 6,
+  "china-central": 5,
+  "china-southwest": 3,
+  "china-sichuan-basin": 5,
+  "china-plateau": 2,
+  "china-xinjiang": 3,
+  "china-northwest": 3,
+  "china-central-plains": 5,
+  "china-north-coast": 6,
+  "china-northern-frontier": 3,
+  "china-northeast": 5,
+};
+
+const CHINA_FRONT_OPENING_UNITS = [
+  { id: "china-blue-1", faction: "blue", regionId: CHINA_STARTING_REGION_ID, characterId: "player", pulse: 0 },
+  { id: "china-red-1", faction: "red", regionId: "china-south-coast", characterId: "china", pulse: 0.7 },
+  { id: "china-red-2", faction: "red", regionId: "china-central", characterId: "china", pulse: 1.4 },
+  { id: "china-red-3", faction: "red", regionId: "china-sichuan-basin", characterId: "china", pulse: 2.1 },
+  { id: "china-red-4", faction: "red", regionId: "china-lower-yangtze", characterId: "china", pulse: 2.8 },
+];
+
+const CHINA_FRONT_LATE_UNITS = [
+  { id: "china-blue-2", faction: "blue", regionId: CHINA_STARTING_REGION_ID, characterId: "player", pulse: 0 },
+  { id: "china-red-5", faction: "red", regionId: "china-xinjiang", characterId: "china", pulse: 0.6 },
+  { id: "china-red-6", faction: "red", regionId: "china-northwest", characterId: "china", pulse: 1.2 },
+  { id: "china-red-7", faction: "red", regionId: "china-north-coast", characterId: "china", pulse: 1.8 },
+  { id: "china-red-8", faction: "red", regionId: "china-northern-frontier", characterId: "china", pulse: 2.4 },
+  { id: "china-red-9", faction: "red", regionId: "china-northeast", characterId: "china", pulse: 3 },
+];
+
 export const CAMPAIGN = {
   id: "regional-fronts-v1",
   version: 1,
   defaultDifficultyId: "normal",
-  frontOrder: ["korea-front", "japan-front"],
+  frontOrder: ["korea-front", "japan-front", "china-front"],
   fronts: {
     "korea-front": {
       id: "korea-front",
@@ -102,6 +153,15 @@ export const CAMPAIGN = {
       enemyProfileId: "majorEarly",
       phaseIds: ["japan-front-opening", "japan-front-late"],
       targetCountryIds: ["japan"],
+    },
+    "china-front": {
+      id: "china-front",
+      mapId: "china-front",
+      name: "中国マップ",
+      type: "major",
+      enemyProfileId: "majorMiddle",
+      phaseIds: ["china-front-opening", "china-front-late"],
+      targetCountryIds: ["china"],
     },
   },
   phases: {
@@ -137,6 +197,28 @@ export const CAMPAIGN = {
       territoryOwners: JAPAN_FRONT_OWNERS,
       productionByRegion: JAPAN_FRONT_PRODUCTION,
       initialUnits: JAPAN_FRONT_LATE_UNITS,
+    },
+    "china-front-opening": {
+      id: "china-front-opening",
+      frontId: "china-front",
+      mapId: "china-front",
+      index: 0,
+      name: "Southern Foothold",
+      objectiveRegionIds: CHINA_FRONT_OPENING_OBJECTIVE_REGION_IDS,
+      territoryOwners: CHINA_FRONT_OWNERS,
+      productionByRegion: CHINA_FRONT_PRODUCTION,
+      initialUnits: CHINA_FRONT_OPENING_UNITS,
+    },
+    "china-front-late": {
+      id: "china-front-late",
+      frontId: "china-front",
+      mapId: "china-front",
+      index: 1,
+      name: "Northern Campaign",
+      objectiveRegionIds: CHINA_ENEMY_REGION_IDS,
+      territoryOwners: CHINA_FRONT_OWNERS,
+      productionByRegion: CHINA_FRONT_PRODUCTION,
+      initialUnits: CHINA_FRONT_LATE_UNITS,
     },
   },
 };

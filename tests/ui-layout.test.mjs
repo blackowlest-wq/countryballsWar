@@ -20,6 +20,8 @@ test("front title uses the Japanese front name", () => {
   const worldMap = readProjectFile("src/config/world-map.js");
 
   assert.match(worldMap, /name: "朝鮮半島マップ"/);
+  assert.match(worldMap, /name: "日本マップ"/);
+  assert.match(worldMap, /name: "中国マップ"/);
 });
 
 test("title screen exposes the flag collection menu", () => {

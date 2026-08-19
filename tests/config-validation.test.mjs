@@ -10,9 +10,23 @@ import {
 } from "../src/config/game-config.js";
 import { MAP, MAPS } from "../src/config/map.js";
 import { getCountryFlagOrigin, UNKNOWN_COUNTRY_FLAG_ORIGIN } from "../src/config/countries.js";
+import { NATURAL_EARTH_CHINA_ADMIN_1 } from "../src/config/geodata/natural-earth-china-admin-1.js";
 
 function editableConfig() {
   return JSON.parse(JSON.stringify(GAME_CONFIG));
+}
+
+function sourceGeometryEdgeKeys(geometry) {
+  const polygons = geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates;
+  const edges = new Set();
+  polygons.forEach((polygon) => polygon.forEach((ring) => {
+    for (let index = 0; index < ring.length - 1; index += 1) {
+      const start = ring[index].map((coordinate) => coordinate.toFixed(6)).join(",");
+      const end = ring[index + 1].map((coordinate) => coordinate.toFixed(6)).join(",");
+      edges.add([start, end].sort().join("::"));
+    }
+  }));
+  return edges;
 }
 
 test("the compiled geographic front map is connected", () => {
@@ -39,7 +53,7 @@ test("the compiled geographic front map is connected", () => {
   assert.equal(regionIds.length, 11);
   assert.equal(GAME_CONFIG.countries["south-korea"].fragmentIds.length, 6);
   assert.equal(GAME_CONFIG.countries["north-korea"].fragmentIds.length, 5);
-  assert.equal(GAME_CONFIG.map.sourceWorldMapId, "natural-earth-admin-1-regions-v3");
+  assert.equal(GAME_CONFIG.map.sourceWorldMapId, "natural-earth-admin-1-regions-v4");
   assert.equal(GAME_CONFIG.map.source.id, "natural-earth-admin-1-korea");
   assert.equal(GAME_CONFIG.map.source.version, "5.1.1");
   assert.equal(GAME_CONFIG.map.source.scale, "1:10m");
@@ -57,7 +71,7 @@ test("the Japan map uses eleven connected geographic regions without Okinawa", (
   assert.ok(japanMap);
   assert.equal(japanMap.source.id, "natural-earth-admin-1-japan");
   assert.equal(japanMap.regions.length, 11);
-  assert.equal(japanMap.sourceWorldMapId, "natural-earth-admin-1-regions-v3");
+  assert.equal(japanMap.sourceWorldMapId, "natural-earth-admin-1-regions-v4");
 
   const visited = new Set([japanMap.regions[0].id]);
   const queue = [japanMap.regions[0].id];
@@ -101,6 +115,89 @@ test("the Japan map uses eleven connected geographic regions without Okinawa", (
   assert.equal(lateRuntime.units.filter((unit) => unit.faction === "red").length, 3);
 });
 
+test("the China map uses fourteen connected geographic regions and two phases", () => {
+  const chinaMap = GAME_CONFIG.maps["china-front"];
+  assert.ok(chinaMap);
+  assert.equal(chinaMap.source.id, "natural-earth-admin-1-china");
+  assert.equal(chinaMap.sourceWorldMapId, "natural-earth-admin-1-regions-v4");
+  assert.equal(chinaMap.regions.length, 14);
+  assert.equal(chinaMap.interactionMinDistance, 0.065);
+  assert.equal(chinaMap.interactionHitRadius, 0.024);
+  assert.equal(chinaMap.regions.find((region) => region.id === "china-hainan").interactionRadius, 0.038);
+  assert.equal(Object.keys(NATURAL_EARTH_CHINA_ADMIN_1).length, 32);
+  assert.equal(NATURAL_EARTH_CHINA_ADMIN_1["cn-x01"].name, "Paracel Islands");
+
+  const visited = new Set([chinaMap.regions[0].id]);
+  const queue = [chinaMap.regions[0].id];
+  while (queue.length > 0) {
+    const current = queue.shift();
+    chinaMap.roadNeighbors[current].forEach((neighbor) => {
+      if (!visited.has(neighbor)) {
+        visited.add(neighbor);
+        queue.push(neighbor);
+      }
+    });
+  }
+
+  assert.equal(visited.size, chinaMap.regions.length);
+  assert.equal(chinaMap.roadDefinitions.length, 22);
+  assert.equal(chinaMap.roadDefinitions.filter((road) => road.kind === "land").length, 21);
+  assert.equal(chinaMap.roadDefinitions.filter((road) => road.kind === "sea").length, 1);
+  const sourceEdgesByRegion = Object.fromEntries(chinaMap.regions.map((region) => [
+    region.id,
+    sourceGeometryEdgeKeys(region.sourceGeometry),
+  ]));
+  chinaMap.roadDefinitions.filter((road) => road.kind === "land").forEach((road) => {
+    assert.ok(
+      [...sourceEdgesByRegion[road.from]].some((edge) => sourceEdgesByRegion[road.to].has(edge)),
+      `${road.from} and ${road.to} must share a Natural Earth boundary`,
+    );
+  });
+  assert.equal(
+    chinaMap.regions.flatMap((region) => region.sourceFeature.sourceFragmentIds).includes("cn-x01"),
+    false,
+  );
+  assert.equal(
+    new Set(chinaMap.regions.flatMap((region) => region.sourceFeature.sourceFragmentIds)).size,
+    31,
+  );
+  assert.ok(chinaMap.regions.every((region) => region.polygons.length > 0));
+  assert.ok(chinaMap.regions.every((region) => region.borderPolygons.length > 0));
+  assert.equal(GAME_CONFIG.countries.china.fragmentIds.length, 14);
+  assert.equal(GAME_CONFIG.characters.china.sprite, "./assets/units/enemy-china.png");
+  assert.deepEqual(GAME_CONFIG.campaign.frontOrder, ["korea-front", "japan-front", "china-front"]);
+  assert.deepEqual(GAME_CONFIG.campaign.fronts["china-front"], {
+    id: "china-front",
+    mapId: "china-front",
+    name: "中国マップ",
+    type: "major",
+    enemyProfileId: "majorMiddle",
+    phaseIds: ["china-front-opening", "china-front-late"],
+    targetCountryIds: ["china"],
+  });
+
+  const opening = GAME_CONFIG.campaign.phases["china-front-opening"];
+  const openingRuntime = createRuntimeScenario(GAME_CONFIG, opening.id);
+  assert.equal(opening.objectiveRegionIds.length, 6);
+  assert.equal(openingRuntime.mapId, "china-front");
+  assert.equal(openingRuntime.regions.length, 14);
+  assert.equal(openingRuntime.units.filter((unit) => unit.faction === "blue").length, 1);
+  assert.equal(openingRuntime.units.find((unit) => unit.faction === "blue").regionId, "china-hainan");
+  assert.equal(openingRuntime.units.filter((unit) => unit.faction === "red").length, 4);
+  openingRuntime.units.filter((unit) => unit.faction === "red").forEach((unit) => {
+    const region = openingRuntime.regions.find((candidate) => candidate.id === unit.regionId);
+    assert.equal(unit.characterId, "china");
+    assert.equal(region.countryId, GAME_CONFIG.characters[unit.characterId].countryId);
+    assert.equal(unit.maxStrength, 15);
+  });
+
+  const late = GAME_CONFIG.campaign.phases["china-front-late"];
+  const lateRuntime = createRuntimeScenario(GAME_CONFIG, late.id);
+  assert.equal(late.objectiveRegionIds.length, 13);
+  assert.equal(lateRuntime.units.filter((unit) => unit.faction === "red").length, 5);
+  assert.ok(lateRuntime.units.filter((unit) => unit.faction === "red").every((unit) => unit.maxStrength === 15));
+});
+
 test("roads remain the source of the runtime adjacency table and every road is passable", () => {
   const expected = new Map(GAME_CONFIG.map.regions.map((region) => [region.id, []]));
   MAP.roads.forEach(([from, to]) => {
@@ -119,7 +216,9 @@ test("roads remain the source of the runtime adjacency table and every road is p
 
 test("countries own fragments and major countries can require multiple fragments", () => {
   assert.deepEqual(GAME_CONFIG.countries.russia.fragmentIds, ["russia-east", "russia-far-east"]);
-  assert.deepEqual(GAME_CONFIG.countries.china.fragmentIds, ["china-north", "china-central", "china-south"]);
+  assert.equal(GAME_CONFIG.countries.china.fragmentIds.length, 14);
+  assert.equal(GAME_CONFIG.countries.china.fragmentIds[0], "china-hainan");
+  assert.equal(GAME_CONFIG.countries.china.fragmentIds.at(-1), "china-northeast");
   assert.equal(GAME_CONFIG.characters.china.sprite, "./assets/units/enemy-china.png");
   assert.equal(GAME_CONFIG.characters.player.sprite, "./assets/units/player-red-circle.png");
   assert.equal(GAME_CONFIG.characters.player.isPlayerCharacter, true);

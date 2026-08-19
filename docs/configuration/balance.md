@@ -41,8 +41,14 @@ campaign. The Korea Front therefore resolves a base enemy strength of `12` as
 The resulting Korea Front enemy strengths are `8`, `10`, and `12`. Upgrade
 caps only block future purchases; they never reduce an already saved level.
 
-## Future data
+## Major-country fronts
 
-The world source already contains additional East Asia fragments, but they are
-not active in the first front. Their production and enemy profiles should be
-added when the next front is selected.
+Japan uses `majorEarly` (`1.15`) and China uses `majorMiddle` (`1.25`). With a
+base enemy strength of `12`, China resolves starting enemy strength to `12`,
+`15`, and `18` on easy, normal, and hard respectively. China uses four opening
+enemy deployments, five late-phase deployments, an active-unit limit of `6`, a
+reinforcement limit of `6`, and an action delay of `3.5s`.
+
+China production ranges from `2` on the Plateau to `6` on the Lower Yangtze
+and Northern Coast. Hainan starts at `3`; the values for all fourteen regions
+are defined per phase in `src/config/campaign.js`.

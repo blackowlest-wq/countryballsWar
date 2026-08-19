@@ -97,12 +97,29 @@ test("reset migrates the next map unlock from legacy clear progress", () => {
   });
 
   const result = resetPersistentState(storage, UPGRADE_KEYS, {
-    frontOrder: ["korea-front", "japan-front"],
+    frontOrder: ["korea-front", "japan-front", "china-front"],
   });
 
   assert.deepEqual(result.campaign.unlockedFrontIds, ["japan-front", "korea-front"]);
   assert.deepEqual(result.campaign.completedFrontIds, []);
   assert.equal(result.campaign.lastCompletedFrontId, null);
+});
+
+test("reset preserves the China map unlock after Japan was completed", () => {
+  const storage = createStorage({
+    [CAMPAIGN_STORAGE_KEY]: JSON.stringify({
+      completedFrontIds: ["korea-front", "japan-front"],
+      unlockedFrontIds: ["korea-front", "japan-front"],
+      lastCompletedFrontId: "japan-front",
+    }),
+  });
+
+  const result = resetPersistentState(storage, UPGRADE_KEYS, {
+    frontOrder: ["korea-front", "japan-front", "china-front"],
+  });
+
+  assert.deepEqual(result.campaign.completedFrontIds, []);
+  assert.deepEqual(result.campaign.unlockedFrontIds, ["china-front", "japan-front", "korea-front"]);
 });
 
 test("equipped character is normalized, persisted, and resettable", () => {

@@ -1,7 +1,8 @@
 # Scenario and campaign configuration
 
 The campaign begins with the small Korea map. Clearing it unlocks the Japan
-map, which is the first two-phase major-country operation.
+map, which is the first two-phase major-country operation. Clearing Japan
+unlocks the two-phase China map.
 
 ```text
 campaign
@@ -12,10 +13,15 @@ campaign
     japan-front
       phaseIds: japan-front-opening, japan-front-late
       targetCountryIds: japan
+    china-front
+      phaseIds: china-front-opening, china-front-late
+      targetCountryIds: china
   phases
     korea-front-opening
     japan-front-opening
     japan-front-late
+    china-front-opening
+    china-front-late
 ```
 
 The active Korea map contains 11 strategic regions:
@@ -40,6 +46,18 @@ playable map; Southern Kyushu is the single player starting region and the
 remaining 10 regions are enemy-owned. Its two phases use the same map and
 carry the player's units and occupation state forward while recreating enemy
 units from the next phase's deployment.
+
+The China map contains 14 strategic regions. The remote Paracel Islands source
+feature is excluded; Hainan is the single player starting region and the
+remaining 13 regions are enemy-owned. The opening objective contains the
+Southern Coast, Southwest, Sichuan Basin, Central, Southeastern Coast, and
+Lower Yangtze regions. The late objective contains all 13 enemy regions.
+
+The opening phase deploys four Chinese enemy units in the Southern Coast,
+Central, Sichuan Basin, and Lower Yangtze regions. The late phase recreates
+five Chinese enemy units in Xinjiang, Northwest, Northern Coast, Northern
+Frontier, and Northeast. The front uses the `majorMiddle` profile, producing a
+normal-difficulty starting enemy strength of `round(12 * 1.25) = 15`.
 
 Small-country maps use one phase. A phase defines the same map's objective,
 territory owners, production, and initial deployment. Large-country operations

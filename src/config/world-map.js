@@ -1,5 +1,6 @@
 import { NATURAL_EARTH_KOREA_ADMIN_1 } from "./geodata/natural-earth-korea-admin-1.js";
 import { NATURAL_EARTH_JAPAN_ADMIN_1 } from "./geodata/natural-earth-japan-admin-1.js";
+import { NATURAL_EARTH_CHINA_ADMIN_1 } from "./geodata/natural-earth-china-admin-1.js";
 
 // The source remains Natural Earth first-order administrative boundaries, but
 // the game combines adjacent source features into larger, easier-to-select
@@ -18,6 +19,18 @@ const KOREA_MAP_SOURCE = {
 
 const JAPAN_MAP_SOURCE = {
   id: "natural-earth-admin-1-japan",
+  name: "Natural Earth Admin 1 - States, Provinces",
+  version: "5.1.1",
+  sourceCommit: "9380cca",
+  scale: "1:10m",
+  license: "Public domain",
+  attribution: "Made with Natural Earth.",
+  sourceUrl: "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.1/geojson/ne_10m_admin_1_states_provinces.geojson",
+  licenseUrl: "https://www.naturalearthdata.com/about/terms-of-use/",
+};
+
+const CHINA_MAP_SOURCE = {
+  id: "natural-earth-admin-1-china",
   name: "Natural Earth Admin 1 - States, Provinces",
   version: "5.1.1",
   sourceCommit: "9380cca",
@@ -211,6 +224,122 @@ const JAPAN_REGION_GROUPS = [
   },
 ];
 
+const CHINA_REGION_GROUPS = [
+  {
+    id: "china-hainan",
+    countryId: "china",
+    name: "Hainan",
+    shortName: "HAINAN",
+    labelPoint: [109.825, 19.1865],
+    interactionRadius: 0.038,
+    sourceFragmentIds: ["cn-hi"],
+  },
+  {
+    id: "china-south-coast",
+    countryId: "china",
+    name: "Southern Coast",
+    shortName: "SOUTH COAST",
+    labelPoint: [112.2, 23.6],
+    sourceFragmentIds: ["cn-gd", "cn-gx"],
+  },
+  {
+    id: "china-southeast-coast",
+    countryId: "china",
+    name: "Southeastern Coast",
+    shortName: "SOUTHEAST",
+    labelPoint: [119.1, 27.4],
+    sourceFragmentIds: ["cn-fj", "cn-zj"],
+  },
+  {
+    id: "china-lower-yangtze",
+    countryId: "china",
+    name: "Lower Yangtze",
+    shortName: "YANGTZE",
+    labelPoint: [118.2, 32.1],
+    sourceFragmentIds: ["cn-sh", "cn-js", "cn-ah"],
+  },
+  {
+    id: "china-central",
+    countryId: "china",
+    name: "Central Region",
+    shortName: "CENTRAL",
+    labelPoint: [112, 29],
+    sourceFragmentIds: ["cn-jx", "cn-hn", "cn-hb"],
+  },
+  {
+    id: "china-southwest",
+    countryId: "china",
+    name: "Southwestern Region",
+    shortName: "SOUTHWEST",
+    labelPoint: [103.9, 25.6],
+    sourceFragmentIds: ["cn-yn", "cn-gz"],
+  },
+  {
+    id: "china-sichuan-basin",
+    countryId: "china",
+    name: "Sichuan Basin",
+    shortName: "SICHUAN",
+    labelPoint: [104.5, 30.5],
+    sourceFragmentIds: ["cn-sc", "cn-cq"],
+  },
+  {
+    id: "china-plateau",
+    countryId: "china",
+    name: "Western Plateau",
+    shortName: "PLATEAU",
+    labelPoint: [94.2, 34],
+    sourceFragmentIds: ["cn-xz", "cn-qh"],
+  },
+  {
+    id: "china-xinjiang",
+    countryId: "china",
+    name: "Xinjiang",
+    shortName: "XINJIANG",
+    labelPoint: [85.4253, 41.122],
+    sourceFragmentIds: ["cn-xj"],
+  },
+  {
+    id: "china-northwest",
+    countryId: "china",
+    name: "Northwestern Region",
+    shortName: "NORTHWEST",
+    labelPoint: [105.2, 36.3],
+    sourceFragmentIds: ["cn-gs", "cn-nx", "cn-sn"],
+  },
+  {
+    id: "china-central-plains",
+    countryId: "china",
+    name: "Central Plains",
+    shortName: "PLAINS",
+    labelPoint: [112.9, 35.8],
+    sourceFragmentIds: ["cn-ha", "cn-sx"],
+  },
+  {
+    id: "china-north-coast",
+    countryId: "china",
+    name: "Northern Coast",
+    shortName: "NORTH COAST",
+    labelPoint: [117.9, 38.2],
+    sourceFragmentIds: ["cn-sd", "cn-he", "cn-bj", "cn-tj"],
+  },
+  {
+    id: "china-northern-frontier",
+    countryId: "china",
+    name: "Northern Frontier",
+    shortName: "FRONTIER",
+    labelPoint: [111.623, 41.5938],
+    sourceFragmentIds: ["cn-nm"],
+  },
+  {
+    id: "china-northeast",
+    countryId: "china",
+    name: "Northeastern Region",
+    shortName: "NORTHEAST",
+    labelPoint: [126.5, 44.2],
+    sourceFragmentIds: ["cn-ln", "cn-jl", "cn-hl"],
+  },
+];
+
 const KOREA_SOURCE_ISO_A3_BY_COUNTRY = {
   "south-korea": "KOR",
   "north-korea": "PRK",
@@ -218,6 +347,10 @@ const KOREA_SOURCE_ISO_A3_BY_COUNTRY = {
 
 const JAPAN_SOURCE_ISO_A3_BY_COUNTRY = {
   japan: "JPN",
+};
+
+const CHINA_SOURCE_ISO_A3_BY_COUNTRY = {
+  china: "CHN",
 };
 
 function polygonArea(polygon) {
@@ -257,10 +390,26 @@ function buildBoundaryGeometry(sourceFragments, sourceFragmentIds, options = {})
     }));
   });
 
-  const remaining = [...segments.values()];
+  const remaining = new Set(segments.values());
+  const segmentsByEndpoint = new Map();
+  remaining.forEach((segment) => {
+    [segment.startKey, segment.endKey].forEach((endpoint) => {
+      if (!segmentsByEndpoint.has(endpoint)) segmentsByEndpoint.set(endpoint, new Set());
+      segmentsByEndpoint.get(endpoint).add(segment);
+    });
+  });
+  const consumeSegment = (segment) => {
+    remaining.delete(segment);
+    [segment.startKey, segment.endKey].forEach((endpoint) => {
+      const endpointSegments = segmentsByEndpoint.get(endpoint);
+      endpointSegments?.delete(segment);
+      if (endpointSegments?.size === 0) segmentsByEndpoint.delete(endpoint);
+    });
+  };
   const rings = [];
-  while (remaining.length > 0) {
-    const first = remaining.shift();
+  while (remaining.size > 0) {
+    const first = remaining.values().next().value;
+    consumeSegment(first);
     const ring = [first.start];
     let current = first.end;
     let currentKey = first.endKey;
@@ -270,9 +419,9 @@ function buildBoundaryGeometry(sourceFragments, sourceFragmentIds, options = {})
         closed = true;
         break;
       }
-      const nextIndex = remaining.findIndex((segment) => segment.startKey === currentKey || segment.endKey === currentKey);
-      if (nextIndex < 0) break;
-      const next = remaining.splice(nextIndex, 1)[0];
+      const next = segmentsByEndpoint.get(currentKey)?.values().next().value;
+      if (!next) break;
+      consumeSegment(next);
       if (next.startKey === currentKey) {
         ring.push(next.start);
         current = next.end;
@@ -329,14 +478,16 @@ function buildFragments(sourceFragments, groups, sourceIsoA3ByCountry, options =
 
 assertSourceCoverage(NATURAL_EARTH_KOREA_ADMIN_1, FRONT_REGION_GROUPS, "Korea");
 assertSourceCoverage(NATURAL_EARTH_JAPAN_ADMIN_1, JAPAN_REGION_GROUPS, "Japan", ["jp-47"]);
+assertSourceCoverage(NATURAL_EARTH_CHINA_ADMIN_1, CHINA_REGION_GROUPS, "China", ["cn-x01"]);
 
 const fragments = {
   ...buildFragments(NATURAL_EARTH_KOREA_ADMIN_1, FRONT_REGION_GROUPS, KOREA_SOURCE_ISO_A3_BY_COUNTRY),
   ...buildFragments(NATURAL_EARTH_JAPAN_ADMIN_1, JAPAN_REGION_GROUPS, JAPAN_SOURCE_ISO_A3_BY_COUNTRY, { mainLandOnly: true }),
+  ...buildFragments(NATURAL_EARTH_CHINA_ADMIN_1, CHINA_REGION_GROUPS, CHINA_SOURCE_ISO_A3_BY_COUNTRY, { mainLandOnly: true }),
 };
 
 export const WORLD_MAP = {
-  id: "natural-earth-admin-1-regions-v3",
+  id: "natural-earth-admin-1-regions-v4",
   source: KOREA_MAP_SOURCE,
   projection: {
     type: "equirectangular",
@@ -416,6 +567,57 @@ export const WORLD_MAP = {
       decorations: {
         labels: [
           { text: "JAPAN ARCHIPELAGO", coordinates: [137.7, 45.2] },
+        ],
+        lines: [],
+      },
+    },
+    "china-front": {
+      id: "china-front",
+      name: "中国マップ",
+      source: CHINA_MAP_SOURCE,
+      // The pinned source retains all China features for traceability. The
+      // playable geometry keeps the largest polygon of each province and
+      // excludes the remote Paracel Islands feature so the continental front
+      // and Hainan remain readable in one camera.
+      bounds: { west: 72.5, east: 135.5, south: 17.5, north: 54.5 },
+      displayOffset: { x: 0, y: 0 },
+      viewport: {
+        initialZoom: 1.15,
+        minZoom: 0.78,
+        maxZoom: 1.5,
+        initialFocusRegionId: "china-hainan",
+        focusAnchor: [0.5, 0.78],
+      },
+      interactionMinDistance: 0.065,
+      interactionHitRadius: 0.024,
+      fragmentIds: CHINA_REGION_GROUPS.map((group) => group.id),
+      roads: [
+        { from: "china-hainan", to: "china-south-coast", kind: "sea" },
+        { from: "china-south-coast", to: "china-southwest", kind: "land" },
+        { from: "china-south-coast", to: "china-central", kind: "land" },
+        { from: "china-south-coast", to: "china-southeast-coast", kind: "land" },
+        { from: "china-southwest", to: "china-sichuan-basin", kind: "land" },
+        { from: "china-southwest", to: "china-central", kind: "land" },
+        { from: "china-sichuan-basin", to: "china-plateau", kind: "land" },
+        { from: "china-sichuan-basin", to: "china-central", kind: "land" },
+        { from: "china-plateau", to: "china-xinjiang", kind: "land" },
+        { from: "china-plateau", to: "china-northwest", kind: "land" },
+        { from: "china-xinjiang", to: "china-northwest", kind: "land" },
+        { from: "china-northwest", to: "china-central-plains", kind: "land" },
+        { from: "china-central", to: "china-central-plains", kind: "land" },
+        { from: "china-central", to: "china-lower-yangtze", kind: "land" },
+        { from: "china-central", to: "china-southeast-coast", kind: "land" },
+        { from: "china-southeast-coast", to: "china-lower-yangtze", kind: "land" },
+        { from: "china-lower-yangtze", to: "china-north-coast", kind: "land" },
+        { from: "china-central-plains", to: "china-north-coast", kind: "land" },
+        { from: "china-central-plains", to: "china-northern-frontier", kind: "land" },
+        { from: "china-north-coast", to: "china-northern-frontier", kind: "land" },
+        { from: "china-north-coast", to: "china-northeast", kind: "land" },
+        { from: "china-northern-frontier", to: "china-northeast", kind: "land" },
+      ],
+      decorations: {
+        labels: [
+          { text: "CHINA", coordinates: [77.5, 52.2] },
         ],
         lines: [],
       },

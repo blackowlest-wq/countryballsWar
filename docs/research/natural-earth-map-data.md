@@ -3,17 +3,21 @@
 ## Decision
 
 Use Natural Earth vector data instead of hand-authored country rectangles.
-The Korea and Japan maps are built from the Admin 1 - States, Provinces
+The Korea, Japan, and China maps are built from the Admin 1 - States, Provinces
 GeoJSON at 1:10m, pinned to v5.1.1 (`9380cca`). The source is public domain
 under the Natural Earth terms of use.
 
-The runtime keeps the 28 Korea features and the full 47-feature Japan source in
+The runtime keeps the 28 Korea features, the full 47-feature Japan source, and
+the full 32-feature China source in
 `src/config/geodata/natural-earth-korea-admin-1.js` and
-`src/config/geodata/natural-earth-japan-admin-1.js`. The playable Japan map
-excludes the Okinawa feature (`jp-47`), so the Korea source is grouped into 11
-strategic regions and Japan into 11. The extracted audit copies are
+`src/config/geodata/natural-earth-japan-admin-1.js`, and
+`src/config/geodata/natural-earth-china-admin-1.js`. The playable Japan map
+excludes the Okinawa feature (`jp-47`); the playable China map excludes the
+Paracel Islands feature (`cn-x01`). Korea is grouped into 11 strategic regions,
+Japan into 11, and China into 14. The extracted audit copies are
 `src/config/geodata/ne_10m_admin_1_korea.geojson` and
-`src/config/geodata/ne_10m_admin_1_japan.geojson`.
+`src/config/geodata/ne_10m_admin_1_japan.geojson`, and
+`src/config/geodata/ne_10m_admin_1_china.geojson`.
 
 ## Sources
 
@@ -39,5 +43,9 @@ strategic regions and Japan into 11. The extracted audit copies are
 - Japan uses a close-up equirectangular view without Okinawa as a playable
   region. Hokkaido and the remote Tokyo island features remain in the pinned
   source geometry for traceability.
+- China groups 31 provincial-level features into 14 strategic regions, keeps
+  Hainan as the player start, and omits small coastal polygons plus the remote
+  Paracel Islands feature from playable geometry. The complete 32-feature
+  source subset remains checked in for traceability.
 - The older 1:110m Admin 0 source is retained for future country-level fronts,
-  but is not used by the Korea or Japan maps.
+  but is not used by the Korea, Japan, or China maps.

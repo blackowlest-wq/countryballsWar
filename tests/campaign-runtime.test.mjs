@@ -86,15 +86,14 @@ test("small island interaction points keep a forgiving release target", () => {
 });
 
 test("split-country completion requires every fragment", () => {
-  const regions = [
-    { id: "china-north", faction: "blue" },
-    { id: "china-central", faction: "blue" },
-    { id: "china-south", faction: "red" },
-  ];
   const country = GAME_CONFIG.countries.china;
+  const regions = country.fragmentIds.map((id, index) => ({
+    id,
+    faction: index === country.fragmentIds.length - 1 ? "red" : "blue",
+  }));
 
   assert.equal(isCountryComplete(regions, country, "blue"), false);
-  regions[2].faction = "blue";
+  regions.at(-1).faction = "blue";
   assert.equal(isCountryComplete(regions, country, "blue"), true);
   assert.deepEqual(getCompletedCountryIds(regions, { china: country }, "blue"), ["china"]);
 });
@@ -134,6 +133,41 @@ test("phase transition carries player units and occupation but resets enemies", 
   );
   assert.equal(result.units.some((unit) => unit.id === "red-1"), false);
   assert.equal(result.units.some((unit) => unit.id === "next-red"), true);
+});
+
+test("China phase transition carries the southern advance and deploys five northern enemies", () => {
+  const opening = GAME_CONFIG.campaign.phases["china-front-opening"];
+  const current = createRuntimeScenario(GAME_CONFIG, opening.id);
+  opening.objectiveRegionIds.forEach((regionId) => {
+    current.regions.find((region) => region.id === regionId).faction = "blue";
+  });
+  const player = current.units.find((unit) => unit.faction === "blue");
+  player.strength = 9;
+  player.x = 0.63;
+  player.y = 0.69;
+
+  const result = transitionPhase({
+    currentRuntime: current,
+    nextRuntime: createRuntimeScenario(GAME_CONFIG, "china-front-late"),
+    playerFactionId: "blue",
+  });
+
+  assert.equal(result.phaseId, "china-front-late");
+  assert.equal(result.units.find((unit) => unit.faction === "blue").strength, 9);
+  assert.equal(result.units.find((unit) => unit.faction === "blue").x, 0.63);
+  assert.ok(opening.objectiveRegionIds.every(
+    (regionId) => result.regions.find((region) => region.id === regionId).faction === "blue",
+  ));
+  assert.deepEqual(
+    result.units.filter((unit) => unit.faction === "red").map((unit) => unit.regionId).sort(),
+    [
+      "china-xinjiang",
+      "china-northwest",
+      "china-north-coast",
+      "china-northern-frontier",
+      "china-northeast",
+    ].sort(),
+  );
 });
 
 test("phase objectives and next-phase lookup are explicit", () => {
