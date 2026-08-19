@@ -79,6 +79,14 @@ test("operation restart reapplies the selected game speed", () => {
   assert.match(main, /selectedGameSpeed = Number\(button\.dataset\.speed\)/);
 });
 
+test("phase transition keeps the current map camera", () => {
+  const main = readProjectFile("src/main.js");
+  const transition = main.match(/function transitionToPhase[\s\S]*?\n}\n\nconst view/)?.[0] || "";
+
+  assert.match(transition, /function transitionToPhase/);
+  assert.doesNotMatch(transition, /resetMapCamera\(\)/);
+});
+
 test("title start exposes a fixed campaign difficulty before map selection", () => {
   const html = readProjectFile("index.html");
   const main = readProjectFile("src/main.js");

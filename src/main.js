@@ -384,7 +384,6 @@ function transitionToPhase(phaseId) {
   state.aiReinforcements = createAiFactionState(getActiveAiBalance().reinforcementLimit);
   state.invasionWarning = null;
   state.battles.clear();
-  resetMapCamera();
 }
 
 const view = { width: 0, height: 0 };
